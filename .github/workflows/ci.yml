@@ -15,7 +15,16 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Prepare HTTPS
-        run: dotnet dev-certs https --trust
+        timeout-minutes: 2
+        shell: pwsh
+        run: |
+          # Trust only this runner's public development certificate without a desktop prompt.
+          $ciCertificatePath = Join-Path $env:RUNNER_TEMP 'aspire-https.crt'
+          dotnet dev-certs https --export-path $ciCertificatePath --format PEM
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create the HTTPS development certificate.' }
+          Import-Certificate -FilePath $ciCertificatePath -CertStoreLocation 'Cert:\LocalMachine\Root' -Confirm:$false -ErrorAction Stop | Out-Null
+          dotnet dev-certs https --check --trust
+          if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
       - name: Restore
         run: dotnet restore
       - name: Build
