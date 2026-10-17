@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.1" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsAspireHost>true</IsAspireHost>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>aspire-identityserver-sample</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <ProjectReference Include="../../src/Aspire.IdentityServer.Hosting/Aspire.IdentityServer.Hosting.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="../Sample.Api/Sample.Api.csproj" />
+    <ProjectReference Include="../Sample.Web/Sample.Web.csproj" />
+  </ItemGroup>
+  <!-- Project references do not import NuGet buildTransitive assets. -->
+  <Import Project="../../src/Aspire.IdentityServer.Hosting/buildTransitive/Aspire.IdentityServer.Hosting.targets" />
+</Project>

@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+work/
+artifacts/
+TestResults/
+**/test-results/
+*.user
+*.pfx
+*.pem
+.aspire/

@@ -1,0 +1,17 @@
+@page
+@model Aspire.IdentityServer.Server.Pages.Account.LoginModel
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>Development sign in</title></head>
+<body>
+<main>
+    <h1>Development sign in</h1>
+    <p>Use a test account configured in your AppHost.</p>
+    <form method="post">
+        <input type="hidden" asp-for="ReturnUrl" />
+        <div asp-validation-summary="All" role="alert"></div>
+        <p><label asp-for="Username"></label> <input asp-for="Username" autocomplete="username" required autofocus /></p>
+        <p><label asp-for="Password"></label> <input asp-for="Password" type="password" autocomplete="current-password" required /></p>
+        <button type="submit">Sign in</button>
+    </form>
+</main>
+</body></html>

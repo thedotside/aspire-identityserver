@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections.</Description>
+    <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
+    <!-- Override Aspire's transitive 2.5.302: GHSA-qhrr-8q5h-9q3h. -->
+    <PackageReference Include="MessagePack" />
+    <ProjectReference Include="../Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj" IsAspireProjectResource="false" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+    <None Include="buildTransitive/Aspire.IdentityServer.Hosting.targets" Pack="true" PackagePath="buildTransitive/" />
+    <None Include="buildTransitive/server.runtimeconfig.json" Pack="true" PackagePath="buildTransitive/" />
+  </ItemGroup>
+</Project>
