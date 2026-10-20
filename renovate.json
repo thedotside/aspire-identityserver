@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "timezone": "Europe/Paris",
+  "enabledManagers": ["nuget", "github-actions", "custom.regex"],
+  "ignorePaths": ["**/bin/**", "**/obj/**", "artifacts/**", "work/**"],
+  "automerge": false,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "packageRules": [
+    {
+      "matchPackageNames": ["/^Aspire\\./"],
+      "groupName": "Aspire"
+    },
+    {
+      "matchPackageNames": ["/^Microsoft\\.AspNetCore\\./"],
+      "groupName": "ASP.NET Core",
+      "allowedVersions": "/^10\\./"
+    },
+    {
+      "matchDepTypes": ["dotnet-sdk"],
+      "allowedVersions": "/^10\\./"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^eng\\/package-smoke\\.ps1$/"],
+      "matchStrings": [
+        "<(?:Sdk Name|PackageReference Include)=\"(?<depName>Aspire\\.(?:AppHost\\.Sdk|Hosting\\.AppHost))\" Version=\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "nuget"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^pipelines\\/renovate\\/action\\.yml$/"],
+      "matchStrings": ["--package=renovate@(?<currentValue>[0-9.]+)"],
+      "depNameTemplate": "renovate",
+      "datasourceTemplate": "npm"
+    }
+  ]
+}

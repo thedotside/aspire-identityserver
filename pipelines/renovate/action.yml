@@ -1,0 +1,30 @@
+name: Renovate
+description: Propose dependency updates for this repository using the Renovate CLI.
+inputs:
+  token:
+    description: GitHub token with access to this repository and permission to create dependency update PRs.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '24'
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+    - name: Run Renovate
+      shell: bash
+      env:
+        RENOVATE_TOKEN: ${{ inputs.token }}
+        RENOVATE_PLATFORM: github
+        RENOVATE_REPOSITORIES: ${{ github.repository }}
+        RENOVATE_ONBOARDING: 'false'
+        RENOVATE_REQUIRE_CONFIG: required
+        RENOVATE_BINARY_SOURCE: global
+      run: |
+        if [ -z "$RENOVATE_TOKEN" ]; then
+          echo '::error::Add the RENOVATE_TOKEN repository secret before running Renovate.'
+          exit 1
+        fi
+        npx --yes --package=renovate@44.172.0 -- renovate

@@ -15,6 +15,7 @@
 | `tests/Aspire.IdentityServer.Tests` | Tests de protocoles, navigateurs et projections. |
 | `eng` | Construction des packages et vérification d'un consommateur indépendant. |
 | `pipelines/build` | Étapes YAML de la CI, sous forme d'action composite GitHub Actions. |
+| `pipelines/renovate` | Exécution de Renovate pour proposer les mises à jour de dépendances. |
 | `docs` | Guides et exemples de configuration. |
 
 Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
@@ -114,6 +115,18 @@ Le pipeline tourne sur `windows-latest` avec un délai maximal de 20 minutes. Il
 Pour le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`. La confiance est vérifiée sans fenêtre interactive. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
 
 Le workflow ne publie pas automatiquement sur NuGet. La présence d'une archive GitHub Actions ne signifie pas que le package existe sur nuget.org. Vérifie séparément le résultat du run et celui d'une publication.
+
+### Mises à jour avec Renovate
+
+Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`.
+
+La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub, y compris celles de `pipelines/`. Les versions Aspire inscrites dans le consommateur de test `eng/package-smoke.ps1` sont également détectées et regroupées avec les packages et le SDK Aspire dans une même PR. Le SDK .NET et les packages ASP.NET Core restent sur la version majeure 10.
+
+Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures nécessitent une approbation dans son issue « Dependency Dashboard ». Les PR ne sont jamais fusionnées automatiquement ; elles déclenchent la CI de build et de tests habituelle.
+
+L'exécution utilise Node.js 24 et .NET 10 sur le runner GitHub Ubuntu, sans Docker. La version de Renovate est fixée dans l'action et est elle-même suivie pour les mises à jour.
+
+Le secret Actions `RENOVATE_TOKEN` contient un jeton GitHub limité à `thedotside/aspire-identityserver`. Il dispose des droits de lecture/écriture sur Contents, Pull requests, Issues, Commit statuses et Workflows, ainsi que de la lecture de Metadata et Dependabot alerts. Aucun droit d'organisation n'est accordé au jeton de ce pipeline. Utiliser ce jeton dédié permet aux PR de Renovate de déclencher les workflows de validation. Choisir une validité annuelle et renouveler le secret avant l'expiration du jeton, sans enregistrer sa valeur dans le dépôt ni dans les logs.
 
 ### Préparation d'une publication
 
