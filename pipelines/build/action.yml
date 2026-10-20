@@ -1,0 +1,49 @@
+name: Build, test and pack
+description: Validate formatting, build, test and consume the IdentityServer packages on Windows.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+    - name: Prepare HTTPS
+      shell: pwsh
+      run: |
+        # Trust only this runner's public development certificate without a desktop prompt.
+        $ciCertificatePath = Join-Path $env:RUNNER_TEMP 'aspire-https.crt'
+        dotnet dev-certs https --export-path $ciCertificatePath --format PEM
+        if ($LASTEXITCODE -ne 0) { throw 'Could not create the HTTPS development certificate.' }
+        Import-Certificate -FilePath $ciCertificatePath -CertStoreLocation 'Cert:\LocalMachine\Root' -Confirm:$false -ErrorAction Stop | Out-Null
+        dotnet dev-certs https --check --trust
+        if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
+    - name: Restore
+      shell: pwsh
+      run: dotnet restore
+    - name: Restore local tools
+      shell: pwsh
+      run: dotnet tool restore
+    - name: Check formatting
+      shell: pwsh
+      run: dotnet csharpier check .
+    - name: Build
+      shell: pwsh
+      run: dotnet build --no-restore
+    - name: Install browser
+      shell: pwsh
+      run: pwsh tests/Aspire.IdentityServer.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
+    - name: Test
+      shell: pwsh
+      run: dotnet test --no-build --logger trx --results-directory artifacts/test-results
+    - name: Pack
+      shell: pwsh
+      run: pwsh eng/pack.ps1
+    - name: Verify packages in independent consumer
+      shell: pwsh
+      run: pwsh eng/package-smoke.ps1
+    - uses: actions/upload-artifact@v7
+      if: always()
+      with:
+        name: packages-and-test-results
+        path: |
+          artifacts/packages/*
+          artifacts/test-results/*

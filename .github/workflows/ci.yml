@@ -1,50 +1,23 @@
 name: build-test-pack
 on:
   push:
+    branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
-      - name: Prepare HTTPS
-        timeout-minutes: 2
-        shell: pwsh
-        run: |
-          # Trust only this runner's public development certificate without a desktop prompt.
-          $ciCertificatePath = Join-Path $env:RUNNER_TEMP 'aspire-https.crt'
-          dotnet dev-certs https --export-path $ciCertificatePath --format PEM
-          if ($LASTEXITCODE -ne 0) { throw 'Could not create the HTTPS development certificate.' }
-          Import-Certificate -FilePath $ciCertificatePath -CertStoreLocation 'Cert:\LocalMachine\Root' -Confirm:$false -ErrorAction Stop | Out-Null
-          dotnet dev-certs https --check --trust
-          if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
-      - name: Restore
-        run: dotnet restore
-      - name: Restore local tools
-        run: dotnet tool restore
-      - name: Check formatting
-        run: dotnet csharpier check .
-      - name: Build
-        run: dotnet build --no-restore
-      - name: Install browser
-        run: pwsh tests/Aspire.IdentityServer.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
-      - name: Test
-        run: dotnet test --no-build --logger trx --results-directory artifacts/test-results
-      - name: Pack
-        run: pwsh eng/pack.ps1
-      - name: Verify packages in independent consumer
-        run: pwsh eng/package-smoke.ps1
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: packages-and-test-results
-          path: |
-            artifacts/packages/*
-            artifacts/test-results/*
+          persist-credentials: false
+      # GitHub requires the trigger here; the build pipeline lives in /pipelines.
+      - name: Build, test and pack
+        uses: ./pipelines/build

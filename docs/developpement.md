@@ -14,6 +14,7 @@
 | `samples/Sample.Api` | Validation de tokens de deux IDP et deux composants OAuth sortants. |
 | `tests/Aspire.IdentityServer.Tests` | Tests de protocoles, navigateurs et projections. |
 | `eng` | Construction des packages et vérification d'un consommateur indépendant. |
+| `pipelines/build` | Étapes YAML de la CI, sous forme d'action composite GitHub Actions. |
 | `docs` | Guides et exemples de configuration. |
 
 Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
@@ -104,7 +105,11 @@ Le README est embarqué dans les packages ; les pages `docs/` restent dans le d�
 
 ## CI et publication
 
-Le [workflow](../.github/workflows/ci.yml) tourne sur `windows-latest` et prévoit : SDK, certificat HTTPS, restore, restauration des outils, check CSharpier, build avec les analyseurs, installation Chromium, tests, pack, smoke et archivage des résultats/packages.
+Le [workflow GitHub Actions](../.github/workflows/ci.yml) déclenche la validation à l'ouverture d'une PR, à chaque nouveau commit sur celle-ci, à sa réouverture et lorsqu'elle devient prête à être revue. Toutes les branches cibles sont couvertes, y compris les PR en brouillon. La CI tourne aussi sur les pushes vers `main` et peut être lancée manuellement depuis l'onglet Actions. Un nouveau lancement sur la même PR ou branche annule le précédent encore en cours.
+
+Les étapes du pipeline sont centralisées dans [pipelines/build/action.yml](../pipelines/build/action.yml). GitHub impose de conserver le fichier de déclenchement dans `.github/workflows` ; celui-ci ne contient que les événements, les permissions, le choix du runner et l'appel de l'action locale `./pipelines/build` après le checkout.
+
+Le pipeline tourne sur `windows-latest` avec un délai maximal de 20 minutes. Il prépare le SDK et le certificat HTTPS, restaure les dépendances et outils, vérifie le formatage CSharpier, compile avec les analyseurs, installe Chromium, exécute les tests, construit les packages et les vérifie dans un consommateur indépendant. Il archive les résultats de tests et les packages disponibles sous `packages-and-test-results`, même si une étape précédente a échoué. Le token du workflow dispose uniquement du droit de lecture du contenu du dépôt.
 
 Pour le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`. La confiance est vérifiée sans fenêtre interactive. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
 
