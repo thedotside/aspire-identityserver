@@ -1,6 +1,6 @@
 # Documentation Aspire IdentityServer
 
-Cette documentation décrit le paramétrage de la version `0.1.0-alpha.1`, sur .NET 10 et Aspire 13.6.1.
+Cette documentation décrit le paramétrage de la version `0.1.0-alpha.1`, sur .NET 10 et Aspire 13.6.2.
 
 L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
 

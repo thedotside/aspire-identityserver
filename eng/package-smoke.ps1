@@ -18,10 +18,10 @@ $escapedFeed = [System.Security.SecurityElement]::Escape($feed)
     Set-Content (Join-Path $consumer 'Directory.Packages.props')
 @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.1" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.2" />
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAspireHost>true</IsAspireHost><AspireUseCliBundle>true</AspireUseCliBundle></PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.2" />
     <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="$Version" />
     <PackageReference Include="TheDotSide.Aspire.IdentityServer.Client" Version="$Version" />
   </ItemGroup>
