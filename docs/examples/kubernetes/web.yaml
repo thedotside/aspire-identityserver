@@ -1,0 +1,40 @@
+# Modèle pour le consommateur uniquement : ce fichier ne déploie pas notre IDP local.
+# Remplacer l'authority, le kid et l'image avant utilisation.
+# Fournir le Secret web-oidc dans le même namespace, clé private-key.pem.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-oidc-config
+data:
+  Authentication__IdpA__Authority: "https://identity.example.invalid"
+  Authentication__IdpA__ClientId: "web"
+  Authentication__IdpA__AuthenticationMethod: "private_key_jwt"
+  Authentication__IdpA__Scopes: "openid profile orders.read"
+  Authentication__IdpA__KeyId: "replace-with-registered-kid"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: registry.example.invalid/team/web:replace-me
+          envFrom:
+            - configMapRef:
+                name: web-oidc-config
+          env:
+            - name: Authentication__IdpA__PrivateKeyPem
+              valueFrom:
+                secretKeyRef:
+                  name: web-oidc
+                  key: private-key.pem

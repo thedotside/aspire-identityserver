@@ -1,0 +1,45 @@
+# Documentation Aspire IdentityServer
+
+Cette documentation décrit le paramétrage de la version `0.1.0-alpha.1`, sur .NET 10 et Aspire 13.6.1.
+
+L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
+
+## Guides
+
+| Page | Contenu |
+| --- | --- |
+| [Démarrage](demarrage.md) | Prérequis, installation locale des packages, premier AppHost et lancement des exemples. |
+| [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
+| [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
+| [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
+| [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
+| [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
+| [Référence de l'API](reference.md) | Signatures, valeurs par défaut, propriétés, validations et paramètres non exposés. |
+| [Développement et dépannage](developpement.md) | Tests, packages, CI, erreurs courantes et préparation d'une publication. |
+
+## Parcours conseillés
+
+- Pour démarrer : [installation](demarrage.md), puis [fournisseurs](fournisseurs.md) et [clients](clients.md).
+- Pour brancher une application existante : [projections](projections.md), puis [intégration](integration.md).
+- Pour comprendre la correspondance avec Kubernetes : [projections](projections.md), puis [Kubernetes](kubernetes.md).
+- Pour contribuer ou publier un package : [référence](reference.md), puis [développement](developpement.md).
+
+Les exemples partiels indiquent les variables ou ressources déjà déclarées qu'ils supposent. Les valeurs entre `<...>` sont des marqueurs de documentation. Les exemples Kubernetes utilisent des adresses fictives et ne constituent pas un déploiement de l'IDP fourni par ce projet.
+
+## Périmètre de cette version
+
+| Fonction | État |
+| --- | --- |
+| Plusieurs IDP indépendants, HTTPS, utilisateurs de test | Implémenté. |
+| Authorization code, PKCE, client credentials | Implémenté. |
+| Secrets et assertions RSA/RS256 `private_key_jwt` | Implémenté. |
+| Scopes, ressources API, audiences et projections | Implémenté. |
+| Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
+| Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
+| Refresh tokens, utilisateurs persistants, fédération, claims personnalisés | Hors périmètre de cette alpha. |
+| Déploiement du fournisseur sur Kubernetes ou en production | Non pris en charge ; publication Aspire refusée. |
+| Benchmark comparatif face à Keycloak | Non réalisé. |
+
+La validation locale Windows consignée le 17 octobre 2026 comprend 21 tests réussis et un consommateur indépendant des packages. Elle ne prouve pas la validation sur d'autres systèmes ni le résultat actuel de GitHub Actions. Voir [les vérifications](developpement.md).
+
+[Retour au README du projet](../README.md)
