@@ -17,7 +17,7 @@ Built on Duende IdentityServer, with in-memory state and no database or containe
 - [Complete API reference](docs/reference.md)
 - [Tests, packaging and troubleshooting](docs/developpement.md)
 
-The documentation lives in the repository's root `docs/` directory. From a NuGet package viewer, use the [online documentation](https://github.com/GsCbo/aspire-identityserver/tree/main/docs).
+The documentation lives in the repository's root `docs/` directory. From a NuGet package viewer, use the [online documentation](https://github.com/thedotside/aspire-identityserver/tree/main/docs).
 
 ## Quick example
 

@@ -6,8 +6,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <IsPackable>false</IsPackable>
     <Version>0.1.0-alpha.1</Version>
-    <Authors>GsCbo</Authors>
-    <RepositoryUrl>https://github.com/GsCbo/aspire-identityserver</RepositoryUrl>
+    <Authors>The Dot Side</Authors>
+    <RepositoryUrl>https://github.com/thedotside/aspire-identityserver</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
