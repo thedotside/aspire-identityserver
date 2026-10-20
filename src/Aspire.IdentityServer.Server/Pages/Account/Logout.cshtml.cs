@@ -7,7 +7,8 @@ namespace Aspire.IdentityServer.Server.Pages.Account;
 
 public sealed class LogoutModel(IIdentityServerInteractionService interaction) : PageModel
 {
-    [BindProperty(SupportsGet = true)] public string? LogoutId { get; set; }
+    [BindProperty(SupportsGet = true)]
+    public string? LogoutId { get; set; }
     public bool SignedOut { get; private set; }
     public string? ReturnUrl { get; private set; }
     public string? SignOutIFrameUrl { get; private set; }

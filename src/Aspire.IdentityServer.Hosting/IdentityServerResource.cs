@@ -16,11 +16,16 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
 /// <summary>Overrides the bundled server location when developing this repository.</summary>
 public sealed class IdentityServerOptions
 {
-    public string RuntimeDirectory { get; set; } = Path.Combine(AppContext.BaseDirectory, "identityserver");
+    public string RuntimeDirectory { get; set; } =
+        Path.Combine(AppContext.BaseDirectory, "identityserver");
 }
 
-internal sealed record TestUser(string Username, string SubjectId, string DisplayName,
-    IResourceBuilder<ParameterResource> Password);
+internal sealed record TestUser(
+    string Username,
+    string SubjectId,
+    string DisplayName,
+    IResourceBuilder<ParameterResource> Password
+);
 
 /// <summary>An API audience and the scopes that issue access tokens for it.</summary>
 public sealed class IdentityApiResource
@@ -43,7 +48,10 @@ public sealed class IdentityApiResource
         {
             IdentityClient.ValidateScope(scope);
             if (scope is "openid" or "profile" or "email" or "offline_access")
-                throw new ArgumentException($"'{scope}' is reserved for identity or session scopes.");
+                throw new ArgumentException(
+                    $"'{scope}' is reserved for identity or session scopes.",
+                    nameof(scopes)
+                );
             ScopeNames.Add(scope);
         }
         return this;

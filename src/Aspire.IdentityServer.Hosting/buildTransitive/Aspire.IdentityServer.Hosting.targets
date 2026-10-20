@@ -1,15 +1,30 @@
 <Project>
   <!-- Dependencies are restored from their original NuGet packages on the consumer's machine. -->
-  <Target Name="CopyIdentityServerRuntime" AfterTargets="Build" Condition="'$(IsAspireHost)' == 'true' or '$(IsTestProject)' == 'true'">
+  <Target
+    Name="CopyIdentityServerRuntime"
+    AfterTargets="Build"
+    Condition="'$(IsAspireHost)' == 'true' or '$(IsTestProject)' == 'true'"
+  >
     <ItemGroup>
-      <_IdentityServerRuntimeFiles Include="@(ReferenceCopyLocalPaths)" Condition="'%(Extension)' == '.dll'" />
+      <_IdentityServerRuntimeFiles
+        Include="@(ReferenceCopyLocalPaths)"
+        Condition="'%(Extension)' == '.dll'"
+      />
     </ItemGroup>
-    <Copy SourceFiles="@(_IdentityServerRuntimeFiles)"
-          DestinationFiles="@(_IdentityServerRuntimeFiles->'$(TargetDir)identityserver/%(DestinationSubDirectory)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(TargetDir)$(AssemblyName).deps.json"
-          DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.deps.json" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)server.runtimeconfig.json"
-          DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.runtimeconfig.json" SkipUnchangedFiles="true" />
+    <Copy
+      SourceFiles="@(_IdentityServerRuntimeFiles)"
+      DestinationFiles="@(_IdentityServerRuntimeFiles->'$(TargetDir)identityserver/%(DestinationSubDirectory)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+    />
+    <Copy
+      SourceFiles="$(TargetDir)$(AssemblyName).deps.json"
+      DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.deps.json"
+      SkipUnchangedFiles="true"
+    />
+    <Copy
+      SourceFiles="$(MSBuildThisFileDirectory)server.runtimeconfig.json"
+      DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.runtimeconfig.json"
+      SkipUnchangedFiles="true"
+    />
   </Target>
 </Project>

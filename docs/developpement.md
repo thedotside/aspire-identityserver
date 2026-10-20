@@ -18,6 +18,41 @@
 
 Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
 
+## Installer les outils et le hook de commit
+
+Une fois par checkout, depuis la racine :
+
+```powershell
+pwsh eng/setup.ps1
+```
+
+Ce script restaure les outils .NET du manifeste [.config/dotnet-tools.json](../.config/dotnet-tools.json) et configure localement `core.hooksPath=.githooks`. Il refuse de remplacer silencieusement une configuration de hooks déjà différente ou un hook `pre-commit` existant. La configuration Git est locale : chaque collègue doit exécuter le script après le clonage.
+
+Le hook [.githooks/pre-commit](../.githooks/pre-commit) appelle [eng/pre-commit.ps1](../eng/pre-commit.ps1). Il nécessite PowerShell 7 (`pwsh`) accessible dans le PATH, comme les scripts du dépôt.
+
+Pour chaque commit, il sélectionne les fichiers C#/XML ajoutés, modifiés, copiés ou renommés dans l'index Git. Il restaure CSharpier, les formate, puis réindexe ces seuls fichiers. Les fichiers supprimés et les changements sans fichier C#/XML ne nécessitent pas de formatage.
+
+Si un fichier sélectionné contient aussi des changements non indexés, le hook arrête le commit avant de formater. Formate ce fichier, revois les changements puis sélectionne à nouveau les lignes à committer. Le hook ne fusionne pas automatiquement les sélections partielles et ne place pas tes modifications dans un stash.
+
+Une erreur de restauration ou une erreur de syntaxe signalée par CSharpier arrête également le commit.
+
+## Formatage et analyse
+
+```powershell
+dotnet tool restore
+dotnet csharpier format .
+dotnet csharpier check .
+dotnet build
+```
+
+CSharpier `1.3.0` est le formateur unique des fichiers C# et XML, dont les projets et fichiers MSBuild. [.csharpierrc.json](../.csharpierrc.json) fixe une largeur cible de 100 colonnes et des fins de ligne LF. [.csharpierignore](../.csharpierignore) exclut les sorties de build, les artefacts et le travail temporaire. Le check CI vérifie le dépôt entier, y compris quand le hook local n'a pas été installé.
+
+Meziantou.Analyzer `3.0.315` est une `GlobalPackageReference` privée, appliquée aux projets via Central Package Management. L'analyse s'exécute au build et les avertissements restent traités comme des erreurs. Le package d'analyse n'est pas transmis aux consommateurs NuGet.
+
+La politique se trouve dans [.editorconfig](../.editorconfig) : les règles actives par défaut sont conservées, avec comparaisons, comparateurs, culture et propagation de cancellation explicites. Les règles de nommage fichier/type (`MA0048`) et de longueur des méthodes (`MA0051`) restent des suggestions IDE, car des modèles liés partagent un fichier et les configurations fluides restent linéaires. `MA0004` reste appliquée aux bibliothèques mais est désactivée dans les applications et tests, notamment pour préserver le contexte xUnit.
+
+Pour appliquer des corrections proposées par l'analyseur, `dotnet format analyzers` peut être utilisé sur les diagnostics concernés, puis CSharpier doit être relancé. CSharpier conserve la responsabilité du formatage ; ne lance pas `dotnet format whitespace` en parallèle.
+
 ## Exécuter les tests
 
 Depuis la racine, après préparation du certificat de développement :
@@ -69,7 +104,7 @@ Le README est embarqué dans les packages ; les pages `docs/` restent dans le d�
 
 ## CI et publication
 
-Le [workflow](../.github/workflows/ci.yml) tourne sur `windows-latest` et prévoit : SDK, certificat HTTPS, restore, build, installation Chromium, tests, pack, smoke et archivage des résultats/packages.
+Le [workflow](../.github/workflows/ci.yml) tourne sur `windows-latest` et prévoit : SDK, certificat HTTPS, restore, restauration des outils, check CSharpier, build avec les analyseurs, installation Chromium, tests, pack, smoke et archivage des résultats/packages.
 
 Pour le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`. La confiance est vérifiée sans fenêtre interactive. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
 

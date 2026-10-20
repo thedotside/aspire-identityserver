@@ -9,7 +9,30 @@ trim_trailing_whitespace = true
 [*.cs]
 indent_style = space
 indent_size = 4
+max_line_length = 100
+
+# CSharpier owns whitespace. Keep Meziantou's default enabled diagnostics,
+# with explicit comparison/culture rules enforced by TreatWarningsAsErrors.
+dotnet_diagnostic.MA0001.severity = warning
+dotnet_diagnostic.MA0002.severity = warning
+dotnet_diagnostic.MA0011.severity = warning
+dotnet_diagnostic.MA0040.severity = warning
+# Related configuration models share files; Razor Pages retain *.cshtml.cs names.
+dotnet_diagnostic.MA0048.severity = suggestion
+# Fluent startup/configuration code is intentionally linear; keep length feedback in the IDE.
+dotnet_diagnostic.MA0051.severity = suggestion
 
 [*.{json,csproj,props,targets,slnx,yml}]
 indent_style = space
 indent_size = 2
+
+[src/Aspire.IdentityServer.Server/**.cs]
+# Application/request code does not require the library ConfigureAwait convention.
+dotnet_diagnostic.MA0004.severity = none
+
+[samples/**/*.cs]
+dotnet_diagnostic.MA0004.severity = none
+
+[tests/**/*.cs]
+# Preserve xUnit's synchronization context in tests and shared fixtures.
+dotnet_diagnostic.MA0004.severity = none

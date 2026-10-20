@@ -27,6 +27,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
       - name: Restore
         run: dotnet restore
+      - name: Restore local tools
+        run: dotnet tool restore
+      - name: Check formatting
+        run: dotnet csharpier check .
       - name: Build
         run: dotnet build --no-restore
       - name: Install browser
