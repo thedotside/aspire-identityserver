@@ -4,7 +4,7 @@
 
 ## Prérequis
 
-- SDK .NET 10. Le dépôt demande `10.0.203` avec `rollForward: latestFeature` dans [global.json](../global.json).
+- SDK .NET 10. Le dépôt demande `10.0.402` avec `rollForward: latestFeature` dans [global.json](../global.json).
 - Packages et SDK Aspire alignés sur `13.6.2`.
 - PowerShell 7 pour les scripts `eng/*.ps1`.
 - Certificat HTTPS de développement approuvé sur la machine.
@@ -39,7 +39,15 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Les trois packages sont construits localement en `0.1.0-alpha.1`. Vérifie leur présence dans ta source NuGet ; ce guide ne suppose pas leur publication sur nuget.org.
+Pour installer une version publiée sur nuget.org :
+
+```powershell
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.1 --source https://api.nuget.org/v3/index.json
+```
+
+`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice. Les préversions sont visibles en activant « Inclure les versions préliminaires » dans Visual Studio. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+
+Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 
 Depuis ce dépôt :
 

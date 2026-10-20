@@ -16,6 +16,7 @@ Built on Duende IdentityServer, with in-memory state and no database or containe
 - [Kubernetes configuration and deployment boundaries](docs/kubernetes.md)
 - [Complete API reference](docs/reference.md)
 - [Tests, packaging and troubleshooting](docs/developpement.md)
+- [Release tags and automated NuGet publishing](docs/publication.md)
 
 The documentation lives in the repository's root `docs/` directory. From a NuGet package viewer, use the [online documentation](https://github.com/thedotside/aspire-identityserver/tree/main/docs).
 
@@ -47,7 +48,7 @@ builder.Build().Run();
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
 | `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
 
-Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for local packages; these names do not imply availability on nuget.org.
+Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
 
 Local development/testing only: state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
 

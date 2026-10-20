@@ -16,6 +16,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
 | [Référence de l'API](reference.md) | Signatures, valeurs par défaut, propriétés, validations et paramètres non exposés. |
 | [Développement et dépannage](developpement.md) | Tests, packages, CI, erreurs courantes et préparation d'une publication. |
+| [Publication NuGet](publication.md) | Tags SemVer, publication automatique, identité de l'organisation et réservation du préfixe. |
 
 ## Parcours conseillés
 

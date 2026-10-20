@@ -1,8 +1,32 @@
 name: Build, test and pack
 description: Validate formatting, build, test and consume the IdentityServer packages on Windows.
+inputs:
+  version:
+    description: Optional release version taken from the Git tag; otherwise use Directory.Build.props.
+    required: false
 runs:
   using: composite
   steps:
+    - name: Resolve package version
+      shell: pwsh
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: |
+        $version = $env:RELEASE_VERSION
+        if (!$version) {
+          [xml]$properties = Get-Content Directory.Build.props -Raw
+          $version = $properties.Project.PropertyGroup.Version
+        }
+        $number = '(?:0|[1-9][0-9]*)'
+        $identifier = '(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+        $pattern = "^${number}\.${number}\.${number}(?:-${identifier}(?:\.${identifier})*)?$"
+        if ($version -notmatch $pattern) { throw 'Use a SemVer tag such as 0.1.0 or 0.1.0-alpha.1, without v or build metadata.' }
+        if ($env:RELEASE_VERSION) {
+          if ($env:GITHUB_REF_TYPE -ne 'tag' -or $version -ne $env:GITHUB_REF_NAME) { throw 'The release version must match the Git tag.' }
+          git merge-base --is-ancestor HEAD refs/remotes/origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'Release tags must point to a commit on main.' }
+        }
+        Add-Content -LiteralPath $env:GITHUB_ENV -Value "PACKAGE_VERSION=$version"
     - uses: actions/setup-dotnet@v6
       with:
         dotnet-version: '10.0.x'
@@ -27,7 +51,7 @@ runs:
       run: dotnet csharpier check .
     - name: Build
       shell: pwsh
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore "/p:Version=$env:PACKAGE_VERSION"
     - name: Install browser
       shell: pwsh
       run: pwsh tests/Aspire.IdentityServer.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
@@ -36,10 +60,10 @@ runs:
       run: dotnet test --no-build --logger trx --results-directory artifacts/test-results
     - name: Pack
       shell: pwsh
-      run: pwsh eng/pack.ps1
+      run: pwsh eng/pack.ps1 -Version $env:PACKAGE_VERSION
     - name: Verify packages in independent consumer
       shell: pwsh
-      run: pwsh eng/package-smoke.ps1
+      run: pwsh eng/package-smoke.ps1 -Version $env:PACKAGE_VERSION
     - uses: actions/upload-artifact@v7
       if: always()
       with:

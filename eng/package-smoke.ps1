@@ -1,16 +1,17 @@
-param([string]$Version = '0.1.0-alpha.1')
+param([string]$Version = '0.1.0-alpha.1', [switch]$FromNuGet)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $feed = Join-Path $repo 'artifacts/packages'
-if (!(Test-Path (Join-Path $feed "TheDotSide.Aspire.IdentityServer.Hosting.$Version.nupkg"))) {
+if (!$FromNuGet -and !(Test-Path (Join-Path $feed "TheDotSide.Aspire.IdentityServer.Hosting.$Version.nupkg"))) {
     throw 'Build the packages with eng/pack.ps1 first.'
 }
 # Use a unique directory and NuGet cache so a prior build cannot mask a broken package.
 $consumer = Join-Path ([System.IO.Path]::GetTempPath()) ("aspire-identityserver-smoke-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $consumer | Out-Null
 $escapedFeed = [System.Security.SecurityElement]::Escape($feed)
+$localSource = if ($FromNuGet) { '' } else { "<add key=`"local`" value=`"$escapedFeed`"/>" }
 @"
-<configuration><packageSources><clear/><add key="local" value="$escapedFeed"/><add key="nuget" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>
+<configuration><packageSources><clear/>$localSource<add key="nuget" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>
 "@ | Set-Content (Join-Path $consumer 'NuGet.Config')
 '<Project />' | Set-Content (Join-Path $consumer 'Directory.Build.props')
 '<Project />' | Set-Content (Join-Path $consumer 'Directory.Build.targets')

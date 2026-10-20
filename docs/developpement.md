@@ -16,6 +16,7 @@
 | `eng` | Construction des packages et vérification d'un consommateur indépendant. |
 | `pipelines/build` | Étapes YAML de la CI, sous forme d'action composite GitHub Actions. |
 | `pipelines/renovate` | Exécution de Renovate pour proposer les mises à jour de dépendances. |
+| `pipelines/publish` | Publication des archives vérifiées avec NuGet OIDC et consommation depuis le registre. |
 | `docs` | Guides et exemples de configuration. |
 
 Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
@@ -114,7 +115,9 @@ Le pipeline tourne sur `windows-latest` avec un délai maximal de 20 minutes. Il
 
 Pour le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`. La confiance est vérifiée sans fenêtre interactive. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
 
-Le workflow ne publie pas automatiquement sur NuGet. La présence d'une archive GitHub Actions ne signifie pas que le package existe sur nuget.org. Vérifie séparément le résultat du run et celui d'une publication.
+Le workflow de CI ne publie pas sur NuGet. Un [workflow distinct](../.github/workflows/publish.yml) publie à partir d'un tag SemVer, après sa propre validation complète. Il reprend les étapes de `pipelines/build`, récupère leurs archives dans `pipelines/publish`, puis vérifie leur installation depuis nuget.org. Consulte [le guide de publication](publication.md) pour la configuration OIDC et la procédure par tag.
+
+La présence d'une archive GitHub Actions ne signifie pas que le package existe sur nuget.org. Vérifie séparément le résultat du run et celui d'une publication.
 
 ### Mises à jour avec Renovate
 

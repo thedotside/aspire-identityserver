@@ -1,0 +1,39 @@
+name: publish-nuget
+on:
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+permissions:
+  contents: read
+concurrency:
+  group: publish-nuget
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build, test and pack the tagged version
+        uses: ./pipelines/build
+        with:
+          version: ${{ github.ref_name }}
+  publish:
+    needs: verify
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Publish the verified packages to NuGet
+        uses: ./pipelines/publish
+        with:
+          version: ${{ github.ref_name }}
+          user: ${{ vars.NUGET_USER }}

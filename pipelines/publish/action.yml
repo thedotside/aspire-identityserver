@@ -1,0 +1,87 @@
+name: Publish NuGet packages
+description: Publish the verified release using NuGet Trusted Publishing and verify a registry-only consumer.
+inputs:
+  version:
+    description: Exact SemVer from the Git tag.
+    required: true
+  user:
+    description: NuGet personal username that created the organization-owned trust policy.
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+    - name: Prepare HTTPS for the registry consumer
+      shell: pwsh
+      run: |
+        $ciCertificatePath = Join-Path $env:RUNNER_TEMP 'aspire-https.crt'
+        dotnet dev-certs https --export-path $ciCertificatePath --format PEM
+        if ($LASTEXITCODE -ne 0) { throw 'Could not create the HTTPS development certificate.' }
+        Import-Certificate -FilePath $ciCertificatePath -CertStoreLocation 'Cert:\LocalMachine\Root' -Confirm:$false -ErrorAction Stop | Out-Null
+        dotnet dev-certs https --check --trust
+        if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
+    - uses: actions/download-artifact@v8
+      with:
+        name: packages-and-test-results
+        path: artifacts/release
+    - name: Verify release archives
+      shell: pwsh
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+        NUGET_USER: ${{ inputs.user }}
+      run: |
+        if (!$env:NUGET_USER) { throw 'Configure the NUGET_USER repository variable.' }
+        if ($env:GITHUB_REF_TYPE -ne 'tag' -or $env:RELEASE_VERSION -ne $env:GITHUB_REF_NAME) { throw 'The release version must match the Git tag.' }
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        foreach ($name in @('Runtime', 'Client', 'Hosting')) {
+          $id = "TheDotSide.Aspire.IdentityServer.$name"
+          $path = "artifacts/release/packages/$id.$env:RELEASE_VERSION.nupkg"
+          $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $path))
+          try {
+            $entry = $archive.Entries | Where-Object FullName -Like '*.nuspec' | Select-Object -First 1
+            $reader = [System.IO.StreamReader]::new($entry.Open())
+            try { [xml]$manifest = $reader.ReadToEnd() } finally { $reader.Dispose() }
+            $metadata = $manifest.SelectSingleNode('//*[local-name()="metadata"]')
+            if ($metadata.id -ne $id -or $metadata.version -ne $env:RELEASE_VERSION -or $metadata.repository.commit -ne $env:GITHUB_SHA) {
+              throw "Unexpected package identity, version or source revision: $id"
+            }
+          } finally { $archive.Dispose() }
+        }
+    - name: Authenticate to NuGet with OIDC
+      id: login
+      uses: NuGet/login@v1
+      with:
+        user: ${{ inputs.user }}
+    - name: Push the three packages
+      shell: pwsh
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+        NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+      run: |
+        foreach ($name in @('Runtime', 'Client', 'Hosting')) {
+          $package = "artifacts/release/packages/TheDotSide.Aspire.IdentityServer.$name.$env:RELEASE_VERSION.nupkg"
+          dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols
+          if ($LASTEXITCODE -ne 0) { throw "Publishing $name failed." }
+        }
+    - name: Wait for NuGet indexing
+      shell: pwsh
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: |
+        $pending = @('runtime', 'client', 'hosting')
+        for ($attempt = 0; $attempt -lt 60 -and $pending.Count; $attempt++) {
+          $pending = @($pending | Where-Object {
+            $url = "https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.$_/index.json"
+            $response = Invoke-WebRequest -Uri $url -SkipHttpErrorCheck
+            $response.StatusCode -ne 200 -or ($response.Content | ConvertFrom-Json).versions -notcontains $env:RELEASE_VERSION.ToLowerInvariant()
+          })
+          if ($pending.Count) { Start-Sleep -Seconds 10 }
+        }
+        if ($pending.Count) { throw "NuGet indexing is still pending for: $($pending -join ', ')." }
+    - name: Verify packages restored only from NuGet
+      shell: pwsh
+      env:
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: pwsh eng/package-smoke.ps1 -Version $env:RELEASE_VERSION -FromNuGet
