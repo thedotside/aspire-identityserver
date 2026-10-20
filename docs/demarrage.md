@@ -51,13 +51,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package Aspire.IdentityServer.Hosting --version 0.1.0-alpha.1
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.1
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package Aspire.IdentityServer.Client --version 0.1.0-alpha.1
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 0.1.0-alpha.1
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -79,7 +79,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
-    <PackageReference Include="Aspire.IdentityServer.Hosting" Version="0.1.0-alpha.1" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="0.1.0-alpha.1" />
   </ItemGroup>
 </Project>
 ```

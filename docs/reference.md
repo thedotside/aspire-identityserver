@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Exemples clients](clients.md) · [Projections](projections.md)
 
-Les types d'hébergement appartiennent au namespace `Aspire.IdentityServer.Hosting`. Les options de consommation et le helper d'assertion appartiennent à `Aspire.IdentityServer.Client`.
+Les packages NuGet se nomment `TheDotSide.Aspire.IdentityServer.Hosting`, `TheDotSide.Aspire.IdentityServer.Runtime` et `TheDotSide.Aspire.IdentityServer.Client`. Le préfixe `TheDotSide.` concerne les identifiants NuGet ; les namespaces C# restent `Aspire.IdentityServer.Hosting` pour l'hébergement et `Aspire.IdentityServer.Client` pour les options de consommation et le helper d'assertion.
 
 ## Fournisseur et utilisateurs
 

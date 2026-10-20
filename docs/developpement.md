@@ -7,7 +7,7 @@
 | Emplacement | Responsabilité |
 | --- | --- |
 | `src/Aspire.IdentityServer.Hosting` | API AppHost, paramètres secrets et projections. |
-| `src/Aspire.IdentityServer.Server` | Runtime Duende local, package `Aspire.IdentityServer.Runtime`. |
+| `src/Aspire.IdentityServer.Server` | Runtime Duende local, package `TheDotSide.Aspire.IdentityServer.Runtime`. |
 | `src/Aspire.IdentityServer.Client` | Options et helper d'assertion indépendant d'Aspire et Duende. |
 | `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, deux clients machine. |
 | `samples/Sample.Web` | Connexion et déconnexion OIDC avec les trois clients. |

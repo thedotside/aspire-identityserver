@@ -47,7 +47,7 @@ Pour deux IDP, enregistre deux schémas JWT avec leurs autorités et audiences p
 
 ## Application web : authorization code et PKCE
 
-L'AppHost déclare le client, ses redirections et la projection selon [le guide clients](clients.md). Le consommateur référence `Microsoft.AspNetCore.Authentication.OpenIdConnect` et, pour cet exemple, `Aspire.IdentityServer.Client`.
+L'AppHost déclare le client, ses redirections et la projection selon [le guide clients](clients.md). Le consommateur référence `Microsoft.AspNetCore.Authentication.OpenIdConnect` et, pour cet exemple, `TheDotSide.Aspire.IdentityServer.Client`.
 
 Ce `Program.cs` adapte le handler du sample pour la section `Authentication:Corporate` et les callbacks `/signin-oidc`, `/signout-callback-oidc` :
 

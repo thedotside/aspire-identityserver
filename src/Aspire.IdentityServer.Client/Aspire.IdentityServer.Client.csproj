@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <PackageId>TheDotSide.Aspire.IdentityServer.Client</PackageId>
     <Description>Optional client configuration and private_key_jwt assertions for Aspire IdentityServer development clients.</Description>
     <PackageTags>openid-connect;oauth;private-key-jwt;testing</PackageTags>
   </PropertyGroup>

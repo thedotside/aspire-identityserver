@@ -3,7 +3,7 @@
 This is a local-development OAuth/OIDC integration for Aspire. It must validate real protocols; never make tokens or client assertions permissive to simplify tests.
 
 - `src/Aspire.IdentityServer.Hosting`: AppHost API and configuration projections. Preserve deferred endpoint references and Aspire secret parameters.
-- `src/Aspire.IdentityServer.Server`: independent Duende process, published as the `Aspire.IdentityServer.Runtime` NuGet dependency. Local development/testing only.
+- `src/Aspire.IdentityServer.Server`: independent Duende process, published as the `TheDotSide.Aspire.IdentityServer.Runtime` NuGet dependency. Local development/testing only.
 - `src/Aspire.IdentityServer.Client`: optional, engine-independent assertion helper. Generate a fresh `jti` for each request.
 - `samples`: two providers, three browser clients and two machine clients.
 - `tests`: one shared real AppHost and isolated browser contexts, plus projection contract tests.

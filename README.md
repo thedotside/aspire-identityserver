@@ -21,7 +21,7 @@ The documentation lives in the repository's root `docs/` directory. From a NuGet
 
 ## Quick example
 
-In an AppHost referencing `Aspire.IdentityServer.Hosting`:
+In an AppHost referencing the `TheDotSide.Aspire.IdentityServer.Hosting` package:
 
 ```csharp
 using Aspire.IdentityServer.Hosting;
@@ -43,9 +43,9 @@ builder.Build().Run();
 
 | Package | Purpose |
 | --- | --- |
-| `Aspire.IdentityServer.Hosting` | AppHost API, secret parameters and projections. |
-| `Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
-| `Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
+| `TheDotSide.Aspire.IdentityServer.Hosting` | AppHost API, secret parameters and projections. |
+| `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
+| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
 
 Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.1 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for local packages; these names do not imply availability on nuget.org.
 

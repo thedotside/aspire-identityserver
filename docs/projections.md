@@ -92,7 +92,7 @@ La projection n'efface pas les anciennes valeurs d'un fichier. Si un fichier con
 
 ## Lire la configuration
 
-Dans un projet ASP.NET Core référençant `Aspire.IdentityServer.Client` :
+Dans un projet ASP.NET Core référençant le package `TheDotSide.Aspire.IdentityServer.Client` :
 
 ```csharp
 using Aspire.IdentityServer.Client;

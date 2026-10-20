@@ -9,7 +9,7 @@ try {
     }
     # Only our assemblies belong in these archives; dependencies remain NuGet references.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    foreach ($name in @('Aspire.IdentityServer.Runtime', 'Aspire.IdentityServer.Hosting', 'Aspire.IdentityServer.Client')) {
+    foreach ($name in @('TheDotSide.Aspire.IdentityServer.Runtime', 'TheDotSide.Aspire.IdentityServer.Hosting', 'TheDotSide.Aspire.IdentityServer.Client')) {
         $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $repo "artifacts/packages/$name.$Version.nupkg"))
         try {
             foreach ($entry in $archive.Entries) {

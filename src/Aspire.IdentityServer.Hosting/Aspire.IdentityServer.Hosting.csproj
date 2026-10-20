@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <PackageId>TheDotSide.Aspire.IdentityServer.Hosting</PackageId>
     <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections.</Description>
     <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
   </PropertyGroup>
@@ -17,7 +18,7 @@
     <None
       Include="buildTransitive/Aspire.IdentityServer.Hosting.targets"
       Pack="true"
-      PackagePath="buildTransitive/"
+      PackagePath="buildTransitive/$(PackageId).targets"
     />
     <None
       Include="buildTransitive/server.runtimeconfig.json"

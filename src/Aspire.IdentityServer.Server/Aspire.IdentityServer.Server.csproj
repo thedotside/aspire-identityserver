@@ -2,8 +2,8 @@
   <PropertyGroup>
     <UseAppHost>false</UseAppHost>
     <IsPackable>true</IsPackable>
-    <PackageId>Aspire.IdentityServer.Runtime</PackageId>
-    <Description>Development identity provider runtime for Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
+    <PackageId>TheDotSide.Aspire.IdentityServer.Runtime</PackageId>
+    <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Duende.IdentityServer" />

@@ -2,7 +2,7 @@ param([string]$Version = '0.1.0-alpha.1')
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $feed = Join-Path $repo 'artifacts/packages'
-if (!(Test-Path (Join-Path $feed "Aspire.IdentityServer.Hosting.$Version.nupkg"))) {
+if (!(Test-Path (Join-Path $feed "TheDotSide.Aspire.IdentityServer.Hosting.$Version.nupkg"))) {
     throw 'Build the packages with eng/pack.ps1 first.'
 }
 # Use a unique directory and NuGet cache so a prior build cannot mask a broken package.
@@ -22,8 +22,8 @@ $escapedFeed = [System.Security.SecurityElement]::Escape($feed)
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAspireHost>true</IsAspireHost><AspireUseCliBundle>true</AspireUseCliBundle></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
-    <PackageReference Include="Aspire.IdentityServer.Hosting" Version="$Version" />
-    <PackageReference Include="Aspire.IdentityServer.Client" Version="$Version" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="$Version" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Client" Version="$Version" />
   </ItemGroup>
 </Project>
 "@ | Set-Content (Join-Path $consumer 'Consumer.csproj')
@@ -62,6 +62,14 @@ Push-Location $consumer
 try {
     dotnet restore --packages (Join-Path $consumer 'packages')
     if ($LASTEXITCODE -ne 0) { throw 'Package consumer restore failed.' }
+    $assets = Get-Content (Join-Path $consumer 'obj/project.assets.json') -Raw | ConvertFrom-Json
+    $restoredLibraries = $assets.libraries.PSObject.Properties.Name
+    foreach ($name in @('TheDotSide.Aspire.IdentityServer.Hosting', 'TheDotSide.Aspire.IdentityServer.Runtime', 'TheDotSide.Aspire.IdentityServer.Client')) {
+        if ($restoredLibraries -notcontains "$name/$Version") { throw "The renamed package $name was not restored." }
+    }
+    if ($restoredLibraries -match '^Aspire\.IdentityServer\.(Hosting|Runtime|Client)/') {
+        throw 'The consumer still depends on an old IdentityServer package identifier.'
+    }
     dotnet build --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'Package consumer build failed.' }
     # Direct execution keeps the finite smoke check independent of the interactive Aspire CLI.

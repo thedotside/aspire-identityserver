@@ -141,7 +141,7 @@ Ces méthodes ne s'appliquent pas aux clients machine. Elles ne configurent pas 
 
 ## Assertions `private_key_jwt`
 
-Le package facultatif `Aspire.IdentityServer.Client` expose `PrivateKeyJwt.CreateAssertion(client, audience)` :
+Le package facultatif `TheDotSide.Aspire.IdentityServer.Client` expose `PrivateKeyJwt.CreateAssertion(client, audience)` :
 
 | Élément | Valeur |
 | --- | --- |
