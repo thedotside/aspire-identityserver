@@ -7,7 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting" />
-    <!-- Override Aspire's transitive 2.5.302: GHSA-qhrr-8q5h-9q3h. -->
+    <!-- Keep an explicit patched baseline for GHSA-qhrr-8q5h-9q3h. -->
     <PackageReference Include="MessagePack" />
     <ProjectReference
       Include="../Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj"

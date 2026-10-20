@@ -47,7 +47,7 @@ builder.Build().Run();
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
 | `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
 
-Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.1 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for local packages; these names do not imply availability on nuget.org.
+Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for local packages; these names do not imply availability on nuget.org.
 
 Local development/testing only: state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
 

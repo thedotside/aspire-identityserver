@@ -5,7 +5,7 @@
 ## Prérequis
 
 - SDK .NET 10. Le dépôt demande `10.0.203` avec `rollForward: latestFeature` dans [global.json](../global.json).
-- Packages et SDK Aspire alignés sur `13.6.1`.
+- Packages et SDK Aspire alignés sur `13.6.2`.
 - PowerShell 7 pour les scripts `eng/*.ps1`.
 - Certificat HTTPS de développement approuvé sur la machine.
 - Chromium installé par Playwright pour exécuter les tests navigateur.
@@ -68,7 +68,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.1" />
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.2" />
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -78,7 +78,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
     <AspireUseCliBundle>true</AspireUseCliBundle>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.1" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.2" />
     <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="0.1.0-alpha.1" />
   </ItemGroup>
 </Project>
