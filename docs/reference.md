@@ -42,6 +42,7 @@ Chaque méthode retourne le même `IdentityClient`.
 | Méthode | Effet / défaut |
 | --- | --- |
 | `WithScopes(params string[] scopes)` | Ajoute les scopes autorisés, cumul et déduplication exacte. Aucune valeur par défaut. |
+| `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, params string[] userClaims)` | Prochaine version : active l'échange pour un client machine, une source Authorization Code et une API du même IdP. `sub` conservé ; autres claims explicitement sélectionnés. Voir [Token Exchange](token-exchange.md). |
 | `RequirePkce(bool required = true)` | Clients authorization code uniquement. `UsePkce` vaut déjà `true` par défaut. |
 | `WithGeneratedClientSecret()` | Secret aléatoire de 32 octets en Base64, une fois à l'enregistrement. |
 | `WithClientSecret(IResourceBuilder<ParameterResource> secret)` | Référence de paramètre obligatoirement secret. |
@@ -67,6 +68,7 @@ L'authentification commence à `none`. Les méthodes de secret la fixent à `cli
 | `PublicJwk` | `string?` | JWK public enregistré côté IDP. |
 | `UsePkce` | `bool` | Vrai par défaut ; pertinent pour authorization code. |
 | `Scopes` | `IReadOnlyCollection<string>` | Scopes autorisés. |
+| `TokenExchangeAudience` | `string?` | Prochaine version : audience unique des règles d'échange, sinon null. |
 
 Ces propriétés sont consultables ; les enregistrements se modifient par les méthodes fluides. Les URI de redirection et le grant ne sont pas exposés comme propriétés publiques par cette version.
 
@@ -80,7 +82,7 @@ Les extensions retournent le builder du consommateur et permettent le chaînage.
 | `consumer.WithIdentityClient(client, Action<IdentityClientProjection> configure)` | Seulement les champs explicitement sélectionnés. |
 | `consumer.WithIdentityResource(apiResource, string section)` | Authority et audience de validation entrante. |
 
-`IdentityClientProjection` expose sept méthodes, prenant chacune une clé `string` et retournant la projection : `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `ClientSecret`, `PrivateKeyPem`, `KeyId`.
+`IdentityClientProjection` expose les méthodes suivantes, prenant chacune une clé `string` et retournant la projection : `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `ClientSecret`, `PrivateKeyPem`, `KeyId` et, dans la prochaine version, `TokenExchangeAudience`.
 
 Les chemins `:` sont convertis en `__`. Les méthodes de projection ajoutent `WaitFor` vers l'IDP. Les champs exacts, les collisions et l'ordre de déclaration sont détaillés dans [le contrat des projections](projections.md).
 
@@ -97,6 +99,7 @@ Les chemins `:` sont convertis en `__`. Les méthodes de projection ajoutent `Wa
 | `PrivateKeyPem` | `string?` | `null`. |
 | `KeyId` | `string?` | `null`. |
 | `Scopes` | `string` | `""`, scopes séparés par des espaces. |
+| `TokenExchangeAudience` | `string?` | Prochaine version : `null` ; renseigné par la projection standard si l'audience d'échange est unique. |
 
 Le binding ne valide pas automatiquement les champs et ne configure aucun handler. Le helper vérifie les éléments dont il a besoin au moment de signer.
 
@@ -107,7 +110,23 @@ Le binding ne valide pas automatiquement les champs et ne configure aucun handle
 | `PrivateKeyJwt.AssertionType` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer`. |
 | `PrivateKeyJwt.CreateAssertion(IdentityClientOptions client, string audience)` | Retourne un JWT signé RS256 ; exige client ID, clé privée RSA >= 2048 bits, `kid` et audience URI absolue. |
 
-Le JWT dure une minute, avec un nouveau `jti` à chaque appel. Ni les requêtes HTTP, ni le cache de tokens, ni leur renouvellement ne sont fournis. Voir [clients](clients.md) et [intégration](integration.md).
+Le JWT dure une minute, avec un nouveau `jti` à chaque appel. Le helper d'assertion n'envoie pas de requête HTTP. Voir [clients](clients.md) et [intégration](integration.md).
+
+La prochaine version ajoute `TokenExchange.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string subjectToken, string? audience = null, string? scope = null)`. Il retourne un `HttpRequestMessage` contenant un formulaire RFC 8693 et des credentials neufs. L'appelant possède la requête et l'envoie lui-même. Les constantes `TokenExchange.GrantType` et `TokenExchange.AccessTokenType` exposent les identifiants standard. Aucun cache de tokens ou mécanisme de renouvellement n'est fourni. Voir le [guide](token-exchange.md).
+
+### HttpClient nommé et handler d'échange
+
+`IHttpClientBuilder.AddTokenExchangeHandler(IConfigurationSection clientConfiguration, Action<TokenExchangeHandlerOptions>? configure = null)` active l'échange uniquement sur le client nommé sélectionné. La section est bindée sur des options `IdentityClientOptions` nommées comme ce client.
+
+| Réglage | Comportement |
+| --- | --- |
+| `TokenExchangeHandlerOptions.SubjectTokenProvider` | Callback `Func<IServiceProvider, HttpRequestMessage, CancellationToken, ValueTask<string?>>`, appelé pour chaque requête. Sans callback, le jeton vient de `request.Options`. |
+| `TokenExchange.SubjectTokenKey` | Clé `HttpRequestOptionsKey<string>` permettant de fournir le jeton utilisateur à une requête. |
+| `TokenExchangeHandlerOptions.Audience` | Audience explicite ; sinon audience projetée. |
+| `TokenExchangeHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. |
+| `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
+
+Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
 
 ## Réglages fixes du runtime
 
@@ -117,7 +136,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | --- | --- |
 | Environnement accepté | `Development` ou `Testing`. L'extension configure `Development`. |
 | Issuer | URI absolue HTTPS loopback exigée. |
-| Token d'accès | Durée configurée de 300 secondes. |
+| Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
 | Consentement | `RequireConsent = false`. |
 | Claims utilisateur dans l'ID token | `AlwaysIncludeUserClaimsInIdToken = true`, sous réserve des claims effectivement disponibles et scopes demandés. |
 | Gestion automatique des clés Duende | Désactivée ; clé de développement en mémoire, `persistKey: false`. |

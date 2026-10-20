@@ -61,6 +61,7 @@ public sealed class AppFixture : IAsyncLifetime
                 : null,
             KeyId = registration.KeyId,
             Scopes = string.Join(' ', registration.Scopes),
+            TokenExchangeAudience = registration.TokenExchangeAudience,
         };
     }
 

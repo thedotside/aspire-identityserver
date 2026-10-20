@@ -190,6 +190,23 @@ public static class IdentityServerExtensions
             if (client.PublicJwk is { } jwk)
                 environment[$"{prefix}__PublicJwk"] = jwk;
             AddList(environment, $"{prefix}__Scopes", client.Scopes);
+            for (var policyIndex = 0; policyIndex < client.TokenExchanges.Count; policyIndex++)
+            {
+                var policy = client.TokenExchanges[policyIndex];
+                if (
+                    !policy
+                        .Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal)
+                        .Intersect(policy.SubjectClient.Scopes, StringComparer.Ordinal)
+                        .Any()
+                )
+                    throw new InvalidOperationException(
+                        $"Token exchange for '{client.ClientId}' requires an API scope shared with '{policy.SubjectClient.ClientId}'."
+                    );
+                var policyPrefix = $"{prefix}__TokenExchanges__{policyIndex}";
+                environment[$"{policyPrefix}__SubjectClientId"] = policy.SubjectClient.ClientId;
+                environment[$"{policyPrefix}__Audience"] = policy.Api.Audience;
+                AddList(environment, $"{policyPrefix}__UserClaims", policy.UserClaims);
+            }
             AddList(environment, $"{prefix}__RedirectUris", client.RedirectUris);
             AddList(
                 environment,

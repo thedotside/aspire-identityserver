@@ -31,11 +31,75 @@ public sealed class IdentityClient
     public string? PublicJwk { get; private set; }
     public bool UsePkce { get; private set; } = true;
     public IReadOnlyCollection<string> Scopes => ScopeNames;
+
+    /// <summary>The exchange audience when all configured policies select the same API.</summary>
+    public string? TokenExchangeAudience =>
+        TokenExchanges
+            .Select(p => p.Api.Audience)
+            .Distinct(StringComparer.Ordinal)
+            .Take(2)
+            .ToArray()
+            is [var audience]
+            ? audience
+            : null;
     internal string GrantType { get; }
     internal string ParameterPrefix { get; }
     internal HashSet<string> ScopeNames { get; } = new(StringComparer.Ordinal);
     internal List<ReferenceExpression> RedirectUris { get; } = [];
     internal List<ReferenceExpression> PostLogoutRedirectUris { get; } = [];
+    internal List<TokenExchangePolicy> TokenExchanges { get; } = [];
+
+    /// <summary>
+    /// Allows this machine client to exchange a same-provider authorization-code access token
+    /// for this API. Requested scopes must also be present in the source token.
+    /// The subject is preserved; only the named user claims are included.
+    /// </summary>
+    public IdentityClient WithTokenExchangeFrom(
+        IdentityClient subjectClient,
+        IdentityApiResource api,
+        params string[] userClaims
+    )
+    {
+        ArgumentNullException.ThrowIfNull(subjectClient);
+        ArgumentNullException.ThrowIfNull(api);
+        ArgumentNullException.ThrowIfNull(userClaims);
+        if (!string.Equals(GrantType, "client_credentials", StringComparison.Ordinal))
+            throw new InvalidOperationException("Only machine clients can enable token exchange.");
+        if (!string.Equals(subjectClient.GrantType, "authorization_code", StringComparison.Ordinal))
+            throw new ArgumentException(
+                "The source must be an authorization-code client.",
+                nameof(subjectClient)
+            );
+        if (
+            !ReferenceEquals(Server.Resource, subjectClient.Server.Resource)
+            || !ReferenceEquals(Server.Resource, api.Server.Resource)
+        )
+            throw new ArgumentException(
+                "Token exchange currently requires the same identity provider.",
+                nameof(subjectClient)
+            );
+        if (userClaims.Any(c => !TokenExchangeClaims.IsUserClaim(c)))
+            throw new ArgumentException(
+                "Select user claims, not protocol claims such as sub, scope, aud or act.",
+                nameof(userClaims)
+            );
+        if (
+            TokenExchanges.Any(p =>
+                ReferenceEquals(p.SubjectClient, subjectClient) && ReferenceEquals(p.Api, api)
+            )
+        )
+            throw new InvalidOperationException(
+                "This token exchange policy is already configured."
+            );
+        TokenExchanges.Add(
+            new TokenExchangePolicy(
+                subjectClient,
+                api,
+                userClaims.Distinct(StringComparer.Ordinal).ToArray()
+            )
+        );
+        return this;
+    }
 
     public IdentityClient WithScopes(params string[] scopes)
     {
@@ -220,3 +284,9 @@ public sealed class IdentityClient
             value.Replace('-', '+').Replace('_', '/').PadRight((value.Length + 3) / 4 * 4, '=')
         );
 }
+
+internal sealed record TokenExchangePolicy(
+    IdentityClient SubjectClient,
+    IdentityApiResource Api,
+    IReadOnlyList<string> UserClaims
+);

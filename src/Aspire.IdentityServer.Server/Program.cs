@@ -45,6 +45,8 @@ internal static class ServerProgram
             .SetApplicationName($"AspireIdentityServer:{config.Name}");
         builder.Services.AddRazorPages();
         builder.Services.AddAntiforgery(o => o.Cookie.Name = $"aspire-idp-{config.Name}.csrf");
+        builder.Services.AddSingleton(config);
+        builder.Services.AddSingleton(TimeProvider.System);
         builder
             .Services.AddIdentityServer(options =>
             {
@@ -54,6 +56,8 @@ internal static class ServerProgram
                 options.UserInteraction.LogoutUrl = "/Account/Logout";
                 options.UserInteraction.ErrorUrl = "/Error";
                 options.Authentication.CheckSessionCookieName = $"aspire-idp-{config.Name}.session";
+                options.Logging.TokenRequestSensitiveValuesFilter.Add("subject_token");
+                options.Logging.TokenRequestSensitiveValuesFilter.Add("actor_token");
             })
             .AddInMemoryIdentityResources([
                 new IdentityResources.OpenId(),
@@ -73,7 +77,10 @@ internal static class ServerProgram
                 config.Clients.Select(c => new Client
                 {
                     ClientId = c.ClientId,
-                    AllowedGrantTypes = [c.GrantType],
+                    AllowedGrantTypes =
+                        c.TokenExchanges.Count == 0
+                            ? [c.GrantType]
+                            : [c.GrantType, TokenExchangeGrantValidator.GrantTypeValue],
                     RequireClientSecret = !string.Equals(
                         c.AuthenticationMethod,
                         "none",
@@ -121,6 +128,8 @@ internal static class ServerProgram
                     .ToList()
             )
             .AddJwtBearerClientAuthentication()
+            .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
+            .AddProfileService<TokenExchangeProfileService>()
             .AddDeveloperSigningCredential(persistKey: false);
         builder.Services.Configure<CookieAuthenticationOptions>(
             IdentityServerConstants.DefaultCookieAuthenticationScheme,

@@ -33,6 +33,9 @@ foreach (var scheme in new[] { "a", "b" })
                     issuer = context.User.FindFirst("iss")?.Value,
                     audience = context.User.FindFirst("aud")?.Value,
                     client = context.User.FindFirst("client_id")?.Value,
+                    subject = context.User.FindFirst("sub")?.Value,
+                    name = context.User.FindFirst("name")?.Value,
+                    actor = context.User.FindFirst("act")?.Value,
                     orders = new[] { "order-001" },
                 }
         )

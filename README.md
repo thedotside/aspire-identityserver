@@ -11,6 +11,7 @@ Built on Duende IdentityServer, with in-memory state and no database or containe
 - [Getting started and installation](docs/demarrage.md)
 - [Providers, users, scopes and audiences](docs/fournisseurs.md)
 - [Clients, PKCE, secrets and private keys](docs/clients.md)
+- [Same-provider Token Exchange (next release)](docs/token-exchange.md)
 - [Projections: AppHost → environment → .NET configuration](docs/projections.md)
 - [API, OIDC, BFF and outbound client integration](docs/integration.md)
 - [Kubernetes configuration and deployment boundaries](docs/kubernetes.md)
@@ -46,7 +47,7 @@ builder.Build().Run();
 | --- | --- |
 | `TheDotSide.Aspire.IdentityServer.Hosting` | AppHost API, secret parameters and projections. |
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
-| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
+| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration and assertion helpers; next release adds a token-exchange handler for named HTTP clients. |
 
 Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
 

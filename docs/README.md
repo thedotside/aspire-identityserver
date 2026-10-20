@@ -11,6 +11,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Démarrage](demarrage.md) | Prérequis, installation locale des packages, premier AppHost et lancement des exemples. |
 | [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
 | [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
+| [Token Exchange](token-exchange.md) | Prochaine version : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
@@ -36,6 +37,8 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Secrets et assertions RSA/RS256 `private_key_jwt` | Implémenté. |
 | Scopes, ressources API, audiences et projections | Implémenté. |
 | Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
+| Token Exchange local, sélection des informations utilisateur | Implémenté dans cette branche, destiné à la prochaine publication. Voir le [guide](token-exchange.md). |
+| Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
 | Refresh tokens, utilisateurs persistants, fédération, claims personnalisés | Hors périmètre de cette alpha. |
 | Déploiement du fournisseur sur Kubernetes ou en production | Non pris en charge ; publication Aspire refusée. |

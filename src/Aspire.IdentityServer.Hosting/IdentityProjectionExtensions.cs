@@ -23,6 +23,9 @@ public sealed class IdentityClientProjection
     public IdentityClientProjection AuthenticationMethod(string key) =>
         Map(key, nameof(AuthenticationMethod));
 
+    public IdentityClientProjection TokenExchangeAudience(string key) =>
+        Map(key, nameof(TokenExchangeAudience));
+
     private IdentityClientProjection Map(string key, string field)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -55,6 +58,8 @@ public static class IdentityProjectionExtensions
                     p.ClientSecret($"{section}:ClientSecret");
                 if (client.PrivateKeyPem is not null)
                     p.PrivateKeyPem($"{section}:PrivateKeyPem").KeyId($"{section}:KeyId");
+                if (client.TokenExchangeAudience is not null)
+                    p.TokenExchangeAudience($"{section}:TokenExchangeAudience");
             }
         );
     }
@@ -81,6 +86,7 @@ public static class IdentityProjectionExtensions
                     "KeyId" => client.KeyId,
                     "Scopes" => string.Join(' ', client.Scopes),
                     "AuthenticationMethod" => client.AuthenticationMethod,
+                    "TokenExchangeAudience" => client.TokenExchangeAudience,
                     _ => throw new InvalidOperationException(
                         $"Unknown projection field '{field}'."
                     ),

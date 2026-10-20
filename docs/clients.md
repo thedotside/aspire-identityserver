@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Fournisseurs](fournisseurs.md) · [Projections](projections.md)
 
-Les extraits de cette page supposent `builder` et un fournisseur `idp` déjà déclarés. Chaque client possède un seul grant et une seule méthode d'authentification.
+Les extraits de cette page supposent `builder` et un fournisseur `idp` déjà déclarés. Chaque client possède un grant principal et une seule méthode d'authentification. La prochaine version permet aussi d'activer explicitement le [Token Exchange](token-exchange.md) sur un client machine avec `WithTokenExchangeFrom(browser, api, userClaims: ["name"])`.
 
 ## Choisir le parcours
 

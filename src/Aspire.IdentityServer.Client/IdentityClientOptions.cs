@@ -10,4 +10,5 @@ public sealed class IdentityClientOptions
     public string? PrivateKeyPem { get; set; }
     public string? KeyId { get; set; }
     public string Scopes { get; set; } = "";
+    public string? TokenExchangeAudience { get; set; }
 }

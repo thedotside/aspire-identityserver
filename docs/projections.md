@@ -35,6 +35,7 @@ web.WithIdentityClient(browserA, "Authentication:IdpA");
 | `ClientSecret` | `Authentication__IdpA__ClientSecret` | Seulement pour un client avec secret. |
 | `PrivateKeyPem` | `Authentication__IdpA__PrivateKeyPem` | Seulement pour un client avec clé privée. |
 | `KeyId` | `Authentication__IdpA__KeyId` | Avec la clé privée. |
+| `TokenExchangeAudience` | `Authentication__IdpA__TokenExchangeAudience` | Prochaine version : uniquement pour un client machine avec une audience d'échange unique. Voir [Token Exchange](token-exchange.md). |
 
 `Scopes` est une chaîne, pas un tableau JSON. L'ordre des scopes ne constitue pas un contrat ; leur ensemble est significatif.
 
@@ -46,7 +47,7 @@ Le [sample AppHost](../samples/Sample.AppHost/Program.cs) enregistre :
 
 - `browserA` : client ID `web`, IDP A, `private_key_jwt`, scopes `openid profile orders.read`.
 - `browserB` : client ID `web`, IDP B, secret, mêmes scopes.
-- `publicClient` : client ID `public-web`, IDP A, aucune authentification client, scopes `openid profile`.
+- `publicClient` : client ID `public-web`, IDP A, aucune authentification client, scopes `openid profile orders.read`.
 
 ```csharp
 web.WithIdentityClient(browserA, "Authentication:IdpA")
@@ -78,7 +79,7 @@ Voici l'équivalent JSON de la configuration effective. Les adresses et credenti
       "Authority": "https://localhost:<port-idp-a>",
       "ClientId": "public-web",
       "AuthenticationMethod": "none",
-      "Scopes": "openid profile"
+      "Scopes": "openid profile orders.read"
     }
   }
 }

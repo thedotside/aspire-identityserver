@@ -14,6 +14,78 @@ namespace Aspire.IdentityServer.Tests;
 public sealed class BrowserTests(AppFixture fixture)
 {
     [Theory]
+    [InlineData("private-key", "worker", "Alice A")]
+    [InlineData("secret", "device-secret", null)]
+    public async Task Named_client_can_use_the_current_browser_user(
+        string method,
+        string machineClient,
+        string? name
+    )
+    {
+        await using var context = await fixture.Browser.NewContextAsync(
+            new() { IgnoreHTTPSErrors = true }
+        );
+        var page = await context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(origin + "/login/a");
+        await Login(page);
+        await page.WaitForURLAsync(origin + "/");
+        var payload = await DelegatedOrders(context, origin, method);
+        Assert.Equal("idp-a:alice", payload.GetProperty("subject").GetString());
+        Assert.Equal(machineClient, payload.GetProperty("client").GetString());
+        Assert.Equal(name, payload.GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task A_pooled_named_client_handler_keeps_concurrent_browser_users_isolated()
+    {
+        await using var alice = await fixture.Browser.NewContextAsync(
+            new() { IgnoreHTTPSErrors = true }
+        );
+        await using var bob = await fixture.Browser.NewContextAsync(
+            new() { IgnoreHTTPSErrors = true }
+        );
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        foreach (var (context, username) in new[] { (alice, "alice"), (bob, "bob") })
+        {
+            var page = await context.NewPageAsync();
+            await page.GotoAsync(origin + "/login/a");
+            await Login(page, username);
+            await page.WaitForURLAsync(origin + "/");
+        }
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var results = await Task.WhenAll(
+                DelegatedOrders(alice, origin, "private-key"),
+                DelegatedOrders(bob, origin, "private-key")
+            );
+            Assert.Equal("idp-a:alice", results[0].GetProperty("subject").GetString());
+            Assert.Equal("Alice A", results[0].GetProperty("name").GetString());
+            Assert.Equal("idp-a:bob", results[1].GetProperty("subject").GetString());
+            Assert.Equal("Bob A", results[1].GetProperty("name").GetString());
+        }
+    }
+
+    private static async Task<JsonElement> DelegatedOrders(
+        IBrowserContext context,
+        string origin,
+        string method
+    )
+    {
+        var response = await context.APIRequest.GetAsync(origin + $"/delegated-orders/{method}");
+        try
+        {
+            Assert.Equal(200, response.Status);
+            using var document = JsonDocument.Parse(await response.TextAsync());
+            return document.RootElement.Clone();
+        }
+        finally
+        {
+            await response.DisposeAsync();
+        }
+    }
+
+    [Theory]
     [InlineData("a", "Alice A")]
     [InlineData("b", "Alice B")]
     [InlineData("public", "Alice A")]
@@ -131,10 +203,10 @@ public sealed class BrowserTests(AppFixture fixture)
         );
     }
 
-    private static async Task Login(IPage page)
+    private static async Task Login(IPage page, string username = "alice")
     {
-        await page.GetByLabel("Username").FillAsync("alice");
-        await page.GetByLabel("Password").FillAsync("alice");
+        await page.GetByLabel("Username").FillAsync(username);
+        await page.GetByLabel("Password").FillAsync(username);
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true })
             .ClickAsync();
     }
