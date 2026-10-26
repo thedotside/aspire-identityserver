@@ -17,6 +17,6 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
   </ItemGroup>
   <ItemGroup>
-    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.315" PrivateAssets="all" />
+    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" PrivateAssets="all" />
   </ItemGroup>
 </Project>
