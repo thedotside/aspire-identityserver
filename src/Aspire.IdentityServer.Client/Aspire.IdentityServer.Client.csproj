@@ -6,7 +6,10 @@
     <PackageTags>openid-connect;oauth;private-key-jwt;testing</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

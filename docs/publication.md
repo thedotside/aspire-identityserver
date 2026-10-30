@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Développement](developpement.md) · [Installation](demarrage.md)
 
-Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `0.1.0-alpha.1` publie la version NuGet `0.1.0-alpha.1`, et `0.1.0` publie `0.1.0`.
+Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `0.1.0-alpha.2` publie la version NuGet `0.1.0-alpha.2`, et `0.1.0` publie `0.1.0`.
 
 ## Publier depuis main
 
@@ -11,8 +11,8 @@ Après fusion des changements dans `main` et réussite de la CI :
 ```powershell
 git switch main
 git pull --ff-only
-git tag -a 0.1.0-alpha.1 -m "Release 0.1.0-alpha.1"
-git push origin 0.1.0-alpha.1
+git tag -a 0.1.0-alpha.2 -m "Release 0.1.0-alpha.2"
+git push origin 0.1.0-alpha.2
 ```
 
 Choisis un nouveau numéro à chaque publication. Les tags acceptent `X.Y.Z` et `X.Y.Z-prerelease`, sans `v`, sans zéros de tête dans les nombres et sans métadonnées `+build`. Les préversions peuvent contenir plusieurs identifiants, comme `0.2.0-rc.1`.
@@ -61,16 +61,16 @@ Références officielles : [Trusted Publishing](https://learn.microsoft.com/en-u
 
 ## Vérifier une version publiée
 
-Les pages attendues pour la première version sont :
+Les pages de la version `0.1.0-alpha.2` sont :
 
-- [Hosting 0.1.0-alpha.1](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/0.1.0-alpha.1)
-- [Runtime 0.1.0-alpha.1](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/0.1.0-alpha.1)
-- [Client 0.1.0-alpha.1](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/0.1.0-alpha.1)
+- [Hosting 0.1.0-alpha.2](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/0.1.0-alpha.2)
+- [Runtime 0.1.0-alpha.2](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/0.1.0-alpha.2)
+- [Client 0.1.0-alpha.2](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/0.1.0-alpha.2)
 
 Pour relancer la vérification sans source locale :
 
 ```powershell
-pwsh eng/package-smoke.ps1 -Version 0.1.0-alpha.1 -FromNuGet
+pwsh eng/package-smoke.ps1 -Version 0.1.0-alpha.2 -FromNuGet
 ```
 
 ## Réserver le préfixe TheDotSide.

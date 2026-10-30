@@ -6,6 +6,8 @@
     <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
+    <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
     <PackageReference Include="Aspire.Hosting" />
     <!-- Keep an explicit patched baseline for GHSA-qhrr-8q5h-9q3h. -->
     <PackageReference Include="MessagePack" />

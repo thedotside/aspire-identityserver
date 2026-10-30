@@ -30,6 +30,11 @@ indent_size = 2
 # Application/request code does not require the library ConfigureAwait convention.
 dotnet_diagnostic.MA0004.severity = none
 
+[src/{Shared/RsaJwk.cs,Aspire.IdentityServer.Client/PrivateKeyJwt.cs}]
+# Credential parsing deliberately drops inner exceptions: third-party/parser errors
+# may contain private input. Preserve only fixed, non-sensitive diagnostics.
+dotnet_diagnostic.MA0054.severity = none
+
 [samples/**/*.cs]
 dotnet_diagnostic.MA0004.severity = none
 

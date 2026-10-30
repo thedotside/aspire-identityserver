@@ -33,8 +33,10 @@ web.WithIdentityClient(browserA, "Authentication:IdpA");
 | `AuthenticationMethod` | `Authentication__IdpA__AuthenticationMethod` | `none`, `client_secret_post` ou `private_key_jwt`. |
 | `Scopes` | `Authentication__IdpA__Scopes` | Chaîne séparée par des espaces. |
 | `ClientSecret` | `Authentication__IdpA__ClientSecret` | Seulement pour un client avec secret. |
-| `PrivateKeyPem` | `Authentication__IdpA__PrivateKeyPem` | Seulement pour un client avec clé privée. |
+| `PrivateKeyPem` | `Authentication__IdpA__PrivateKeyPem` | Seulement pour un client avec clé privée PEM. |
+| `PrivateKeyBase64` | `Authentication__IdpA__PrivateKeyBase64` | Depuis `0.1.0-alpha.2` : référence secrète contenant `Base64(UTF8(JSON JWK privée))`, exclusive avec PEM. |
 | `KeyId` | `Authentication__IdpA__KeyId` | Avec la clé privée. |
+| `TokenExchangeAudience` | `Authentication__IdpA__TokenExchangeAudience` | Depuis `0.1.0-alpha.2` : uniquement pour un client machine avec une audience d'échange unique. Voir [Token Exchange](token-exchange.md). |
 
 `Scopes` est une chaîne, pas un tableau JSON. L'ordre des scopes ne constitue pas un contrat ; leur ensemble est significatif.
 
@@ -46,7 +48,7 @@ Le [sample AppHost](../samples/Sample.AppHost/Program.cs) enregistre :
 
 - `browserA` : client ID `web`, IDP A, `private_key_jwt`, scopes `openid profile orders.read`.
 - `browserB` : client ID `web`, IDP B, secret, mêmes scopes.
-- `publicClient` : client ID `public-web`, IDP A, aucune authentification client, scopes `openid profile`.
+- `publicClient` : client ID `public-web`, IDP A, aucune authentification client, scopes `openid profile orders.read`.
 
 ```csharp
 web.WithIdentityClient(browserA, "Authentication:IdpA")
@@ -64,7 +66,7 @@ Voici l'équivalent JSON de la configuration effective. Les adresses et credenti
       "ClientId": "web",
       "AuthenticationMethod": "private_key_jwt",
       "Scopes": "openid profile orders.read",
-      "PrivateKeyPem": "<cle-privee-PEM>",
+      "PrivateKeyBase64": "<Base64-UTF8-JSON-JWK-privee>",
       "KeyId": "<kid-client-a>"
     },
     "IdpB": {
@@ -78,7 +80,7 @@ Voici l'équivalent JSON de la configuration effective. Les adresses et credenti
       "Authority": "https://localhost:<port-idp-a>",
       "ClientId": "public-web",
       "AuthenticationMethod": "none",
-      "Scopes": "openid profile"
+      "Scopes": "openid profile orders.read"
     }
   }
 }
@@ -109,7 +111,7 @@ builder.Services.Configure<IdentityClientOptions>("IdpA",
 
 La première lecture donne un objet directement utilisable. La seconde enregistre des options nommées à lire via `IOptionsMonitor<IdentityClientOptions>.Get("IdpA")`. Enregistrer l'un ou l'autre ne configure pas automatiquement OIDC ni la récupération de tokens.
 
-Tu peux aussi lire `configuration["Authentication:IdpA:PrivateKeyPem"]` ou utiliser ton propre type d'options. Une chaîne PEM contient de vrais retours à la ligne dans la valeur injectée. Dans une représentation JSON, ces retours sont échappés en `\n`.
+Tu peux aussi lire `configuration["Authentication:IdpA:PrivateKeyBase64"]` ou utiliser ton propre type d'options. La valeur Base64 est une chaîne sur une ligne, utilisée directement par le helper. Avec les API PEM historiques, `PrivateKeyPem` contient de vrais retours à la ligne, échappés en `\n` dans une représentation JSON.
 
 ## Adapter les noms à un composant existant
 
@@ -120,7 +122,7 @@ api.WithIdentityClient(workerA, p => p
     .Authority("Outbound:Accounting:Issuer")
     .ClientId("Outbound:Accounting:Client")
     .AuthenticationMethod("Outbound:Accounting:Method")
-    .PrivateKeyPem("Outbound:Accounting:SigningKey")
+    .PrivateKeyBase64("Outbound:Accounting:SigningKey")
     .KeyId("Outbound:Accounting:KeyId")
     .Scopes("Outbound:Accounting:RequestedScopes"));
 ```
@@ -134,7 +136,7 @@ api.WithIdentityClient(workerA, p => p
 | `Outbound:Accounting:KeyId` | `Outbound__Accounting__KeyId` |
 | `Outbound:Accounting:RequestedScopes` | `Outbound__Accounting__RequestedScopes` |
 
-Seuls les champs sélectionnés dans la lambda sont projetés. Cette surcharge n'ajoute pas implicitement les champs de la projection standard. Les sept méthodes disponibles sont `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `ClientSecret`, `PrivateKeyPem` et `KeyId`.
+Seuls les champs sélectionnés dans la lambda sont projetés. Cette surcharge n'ajoute pas implicitement les champs de la projection standard. Les méthodes disponibles sont `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `ClientSecret`, `PrivateKeyPem`, `PrivateKeyBase64`, `KeyId` et `TokenExchangeAudience` ; les deux champs supplémentaires sont disponibles depuis `0.1.0-alpha.2`.
 
 Tu peux employer un nom de variable plat, par exemple `.PrivateKeyPem("ACCOUNTING_PRIVATE_KEY")`, ou un chemin avec `:`/`__`. Les chemins contenant `:` sont normalisés en `__`.
 
@@ -206,7 +208,7 @@ La projection standard choisit les champs de credentials au moment de son appel.
 | Clé de destination déjà présente pour `WithIdentityClient` | Erreur de conflit. |
 | Fournisseur non sain | Consommateur en attente via `WaitFor`. |
 
-Le câblage Aspire direct reste disponible, par exemple `api.WithEnvironment("CUSTOM_PRIVATE_KEY", worker.PrivateKeyPem!)`. Il ne bénéficie pas à lui seul de la normalisation, des contrôles de projection ni de l'ajout automatique de `WaitFor`.
+Le câblage Aspire direct reste disponible, par exemple `api.WithEnvironment("CUSTOM_PRIVATE_KEY", worker.PrivateKeyBase64!)`. Il ne bénéficie pas à lui seul de la normalisation, des contrôles de projection ni de l'ajout automatique de `WaitFor`.
 
 ## Transport des secrets
 

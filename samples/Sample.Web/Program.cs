@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Encodings.Web;
 using Aspire.IdentityServer.Client;
 using Microsoft.AspNetCore.Antiforgery;
@@ -62,10 +63,53 @@ foreach (var (provider, section) in new[] { ("a", "IdpA"), ("b", "IdpB"), ("publ
 }
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery();
+builder.Services.AddHttpContextAccessor();
+foreach (var (name, section) in new[] { ("private-key", "PrivateKey"), ("secret", "Secret") })
+{
+    builder
+        .Services.AddHttpClient(
+            $"orders-{name}",
+            client => client.BaseAddress = new Uri(builder.Configuration["services:api:https:0"]!)
+        )
+        .AddTokenExchangeHandler(
+            builder.Configuration.GetSection($"TokenExchange:{section}"),
+            options =>
+            {
+                options.Scope = "orders.read";
+                options.SubjectTokenProvider = async (services, _, cancellationToken) =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var context = services.GetRequiredService<IHttpContextAccessor>().HttpContext;
+                    return context is null
+                        ? null
+                        : await context.GetTokenAsync("cookie-a", "access_token");
+                };
+            }
+        );
+}
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok());
+app.MapGet(
+        "/delegated-orders/{method}",
+        async (string method, IHttpClientFactory clients, CancellationToken cancellationToken) =>
+        {
+            if (method is not ("private-key" or "secret"))
+                return Results.NotFound();
+            var http = clients.CreateClient($"orders-{method}");
+            using var response = await http.GetAsync("/orders/a", cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return Results.Json(
+                await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>(
+                    cancellationToken
+                )
+            );
+        }
+    )
+    .RequireAuthorization(
+        new AuthorizationPolicyBuilder("cookie-a").RequireAuthenticatedUser().Build()
+    );
 app.MapGet(
     "/",
     async (HttpContext context, IAntiforgery antiforgery) =>

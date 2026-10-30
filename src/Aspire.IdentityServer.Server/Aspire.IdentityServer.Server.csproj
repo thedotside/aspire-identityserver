@@ -6,6 +6,7 @@
     <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
     <PackageReference Include="Duende.IdentityServer" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />

@@ -11,6 +11,8 @@ Built on Duende IdentityServer, with in-memory state and no database or containe
 - [Getting started and installation](docs/demarrage.md)
 - [Providers, users, scopes and audiences](docs/fournisseurs.md)
 - [Clients, PKCE, secrets and private keys](docs/clients.md)
+- [Base64 private RSA JWK: BFF, CC Xp/Capa and Kubernetes](docs/jwk-base64.md)
+- [Same-provider Token Exchange](docs/token-exchange.md)
 - [Projections: AppHost → environment → .NET configuration](docs/projections.md)
 - [API, OIDC, BFF and outbound client integration](docs/integration.md)
 - [Kubernetes configuration and deployment boundaries](docs/kubernetes.md)
@@ -46,9 +48,9 @@ builder.Build().Run();
 | --- | --- |
 | `TheDotSide.Aspire.IdentityServer.Hosting` | AppHost API, secret parameters and projections. |
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
-| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration model and client assertion helper. |
+| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration, assertion helpers and token-exchange handler for named HTTP clients. |
 
-Version: `0.1.0-alpha.1`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
+Version: `0.1.0-alpha.2`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
 
 Local development/testing only: state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
 

@@ -20,6 +20,14 @@ internal sealed class ClientConfiguration
     public List<string> Scopes { get; set; } = [];
     public List<string> RedirectUris { get; set; } = [];
     public List<string> PostLogoutRedirectUris { get; set; } = [];
+    public List<TokenExchangeConfiguration> TokenExchanges { get; set; } = [];
+}
+
+internal sealed class TokenExchangeConfiguration
+{
+    public string SubjectClientId { get; set; } = "";
+    public string Audience { get; set; } = "";
+    public List<string> UserClaims { get; set; } = [];
 }
 
 internal sealed class ApiConfiguration

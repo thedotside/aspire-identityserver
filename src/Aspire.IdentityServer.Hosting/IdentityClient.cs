@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
@@ -27,15 +28,80 @@ public sealed class IdentityClient
     public string AuthenticationMethod { get; private set; } = "none";
     public IResourceBuilder<ParameterResource>? ClientSecret { get; private set; }
     public IResourceBuilder<ParameterResource>? PrivateKeyPem { get; private set; }
+    public IResourceBuilder<ParameterResource>? PrivateKeyBase64 { get; private set; }
     public string? KeyId { get; private set; }
     public string? PublicJwk { get; private set; }
     public bool UsePkce { get; private set; } = true;
     public IReadOnlyCollection<string> Scopes => ScopeNames;
+
+    /// <summary>The exchange audience when all configured policies select the same API.</summary>
+    public string? TokenExchangeAudience =>
+        TokenExchanges
+            .Select(p => p.Api.Audience)
+            .Distinct(StringComparer.Ordinal)
+            .Take(2)
+            .ToArray()
+            is [var audience]
+            ? audience
+            : null;
     internal string GrantType { get; }
     internal string ParameterPrefix { get; }
     internal HashSet<string> ScopeNames { get; } = new(StringComparer.Ordinal);
     internal List<ReferenceExpression> RedirectUris { get; } = [];
     internal List<ReferenceExpression> PostLogoutRedirectUris { get; } = [];
+    internal List<TokenExchangePolicy> TokenExchanges { get; } = [];
+
+    /// <summary>
+    /// Allows this machine client to exchange a same-provider authorization-code access token
+    /// for this API. Requested scopes must also be present in the source token.
+    /// The subject is preserved; only the named user claims are included.
+    /// </summary>
+    public IdentityClient WithTokenExchangeFrom(
+        IdentityClient subjectClient,
+        IdentityApiResource api,
+        params string[] userClaims
+    )
+    {
+        ArgumentNullException.ThrowIfNull(subjectClient);
+        ArgumentNullException.ThrowIfNull(api);
+        ArgumentNullException.ThrowIfNull(userClaims);
+        if (!string.Equals(GrantType, "client_credentials", StringComparison.Ordinal))
+            throw new InvalidOperationException("Only machine clients can enable token exchange.");
+        if (!string.Equals(subjectClient.GrantType, "authorization_code", StringComparison.Ordinal))
+            throw new ArgumentException(
+                "The source must be an authorization-code client.",
+                nameof(subjectClient)
+            );
+        if (
+            !ReferenceEquals(Server.Resource, subjectClient.Server.Resource)
+            || !ReferenceEquals(Server.Resource, api.Server.Resource)
+        )
+            throw new ArgumentException(
+                "Token exchange currently requires the same identity provider.",
+                nameof(subjectClient)
+            );
+        if (userClaims.Any(c => !TokenExchangeClaims.IsUserClaim(c)))
+            throw new ArgumentException(
+                "Select user claims, not protocol claims such as sub, scope, aud or act.",
+                nameof(userClaims)
+            );
+        if (
+            TokenExchanges.Any(p =>
+                ReferenceEquals(p.SubjectClient, subjectClient) && ReferenceEquals(p.Api, api)
+            )
+        )
+            throw new InvalidOperationException(
+                "This token exchange policy is already configured."
+            );
+        TokenExchanges.Add(
+            new TokenExchangePolicy(
+                subjectClient,
+                api,
+                userClaims.Distinct(StringComparer.Ordinal).ToArray()
+            )
+        );
+        return this;
+    }
 
     public IdentityClient WithScopes(params string[] scopes)
     {
@@ -88,6 +154,54 @@ public sealed class IdentityClient
         return WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem());
     }
 
+    /// <summary>Generates RSA 2048 credentials as Base64(UTF8(private JWK JSON)).</summary>
+    public IdentityClient WithGeneratedBase64PrivateKeyJwt()
+    {
+        EnsureAuthenticationUnset();
+        using var rsa = RSA.Create(2048);
+        var keyId = Convert
+            .ToHexString(SHA256.HashData(rsa.ExportSubjectPublicKeyInfo()))
+            .ToLowerInvariant();
+        return WithBase64PrivateKeyJwt(
+            Convert.ToBase64String(
+                Encoding.UTF8.GetBytes(RsaJwk.Serialize(rsa.ExportParameters(true), keyId))
+            )
+        );
+    }
+
+    /// <summary>Imports Base64(UTF8(private RSA JWK JSON)); registers only the public key.</summary>
+    public IdentityClient WithBase64PrivateKeyJwt(string privateKeyBase64)
+    {
+        EnsureAuthenticationUnset();
+        var (parameters, keyId) = RsaJwk.ReadPrivateBase64(privateKeyBase64);
+        var publicParameters = new RSAParameters
+        {
+            Modulus = parameters.Modulus,
+            Exponent = parameters.Exponent,
+        };
+        var key = Server.ApplicationBuilder.AddParameter(
+            $"{ParameterPrefix}-key",
+            () => privateKeyBase64,
+            secret: true
+        );
+        return WithBase64PrivateKeyJwt(key, RsaJwk.Serialize(publicParameters, keyId));
+    }
+
+    /// <summary>
+    /// Projects an existing secret containing Base64(UTF8(private RSA JWK JSON)).
+    /// The public JWK must match; the secret remains deferred and is not read here.
+    /// </summary>
+    public IdentityClient WithBase64PrivateKeyJwt(
+        IResourceBuilder<ParameterResource> privateKey,
+        string publicJwk
+    )
+    {
+        EnsureAuthenticationUnset();
+        RegisterPublicKey(privateKey, publicJwk);
+        PrivateKeyBase64 = privateKey;
+        return this;
+    }
+
     /// <summary>Uses an RSA private key; only its public JWK is sent to the identity provider.</summary>
     public IdentityClient WithPrivateKeyJwt(string privateKeyPem)
     {
@@ -130,39 +244,22 @@ public sealed class IdentityClient
     )
     {
         EnsureAuthenticationUnset();
+        RegisterPublicKey(privateKey, publicJwk);
+        PrivateKeyPem = privateKey;
+        return this;
+    }
+
+    private void RegisterPublicKey(IResourceBuilder<ParameterResource> privateKey, string publicJwk)
+    {
         if (!privateKey.Resource.Secret)
             throw new ArgumentException(
                 "The private key must be an Aspire secret parameter.",
                 nameof(privateKey)
             );
-        using var document = JsonDocument.Parse(publicJwk);
-        var key = document.RootElement;
-        if (
-            !string.Equals(key.GetProperty("kty").GetString(), "RSA", StringComparison.Ordinal)
-            || key.TryGetProperty("d", out _)
-            || new[] { "p", "q", "dp", "dq", "qi", "oth" }.Any(p => key.TryGetProperty(p, out _))
-        )
-            throw new ArgumentException(
-                "Supply a public RSA JWK without private key material.",
-                nameof(publicJwk)
-            );
-        var kid = key.GetProperty("kid").GetString();
-        ArgumentException.ThrowIfNullOrWhiteSpace(kid, nameof(publicJwk));
-        using var rsa = RSA.Create();
-        rsa.ImportParameters(
-            new RSAParameters
-            {
-                Modulus = FromBase64Url(key.GetProperty("n").GetString()!),
-                Exponent = FromBase64Url(key.GetProperty("e").GetString()!),
-            }
-        );
-        if (rsa.KeySize < 2048)
-            throw new ArgumentException("Use an RSA key of at least 2048 bits.", nameof(publicJwk));
-        PrivateKeyPem = privateKey;
-        PublicJwk = publicJwk;
-        KeyId = kid;
+        var (parameters, keyId) = RsaJwk.ReadPublic(publicJwk);
+        PublicJwk = RsaJwk.Serialize(parameters, keyId);
+        KeyId = keyId;
         AuthenticationMethod = "private_key_jwt";
-        return this;
     }
 
     public IdentityClient WithRedirectUri(EndpointReference endpoint, string path)
@@ -214,9 +311,10 @@ public sealed class IdentityClient
 
     private static string Base64Url(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-    private static byte[] FromBase64Url(string value) =>
-        Convert.FromBase64String(
-            value.Replace('-', '+').Replace('_', '/').PadRight((value.Length + 3) / 4 * 4, '=')
-        );
 }
+
+internal sealed record TokenExchangePolicy(
+    IdentityClient SubjectClient,
+    IdentityApiResource Api,
+    IReadOnlyList<string> UserClaims
+);
