@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Aspire.Hosting.Testing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Playwright;
@@ -29,7 +30,7 @@ public sealed class BrowserTests(AppFixture fixture)
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         await page.GotoAsync(origin + "/login/a");
         await Login(page);
-        await page.WaitForURLAsync(origin + "/");
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         var payload = await DelegatedOrders(context, origin, method);
         Assert.Equal("idp-a:alice", payload.GetProperty("subject").GetString());
         Assert.Equal(machineClient, payload.GetProperty("client").GetString());
@@ -51,7 +52,7 @@ public sealed class BrowserTests(AppFixture fixture)
             var page = await context.NewPageAsync();
             await page.GotoAsync(origin + "/login/a");
             await Login(page, username);
-            await page.WaitForURLAsync(origin + "/");
+            await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         }
         for (var attempt = 0; attempt < 2; attempt++)
         {
@@ -98,14 +99,14 @@ public sealed class BrowserTests(AppFixture fixture)
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         await page.GotoAsync($"{origin}/login/{provider}");
         await Login(page);
-        await page.WaitForURLAsync(origin + "/");
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         Assert.Equal(name, await page.Locator($"#user-{provider}").InnerTextAsync());
         await page.GetByRole(AriaRole.Button, new() { Name = $"Sign out {provider}", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
-        await page.WaitForURLAsync(origin + "/");
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         Assert.Equal("Signed out", await page.Locator($"#user-{provider}").InnerTextAsync());
         await page.GotoAsync($"{origin}/login/{provider}");
         await Assertions.Expect(page.GetByLabel("Username")).ToBeVisibleAsync();
@@ -123,7 +124,7 @@ public sealed class BrowserTests(AppFixture fixture)
         {
             await page.GotoAsync($"{origin}/login/{provider}");
             await Login(page);
-            await page.WaitForURLAsync(origin + "/");
+            await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         }
         Assert.Equal("Alice A", await page.Locator("#user-a").InnerTextAsync());
         Assert.Equal("Alice B", await page.Locator("#user-b").InnerTextAsync());
@@ -132,7 +133,7 @@ public sealed class BrowserTests(AppFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
-        await page.WaitForURLAsync(origin + "/");
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         Assert.Equal("Signed out", await page.Locator("#user-a").InnerTextAsync());
         Assert.Equal("Alice B", await page.Locator("#user-b").InnerTextAsync());
     }
@@ -174,11 +175,17 @@ public sealed class BrowserTests(AppFixture fixture)
         );
         await page.GotoAsync(authorize);
         await Login(page);
-        // Only the callback URL is needed; the intercepted document need not finish loading.
-        await page.WaitForURLAsync(
-            "**/signin-public?**",
-            new() { WaitUntil = WaitUntilState.Commit }
-        );
+        // Only the callback URL is needed; its intercepted document load state is irrelevant.
+        await Assertions
+            .Expect(page)
+            .ToHaveURLAsync(
+                new Regex(
+                    Regex.Escape(redirect) + "\\?",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                ),
+                new() { Timeout = 30_000 }
+            );
         var code = QueryHelpers.ParseQuery(new Uri(page.Url).Query)["code"].ToString();
         Assert.NotEmpty(code);
         var fields = new Dictionary<string, string>(StringComparer.Ordinal)
