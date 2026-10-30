@@ -1,4 +1,4 @@
-param([string]$Version = '0.1.0-alpha.1', [switch]$FromNuGet)
+param([string]$Version = '0.1.0-alpha.2', [switch]$FromNuGet)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
 $feed = Join-Path $repo 'artifacts/packages'
@@ -36,7 +36,12 @@ using Aspire.IdentityServer.Client;
 var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { Args = args, DisableDashboard = true });
 var idp = builder.AddIdentityServer("package-idp");
 idp.AddApiResource("package-api").WithScopes("read");
-var client = idp.AddClientCredentialsClient("package-client").WithGeneratedPrivateKeyJwt().WithScopes("read");
+var generated = idp.AddClientCredentialsClient("package-generated").WithGeneratedBase64PrivateKeyJwt().WithScopes("read");
+var importedValue = (await generated.PrivateKeyBase64!.Resource.GetValueAsync(default))!;
+var imported = idp.AddClientCredentialsClient("package-imported").WithBase64PrivateKeyJwt(importedValue).WithScopes("read");
+var parameter = builder.AddParameter("package-private-jwk", () => importedValue, secret: true);
+var deferred = idp.AddClientCredentialsClient("package-parameter").WithBase64PrivateKeyJwt(parameter, generated.PublicJwk!).WithScopes("read");
+var pem = idp.AddClientCredentialsClient("package-pem").WithGeneratedPrivateKeyJwt().WithScopes("read");
 await using var app = builder.Build();
 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 await app.StartAsync(timeout.Token);
@@ -44,18 +49,26 @@ try
 {
     await app.ResourceNotifications.WaitForResourceHealthyAsync("package-idp", timeout.Token);
     using var http = new HttpClient();
-    var metadata = await http.GetFromJsonAsync<JsonElement>($"{client.Authority.Url}/.well-known/openid-configuration", timeout.Token);
+    var metadata = await http.GetFromJsonAsync<JsonElement>($"{generated.Authority.Url}/.well-known/openid-configuration", timeout.Token);
     var endpoint = metadata.GetProperty("token_endpoint").GetString()!;
-    var options = new IdentityClientOptions { ClientId = client.ClientId, KeyId = client.KeyId, PrivateKeyPem = await client.PrivateKeyPem!.Resource.GetValueAsync(timeout.Token) };
-    using var response = await http.PostAsync(endpoint, new FormUrlEncodedContent(new Dictionary<string, string>
+    foreach (var client in new[] { generated, imported, deferred, pem })
     {
-        ["grant_type"] = "client_credentials", ["scope"] = "read", ["client_id"] = client.ClientId,
-        ["client_assertion_type"] = PrivateKeyJwt.AssertionType, ["client_assertion"] = PrivateKeyJwt.CreateAssertion(options, endpoint)
-    }), timeout.Token);
-    response.EnsureSuccessStatusCode();
-    var token = await response.Content.ReadFromJsonAsync<JsonElement>(timeout.Token);
-    if (string.IsNullOrWhiteSpace(token.GetProperty("access_token").GetString())) throw new Exception("Missing access token.");
-    Console.WriteLine("PACKAGE_SMOKE_OK: packaged provider started and authenticated the packaged client helper.");
+        var options = new IdentityClientOptions
+        {
+            ClientId = client.ClientId, KeyId = client.KeyId,
+            PrivateKeyBase64 = client.PrivateKeyBase64 is { } base64 ? await base64.Resource.GetValueAsync(timeout.Token) : null,
+            PrivateKeyPem = client.PrivateKeyPem is { } key ? await key.Resource.GetValueAsync(timeout.Token) : null
+        };
+        using var response = await http.PostAsync(endpoint, new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials", ["scope"] = "read", ["client_id"] = client.ClientId,
+            ["client_assertion_type"] = PrivateKeyJwt.AssertionType, ["client_assertion"] = PrivateKeyJwt.CreateAssertion(options, endpoint)
+        }), timeout.Token);
+        response.EnsureSuccessStatusCode();
+        var token = await response.Content.ReadFromJsonAsync<JsonElement>(timeout.Token);
+        if (string.IsNullOrWhiteSpace(token.GetProperty("access_token").GetString())) throw new Exception("Missing access token.");
+    }
+    Console.WriteLine("PACKAGE_SMOKE_OK: packaged provider authenticated generated, imported and deferred Base64 JWK clients plus legacy PEM.");
 }
 finally { await app.StopAsync(CancellationToken.None); }
 '@ | Set-Content (Join-Path $consumer 'Program.cs')

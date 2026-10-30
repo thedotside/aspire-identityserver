@@ -33,6 +33,9 @@ var client = builder.Configuration.GetSection("Authentication:IdpA")
 | `Authentication:IdpA:Scopes` | `Authentication__IdpA__Scopes` | ConfigMap, chaîne séparée par des espaces. |
 | `Authentication:IdpA:KeyId` | `Authentication__IdpA__KeyId` | ConfigMap, doit correspondre au JWK public enregistré. |
 | `Authentication:IdpA:PrivateKeyPem` | `Authentication__IdpA__PrivateKeyPem` | Secret existant. |
+| `Authentication:IdpA:PrivateKeyBase64` | `Authentication__IdpA__PrivateKeyBase64` | Depuis `0.1.0-alpha.2` : Secret existant contenant la valeur JWK Base64, sans `PrivateKeyPem`. |
+
+Pour une JWK privée Base64, `Secret.stringData` reçoit directement `Base64(UTF8(JSON JWK privée))`. `Secret.data` reçoit un encodage Base64 supplémentaire de cette valeur applicative. Le [guide BFF et CC Xp/Capa](jwk-base64.md#kubernetes--conserver-les-deux-niveaux-dencodage) fournit les deux YAML et les variables d'environnement exactes.
 
 ## Exemple YAML : BFF ou application web avec clé privée
 

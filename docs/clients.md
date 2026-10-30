@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Fournisseurs](fournisseurs.md) · [Projections](projections.md)
 
-Les extraits de cette page supposent `builder` et un fournisseur `idp` déjà déclarés. Chaque client possède un grant principal et une seule méthode d'authentification. La prochaine version permet aussi d'activer explicitement le [Token Exchange](token-exchange.md) sur un client machine avec `WithTokenExchangeFrom(browser, api, userClaims: ["name"])`.
+Les extraits de cette page supposent `builder` et un fournisseur `idp` déjà déclarés. Chaque client possède un grant principal et une seule méthode d'authentification. La version `0.1.0-alpha.2` permet aussi d'activer explicitement le [Token Exchange](token-exchange.md) sur un client machine avec `WithTokenExchangeFrom(browser, api, userClaims: ["name"])`.
 
 ## Choisir le parcours
 
@@ -95,6 +95,8 @@ La clé privée est injectée uniquement dans les consommateurs explicitement s�
 
 ## Clé PEM fournie à l'AppHost
 
+Pour utiliser `Base64(UTF8(JSON JWK privée))` directement, consulte [JWK privée Base64 : BFF et CC Xp/Capa](jwk-base64.md). La version `0.1.0-alpha.2` ajoute `WithGeneratedBase64PrivateKeyJwt()`, `WithBase64PrivateKeyJwt(string)` et `WithBase64PrivateKeyJwt(parametreSecret, publicJwk)` ; ces API ne figurent pas dans les packages déjà publiés `0.1.0-alpha.1`.
+
 Exemple où `DevelopmentKeys:OrdersPrivateKeyPem` provient d'une configuration locale non suivie par Git :
 
 ```csharp
@@ -146,7 +148,7 @@ Le package facultatif `TheDotSide.Aspire.IdentityServer.Client` expose `PrivateK
 | Élément | Valeur |
 | --- | --- |
 | Signature | RSA SHA-256 / `RS256`. |
-| En-tête `kid` | `IdentityClientOptions.KeyId`. |
+| En-tête `kid` | PEM : `IdentityClientOptions.KeyId`. JWK Base64 : `kid` de la JWK ; `KeyId`, si fourni, doit correspondre. |
 | `iss` et `sub` | `ClientId`. |
 | `aud` | Audience absolue passée au helper ; nos exemples utilisent le token endpoint découvert. |
 | `iat` | Heure UTC courante. |

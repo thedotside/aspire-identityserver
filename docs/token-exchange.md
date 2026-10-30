@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Clients](clients.md) · [Projections](projections.md)
 
-Cette fonctionnalité est destinée à la prochaine version. Elle n'est pas incluse dans les archives NuGet `0.1.0-alpha.1` déjà publiées. Pour l'essayer avant publication, construis les [packages locaux](developpement.md).
+Cette fonctionnalité est disponible depuis `0.1.0-alpha.2`. Elle n'est pas incluse dans les archives NuGet `0.1.0-alpha.1` déjà publiées. Pour l'essayer avant publication, construis les [packages locaux](developpement.md).
 
 ## Parcours pris en charge
 
@@ -65,7 +65,7 @@ Déclare les credentials et toutes les règles d'échange avant d'appeler `WithI
 
 ## Projections et configuration effective
 
-Le consommateur reçoit les mêmes champs qu'un client machine normal : `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, puis `PrivateKeyPem`/`KeyId` ou `ClientSecret`. La projection standard ajoute `TokenExchangeAudience` si toutes les règles sélectionnent la même API. Le helper réutilise cette valeur, sans recopier une audience dans le code consommateur. Les clés privées restent des paramètres secrets Aspire et l'autorité reste une référence différée d'endpoint.
+Le consommateur reçoit les mêmes champs qu'un client machine normal : `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, puis `PrivateKeyPem`/`KeyId`, `PrivateKeyBase64`/`KeyId` ou `ClientSecret`. La projection standard ajoute `TokenExchangeAudience` si toutes les règles sélectionnent la même API. Le helper réutilise cette valeur, sans recopier une audience dans le code consommateur. Les clés privées restent des paramètres secrets Aspire et l'autorité reste une référence différée d'endpoint. Voir le [contrat JWK Base64](jwk-base64.md).
 
 Si un client autorise plusieurs audiences différentes, le champ automatique est absent : passe l'audience voulue au helper. Le mapping personnalisé expose aussi `projection.TokenExchangeAudience("MaSection:Audience")` ; demander ce champ sans audience unique provoque une erreur explicite.
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
@@ -29,6 +30,35 @@ public sealed class AppFixture : IAsyncLifetime
             timeout.Token
         );
         Servers = builder.Resources.OfType<IdentityServerResource>().ToList();
+        var provider = builder.CreateResourceBuilder(
+            Servers.Single(s => string.Equals(s.Name, "idp-a", StringComparison.Ordinal))
+        );
+        using (var rsa = RSA.Create(2048))
+        {
+            var value = Base64PrivateKeyJwtTests.Encode(rsa, "fixture-key");
+            var publicJwk = Base64PrivateKeyJwtTests.Public(rsa, "fixture-key");
+            provider
+                .AddClientCredentialsClient("imported-jwk")
+                .WithBase64PrivateKeyJwt(value)
+                .WithScopes("orders.read");
+            var secret = builder.AddParameter("fixture-jwk", () => value, secret: true);
+            provider
+                .AddClientCredentialsClient("parameter-jwk")
+                .WithBase64PrivateKeyJwt(secret, publicJwk)
+                .WithScopes("orders.read");
+            provider
+                .AddClientCredentialsClient("legacy-pem")
+                .WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem())
+                .WithScopes("orders.read");
+            using var other = RSA.Create(2048);
+            provider
+                .AddClientCredentialsClient("mismatched-jwk")
+                .WithBase64PrivateKeyJwt(
+                    secret,
+                    Base64PrivateKeyJwtTests.Public(other, "fixture-key")
+                )
+                .WithScopes("orders.read");
+        }
         App = await builder.BuildAsync(timeout.Token);
         await App.StartAsync(timeout.Token);
         await Task.WhenAll(
@@ -55,6 +85,9 @@ public sealed class AppFixture : IAsyncLifetime
             AuthenticationMethod = registration.AuthenticationMethod,
             PrivateKeyPem = registration.PrivateKeyPem is { } key
                 ? await key.Resource.GetValueAsync(default)
+                : null,
+            PrivateKeyBase64 = registration.PrivateKeyBase64 is { } base64Key
+                ? await base64Key.Resource.GetValueAsync(default)
                 : null,
             ClientSecret = registration.ClientSecret is { } secret
                 ? await secret.Resource.GetValueAsync(default)

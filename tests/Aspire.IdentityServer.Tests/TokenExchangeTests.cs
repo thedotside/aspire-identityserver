@@ -35,6 +35,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
                     ["Device:AuthenticationMethod"] = client.AuthenticationMethod,
                     ["Device:ClientSecret"] = client.ClientSecret,
                     ["Device:PrivateKeyPem"] = client.PrivateKeyPem,
+                    ["Device:PrivateKeyBase64"] = client.PrivateKeyBase64,
                     ["Device:KeyId"] = client.KeyId,
                     ["Device:Scopes"] = client.Scopes,
                     ["Device:TokenExchangeAudience"] = client.TokenExchangeAudience,

@@ -16,6 +16,9 @@ public sealed class IdentityClientProjection
 
     public IdentityClientProjection PrivateKeyPem(string key) => Map(key, nameof(PrivateKeyPem));
 
+    public IdentityClientProjection PrivateKeyBase64(string key) =>
+        Map(key, nameof(PrivateKeyBase64));
+
     public IdentityClientProjection KeyId(string key) => Map(key, nameof(KeyId));
 
     public IdentityClientProjection Scopes(string key) => Map(key, nameof(Scopes));
@@ -58,6 +61,8 @@ public static class IdentityProjectionExtensions
                     p.ClientSecret($"{section}:ClientSecret");
                 if (client.PrivateKeyPem is not null)
                     p.PrivateKeyPem($"{section}:PrivateKeyPem").KeyId($"{section}:KeyId");
+                if (client.PrivateKeyBase64 is not null)
+                    p.PrivateKeyBase64($"{section}:PrivateKeyBase64").KeyId($"{section}:KeyId");
                 if (client.TokenExchangeAudience is not null)
                     p.TokenExchangeAudience($"{section}:TokenExchangeAudience");
             }
@@ -83,6 +88,7 @@ public static class IdentityProjectionExtensions
                     "ClientId" => client.ClientId,
                     "ClientSecret" => client.ClientSecret?.Resource,
                     "PrivateKeyPem" => client.PrivateKeyPem?.Resource,
+                    "PrivateKeyBase64" => client.PrivateKeyBase64?.Resource,
                     "KeyId" => client.KeyId,
                     "Scopes" => string.Join(' ', client.Scopes),
                     "AuthenticationMethod" => client.AuthenticationMethod,

@@ -14,6 +14,36 @@ namespace Aspire.IdentityServer.Tests;
 [Collection("app")]
 public sealed class ProtocolTests(AppFixture fixture, ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("imported-jwk")]
+    [InlineData("parameter-jwk")]
+    [InlineData("legacy-pem")]
+    public async Task Imported_jwk_secret_parameter_and_legacy_pem_authenticate_against_the_real_provider(
+        string clientId
+    )
+    {
+        var client = await fixture.Client("idp-a", clientId);
+        using var response = await TokenRequest("a", Fields(client));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("orders.read", payload.GetProperty("scope").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(payload.GetProperty("access_token").GetString()));
+    }
+
+    [Fact]
+    public async Task A_deferred_private_key_must_match_the_public_key_registered_at_the_real_provider()
+    {
+        var client = await fixture.Client("idp-a", "mismatched-jwk");
+        using var response = await TokenRequest("a", Fields(client));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(
+            "invalid_client",
+            (await response.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("error")
+                .GetString()
+        );
+    }
+
     [Fact]
     public async Task Providers_have_distinct_issuers_and_signing_keys()
     {
@@ -94,7 +124,7 @@ public sealed class ProtocolTests(AppFixture fixture, ITestOutputHelper output)
         if (string.Equals(change, "signature", StringComparison.Ordinal))
         {
             using var wrongKey = RSA.Create(2048);
-            client.PrivateKeyPem = wrongKey.ExportPkcs8PrivateKeyPem();
+            client.PrivateKeyBase64 = Base64PrivateKeyJwtTests.Encode(wrongKey, client.KeyId!);
         }
         var fields = Fields(client);
         if (string.Equals(change, "audience", StringComparison.Ordinal))

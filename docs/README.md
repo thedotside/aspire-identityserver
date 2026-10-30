@@ -1,6 +1,6 @@
 # Documentation Aspire IdentityServer
 
-Cette documentation décrit le paramétrage de la version `0.1.0-alpha.1`, sur .NET 10 et Aspire 13.6.2.
+Cette documentation décrit le paramétrage de la version `0.1.0-alpha.2`, sur .NET 10 et Aspire 13.6.2.
 
 L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
 
@@ -11,7 +11,8 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Démarrage](demarrage.md) | Prérequis, installation locale des packages, premier AppHost et lancement des exemples. |
 | [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
 | [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
-| [Token Exchange](token-exchange.md) | Prochaine version : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
+| [JWK privée Base64](jwk-base64.md) | Depuis `0.1.0-alpha.2` : génération/import RSA, configurations BFF et CC Xp/Capa, migration du template et encodage Kubernetes. |
+| [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
@@ -37,7 +38,7 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Secrets et assertions RSA/RS256 `private_key_jwt` | Implémenté. |
 | Scopes, ressources API, audiences et projections | Implémenté. |
 | Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
-| Token Exchange local, sélection des informations utilisateur | Implémenté dans cette branche, destiné à la prochaine publication. Voir le [guide](token-exchange.md). |
+| Token Exchange local, sélection des informations utilisateur | Disponible depuis `0.1.0-alpha.2`. Voir le [guide](token-exchange.md). |
 | Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
 | Refresh tokens, utilisateurs persistants, fédération, claims personnalisés | Hors périmètre de cette alpha. |

@@ -240,7 +240,7 @@ public sealed class ProjectionTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => Evaluate(consumer));
     }
 
-    private static async Task<Dictionary<string, object>> Evaluate<T>(IResourceBuilder<T> resource)
+    internal static async Task<Dictionary<string, object>> Evaluate<T>(IResourceBuilder<T> resource)
         where T : IResource
     {
         var values = new Dictionary<string, object>(StringComparer.Ordinal);

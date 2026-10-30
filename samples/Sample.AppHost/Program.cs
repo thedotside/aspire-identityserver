@@ -11,7 +11,7 @@ var idpB = builder.AddIdentityServer("idp-b").WithTestUser("alice", "alice", "Al
 var ordersA = idpA.AddApiResource("orders-api-a").WithScopes("orders.read", "orders.write");
 var ordersB = idpB.AddApiResource("orders-api-b").WithScopes("orders.read");
 var workerA = idpA.AddClientCredentialsClient("worker")
-    .WithGeneratedPrivateKeyJwt()
+    .WithGeneratedBase64PrivateKeyJwt()
     .WithScopes("orders.read");
 var workerB = idpB.AddClientCredentialsClient("worker")
     .WithGeneratedClientSecret()
@@ -23,7 +23,7 @@ var web = builder
     .WithHttpsEndpoint()
     .WithHttpHealthCheck("/health", endpointName: "https");
 var browserA = idpA.AddAuthorizationCodeClient("web")
-    .WithGeneratedPrivateKeyJwt()
+    .WithGeneratedBase64PrivateKeyJwt()
     .RequirePkce()
     .WithScopes("openid", "profile", "orders.read")
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-a")
