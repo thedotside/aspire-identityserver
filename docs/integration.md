@@ -171,7 +171,7 @@ Cet extrait ne fournit pas de cache de métadonnées, de cache de tokens ou de s
 
 ## Duende BFF et gestion des tokens
 
-Le [guide JWK Base64](jwk-base64.md) détaille les configurations BFF et CC Xp/Capa avec `PrivateKeyBase64`, les appels remplaçant l'adaptation PEM du template et l'injection Kubernetes.
+Le [guide JWK Base64](jwk-base64.md) détaille les configurations BFF et CC Xp/Capa avec `PrivateKeyBase64`, les appels remplaçant une adaptation PEM et l'injection Kubernetes.
 
 La projection peut alimenter n'importe quelle section lue par un BFF .NET ou ses composants de gestion des tokens. Elle fournit l'authority, le client ID, les scopes et les credentials ; le BFF configure ensuite sa bibliothèque OIDC et ses clients sortants.
 

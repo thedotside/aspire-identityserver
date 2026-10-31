@@ -11,7 +11,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Démarrage](demarrage.md) | Prérequis, installation locale des packages, premier AppHost et lancement des exemples. |
 | [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
 | [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
-| [JWK privée Base64](jwk-base64.md) | Depuis `0.1.0-alpha.2` : génération/import RSA, configurations BFF et CC Xp/Capa, migration du template et encodage Kubernetes. |
+| [JWK privée Base64](jwk-base64.md) | Depuis `0.1.0-alpha.2` : génération/import RSA, configurations BFF et CC Xp/Capa, migration depuis PEM et encodage Kubernetes. |
 | [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
@@ -45,6 +45,6 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Déploiement du fournisseur sur Kubernetes ou en production | Non pris en charge ; publication Aspire refusée. |
 | Benchmark comparatif face à Keycloak | Non réalisé. |
 
-La validation locale Windows consignée le 17 octobre 2026 comprend 21 tests réussis et un consommateur indépendant des packages. Elle ne prouve pas la validation sur d'autres systèmes ni le résultat actuel de GitHub Actions. Voir [les vérifications](developpement.md).
+La validation locale consignée le 31 octobre 2026, sur macOS arm64, comprend 162 tests réussis et deux consommateurs indépendants des packages. Elle ne prouve pas la validation sur d'autres systèmes ni le résultat actuel de GitHub Actions. Voir [les vérifications](developpement.md).
 
 [Retour au README du projet](../README.md)

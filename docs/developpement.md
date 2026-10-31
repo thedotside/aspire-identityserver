@@ -9,7 +9,7 @@
 | `src/Aspire.IdentityServer.Hosting` | API AppHost, paramètres secrets et projections. |
 | `src/Aspire.IdentityServer.Server` | Runtime Duende local, package `TheDotSide.Aspire.IdentityServer.Runtime`. |
 | `src/Aspire.IdentityServer.Client` | Options et helper d'assertion indépendant d'Aspire et Duende. |
-| `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, deux clients machine. |
+| `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, trois clients machine. |
 | `samples/Sample.Web` | Connexion et déconnexion OIDC avec les trois clients. |
 | `samples/Sample.Api` | Validation de tokens de deux IDP et deux composants OAuth sortants. |
 | `samples/Sample.ServiceDefaults` | Socle technique des exemples : découverte de services, résilience HTTP, health checks et OpenTelemetry. |
@@ -50,9 +50,9 @@ dotnet csharpier check .
 dotnet build
 ```
 
-CSharpier `1.3.0` est le formateur unique des fichiers C# et XML, dont les projets et fichiers MSBuild. [.csharpierrc.json](../.csharpierrc.json) fixe une largeur cible de 100 colonnes et des fins de ligne LF. [.csharpierignore](../.csharpierignore) exclut les sorties de build, les artefacts et le travail temporaire. Le check CI vérifie le dépôt entier, y compris quand le hook local n'a pas été installé.
+CSharpier, dans la version fixée par [.config/dotnet-tools.json](../.config/dotnet-tools.json), est le formateur unique des fichiers C# et XML, dont les projets et fichiers MSBuild. [.csharpierrc.json](../.csharpierrc.json) fixe une largeur cible de 100 colonnes et des fins de ligne LF. [.csharpierignore](../.csharpierignore) exclut les sorties de build, les artefacts et le travail temporaire. Le check CI vérifie le dépôt entier, y compris quand le hook local n'a pas été installé.
 
-Meziantou.Analyzer `3.0.315` est une `GlobalPackageReference` privée, appliquée aux projets via Central Package Management. L'analyse s'exécute au build et les avertissements restent traités comme des erreurs. Le package d'analyse n'est pas transmis aux consommateurs NuGet.
+Meziantou.Analyzer, dans la version de [Directory.Packages.props](../Directory.Packages.props), est une `GlobalPackageReference` privée, appliquée aux projets via Central Package Management. L'analyse s'exécute au build et les avertissements restent traités comme des erreurs. Le package d'analyse n'est pas transmis aux consommateurs NuGet.
 
 La politique se trouve dans [.editorconfig](../.editorconfig) : les règles actives par défaut sont conservées, avec comparaisons, comparateurs, culture et propagation de cancellation explicites. Les règles de nommage fichier/type (`MA0048`) et de longueur des méthodes (`MA0051`) restent des suggestions IDE, car des modèles liés partagent un fichier et les configurations fluides restent linéaires. `MA0004` reste appliquée aux bibliothèques mais est désactivée dans les applications et tests, qui n'ont pas besoin de la convention `ConfigureAwait(false)`.
 
@@ -101,7 +101,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
 | Scopes inconnus, champs absents et collisions de projections | ProjectionTests. |
 
-La validation locale Windows consignée le **17 octobre 2026** a produit **21 tests réussis, zéro échec**. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ou d'un autre OS.
+La validation locale consignée le **31 octobre 2026**, sur macOS arm64, a produit **162 tests réussis, zéro échec** : 96 unitaires et 66 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
 
 ## Construire et vérifier les packages
 

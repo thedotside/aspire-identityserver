@@ -8,7 +8,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageId>TheDotSide.Aspire.IdentityServer.Runtime</PackageId>
-    <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
+    <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting, for local development and tests only. Duende IdentityServer is restored as a NuGet dependency, not bundled, and stays under Duende Software's own license: read it before any use, and never run this provider in production.</Description>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />

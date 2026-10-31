@@ -76,6 +76,9 @@ runs:
     - name: Check formatting
       shell: pwsh
       run: dotnet csharpier check .
+    - name: Check documented versions
+      shell: pwsh
+      run: pwsh eng/check-docs.ps1
     - name: Build
       shell: pwsh
       run: dotnet build --no-restore "/p:Version=$env:PACKAGE_VERSION"

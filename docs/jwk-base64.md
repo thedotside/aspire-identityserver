@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Clients](clients.md) · [Projections](projections.md) · [Kubernetes](kubernetes.md)
 
-Ce support est ajouté dans la version `0.1.0-alpha.2`. Les packages `0.1.0-alpha.1` exposent seulement `PrivateKeyPem`. Installe la nouvelle version avant de retirer l'adaptation du template.
+Ce support est ajouté dans la version `0.1.0-alpha.2`. Les packages `0.1.0-alpha.1` exposent seulement `PrivateKeyPem` : un projet qui convertissait lui-même une JWK en PEM peut retirer cette adaptation après la mise à jour.
 
 ## Contrat exact
 
@@ -79,7 +79,7 @@ Cette surcharge ne résout pas le secret pendant l'enregistrement. La paire doit
 
 ## Consommateurs : retirer la conversion vers PEM
 
-Le binding devient direct, sans décodage ou conversion dans le template :
+Le binding devient direct, sans décodage ni conversion dans l'application :
 
 ```csharp
 using Aspire.IdentityServer.Client;
@@ -154,20 +154,13 @@ Pour le BFF ou CC Xp, utilise respectivement `Authentication__Bff__PrivateKeyBas
 
 L'API Kubernetes convertit `stringData` en `data` à l'écriture ; le décodage de `data` retire uniquement l'encodage Kubernetes. Voir la [documentation officielle des Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). Cela concerne les consommateurs avec un IdP accessible et adapté à leur environnement ; le fournisseur local de ce dépôt reste limité au développement et aux tests.
 
-## Vérifier les packages localement avant de migrer le template
+## Vérifier les packages localement
 
-Depuis ce dépôt, ces commandes construisent et vérifient les packages locaux :
-
-```powershell
-pwsh eng/pack.ps1 -Version 0.1.0-alpha.2
-pwsh eng/package-smoke.ps1 -Version 0.1.0-alpha.2
-```
-
-Dans le template, remplace les deux références `0.1.0-alpha.1` par `0.1.0-alpha.2`, puis utilise les appels ci-dessus. Avec Central Package Management, modifie `Directory.Packages.props`. Sinon, après disponibilité sur NuGet :
+Depuis ce dépôt, ces commandes construisent et vérifient les packages locaux, à la version de `Directory.Build.props` :
 
 ```powershell
-dotnet add <AppHost.csproj> package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.2 --source https://api.nuget.org/v3/index.json
-dotnet add <Consommateur.csproj> package TheDotSide.Aspire.IdentityServer.Client --version 0.1.0-alpha.2 --source https://api.nuget.org/v3/index.json
+pwsh eng/pack.ps1
+pwsh eng/package-smoke.ps1
 ```
 
-Pour utiliser les archives locales avant publication, remplace la source par `C:/dev/aspire-identityserver/artifacts/packages`. Le Runtime est une dépendance NuGet transitive de Hosting. Le dépôt du template reste inchangé par cette tâche.
+Dans un projet consommateur, pointe une source NuGet vers `artifacts/packages` de ce dépôt, ou attends la publication sur nuget.org. Avec Central Package Management, la version se change dans `Directory.Packages.props`. Le Runtime est une dépendance NuGet transitive de Hosting.

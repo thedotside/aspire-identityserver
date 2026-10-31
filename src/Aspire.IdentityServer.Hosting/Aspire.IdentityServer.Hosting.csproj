@@ -8,7 +8,7 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>TheDotSide.Aspire.IdentityServer.Hosting</PackageId>
-    <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections.</Description>
+    <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections. Not for production: the provider runs Duende IdentityServer, licensed separately by Duende Software.</Description>
     <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
   </PropertyGroup>
   <ItemGroup>
