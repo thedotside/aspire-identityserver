@@ -1,6 +1,7 @@
 # Modèle pour le consommateur uniquement : ce fichier ne déploie pas notre IDP local.
 # Remplacer l'authority, le kid et l'image avant utilisation.
 # Fournir le Secret web-oidc dans le même namespace, clé private-key.pem.
+# L'application lit /run/secrets/oidc avec AddKeyPerFile : le nom du fichier est la clé de configuration.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -32,9 +33,15 @@ spec:
           envFrom:
             - configMapRef:
                 name: web-oidc-config
-          env:
-            - name: Authentication__IdpA__PrivateKeyPem
-              valueFrom:
-                secretKeyRef:
-                  name: web-oidc
-                  key: private-key.pem
+          volumeMounts:
+            - name: oidc-secrets
+              mountPath: /run/secrets/oidc
+              readOnly: true
+      volumes:
+        - name: oidc-secrets
+          secret:
+            secretName: web-oidc
+            defaultMode: 0400
+            items:
+              - key: private-key.pem
+                path: Authentication__IdpA__PrivateKeyPem

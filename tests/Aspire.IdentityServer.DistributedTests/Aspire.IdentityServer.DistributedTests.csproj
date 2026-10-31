@@ -1,13 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- TST-02: one real sample AppHost shared by protocol and browser tests. -->
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../Shared/*.cs" LinkBase="Shared" />
     <PackageReference Include="Aspire.Hosting.Testing" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Microsoft.Playwright" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Testing.Extensions.HangDump" />
+    <PackageReference Include="TUnit" />
     <ProjectReference Include="../../samples/Sample.AppHost/Sample.AppHost.csproj" />
     <ProjectReference Include="../../src/Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
   </ItemGroup>

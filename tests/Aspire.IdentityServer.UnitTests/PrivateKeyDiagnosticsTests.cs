@@ -4,21 +4,18 @@ using System.Security.Cryptography;
 using System.Text;
 using Aspire.IdentityServer.Client;
 using Microsoft.IdentityModel.Logging;
-using Xunit;
 
 namespace Aspire.IdentityServer.Tests;
 
-[CollectionDefinition("identitymodel-diagnostics", DisableParallelization = true)]
-public sealed class IdentityModelDiagnosticsCollection;
-
-[Collection("identitymodel-diagnostics")]
+// IdentityModel's diagnostic switches and event source are process-wide.
+[NotInParallel]
 public sealed class PrivateKeyDiagnosticsTests
 {
-    [Fact]
-    public void Private_input_does_not_enter_identitymodel_logs_even_when_sensitive_diagnostics_are_enabled()
+    [Test]
+    public async Task Private_input_does_not_enter_identitymodel_logs_even_when_sensitive_diagnostics_are_enabled()
     {
         using var rsa = RSA.Create(2048);
-        var value = Base64PrivateKeyJwtTests.Encode(rsa, "diagnostics-key");
+        var value = TestKeys.Encode(rsa, "diagnostics-key");
         var raw = Encoding.UTF8.GetString(Convert.FromBase64String(value));
         using var listener = new IdentityModelListener();
         var previousPii = IdentityModelEventSource.ShowPII;
@@ -45,12 +42,16 @@ public sealed class PrivateKeyDiagnosticsTests
                     _ = PrivateKeyJwt.CreateAssertion(options, "https://localhost/connect/token");
                 else
                 {
-                    var error = Assert.Throws<ArgumentException>(() =>
+                    var error = Assert.ThrowsExactly<ArgumentException>(() =>
                         PrivateKeyJwt.CreateAssertion(options, "https://localhost/connect/token")
                     );
-                    Assert.Null(error.InnerException);
-                    Assert.False(error.ToString().Contains(input, StringComparison.Ordinal));
-                    Assert.False(error.ToString().Contains(raw, StringComparison.Ordinal));
+                    await Assert.That(error.InnerException).IsNull();
+                    await Assert
+                        .That(error.ToString().Contains(input, StringComparison.Ordinal))
+                        .IsFalse();
+                    await Assert
+                        .That(error.ToString().Contains(raw, StringComparison.Ordinal))
+                        .IsFalse();
                 }
             }
             using var document = System.Text.Json.JsonDocument.Parse(raw);
@@ -62,7 +63,7 @@ public sealed class PrivateKeyDiagnosticsTests
             var leaked = listener.Messages.Any(m =>
                 sensitive.Any(s => m.Contains(s, StringComparison.Ordinal))
             );
-            Assert.False(leaked); // Never print captured credentials on failure.
+            await Assert.That(leaked).IsFalse(); // Never print captured credentials on failure.
         }
         finally
         {

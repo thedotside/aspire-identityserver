@@ -10,9 +10,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/setup-dotnet@v6
+    - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
       with:
-        dotnet-version: '10.0.x'
+        global-json-file: global.json
     - name: Prepare HTTPS for the registry consumer
       shell: pwsh
       run: |
@@ -22,7 +22,7 @@ runs:
         Import-Certificate -FilePath $ciCertificatePath -CertStoreLocation 'Cert:\LocalMachine\Root' -Confirm:$false -ErrorAction Stop | Out-Null
         dotnet dev-certs https --check --trust
         if ($LASTEXITCODE -ne 0) { throw 'The HTTPS development certificate is not trusted.' }
-    - uses: actions/download-artifact@v8
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
         name: packages-and-test-results
         path: artifacts/release
@@ -51,7 +51,7 @@ runs:
         }
     - name: Authenticate to NuGet with OIDC
       id: login
-      uses: NuGet/login@v1
+      uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
       with:
         user: ${{ inputs.user }}
     - name: Push the three packages
@@ -62,7 +62,8 @@ runs:
       run: |
         foreach ($name in @('Runtime', 'Client', 'Hosting')) {
           $package = "artifacts/release/packages/TheDotSide.Aspire.IdentityServer.$name.$env:RELEASE_VERSION.nupkg"
-          dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols
+          # The .snupkg next to each archive is pushed with it, to the NuGet symbol server.
+          dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
           if ($LASTEXITCODE -ne 0) { throw "Publishing $name failed." }
         }
     - name: Wait for NuGet indexing

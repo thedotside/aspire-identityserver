@@ -1,8 +1,12 @@
-using Aspire.Hosting;
+using System.Globalization;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer;
+using Aspire.IdentityServer.Hosting;
+using Microsoft.Extensions.Hosting;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting;
 
+/// <summary>Adds local development identity providers to an Aspire AppHost.</summary>
 public static class IdentityServerExtensions
 {
     /// <summary>Adds the bundled local development identity server, with an isolated issuer and signing key.</summary>
@@ -14,7 +18,16 @@ public static class IdentityServerExtensions
     {
         if (builder.ExecutionContext.IsPublishMode)
             throw new InvalidOperationException(
-                "Aspire IdentityServer is a local development/testing resource and cannot be deployed."
+                "Aspire IdentityServer is a local development/testing resource and cannot be deployed. "
+                    + "Declare it only in run mode, inside if (builder.ExecutionContext.IsRunMode)."
+            );
+        // The provider inherits the AppHost environment instead of being forced to Development,
+        // so its own Development/Testing guard keeps a meaning.
+        var environment = builder.Environment.EnvironmentName;
+        if (!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing"))
+            throw new InvalidOperationException(
+                $"Aspire IdentityServer runs only in an AppHost started in Development or Testing, not '{environment}'. "
+                    + "Set DOTNET_ENVIRONMENT for the AppHost process."
             );
         var options = new IdentityServerOptions();
         configure?.Invoke(options);
@@ -40,17 +53,47 @@ public static class IdentityServerExtensions
                         context.Password;
                 return Task.CompletedTask;
             })
-            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", environment)
+            .WithEnvironment(
+                RuntimeContract.EnvironmentVariable,
+                RuntimeContract.Version.ToString(CultureInfo.InvariantCulture)
+            )
             .WithEnvironment("IdentityServer__Name", name)
-            .WithHttpHealthCheck("/health", endpointName: "https");
+            .WithEnvironment(
+                "IdentityServer__AcceptTokenEndpointAudience",
+                options.AcceptTokenEndpointAudience ? "true" : "false"
+            )
+            .WithHttpHealthCheck("/health", endpointName: "https")
+            .WithOtlpExporter()
+            .WithIconName("ShieldKeyhole")
+            .WithUrls(context =>
+            {
+                if (context.GetEndpoint("https") is { } endpoint)
+                    context.Urls.Add(
+                        new ResourceUrlAnnotation
+                        {
+                            Url = endpoint.Url.TrimEnd('/') + "/.well-known/openid-configuration",
+                            DisplayText = "OpenID discovery",
+                            Endpoint = endpoint,
+                        }
+                    );
+            });
 #pragma warning restore ASPIRECERTIFICATES001
         server.WithEnvironment("IdentityServer__Issuer", server.GetEndpoint("https"));
         server.WithEnvironment(context =>
             WriteConfiguration(server.Resource, context.EnvironmentVariables)
         );
+        builder.Eventing.Subscribe<BeforeStartEvent>(
+            (_, _) =>
+            {
+                Validate(server.Resource);
+                return Task.CompletedTask;
+            }
+        );
         return server;
     }
 
+    /// <summary>Adds a test user; its password becomes an Aspire secret parameter.</summary>
     public static IResourceBuilder<IdentityServerResource> WithTestUser(
         this IResourceBuilder<IdentityServerResource> server,
         string username,
@@ -72,17 +115,25 @@ public static class IdentityServerExtensions
                 "Test usernames and subject IDs must be unique within an identity provider.",
                 nameof(username)
             );
-        var secret = server.ApplicationBuilder.AddParameter(
-            $"{server.Resource.Name}-user-{server.Resource.Users.Count}-password",
-            () => password,
-            secret: true
-        );
+        var secret = server
+            .ApplicationBuilder.AddParameter(
+                ParameterName(
+                    server,
+                    username,
+                    "password",
+                    $"{server.Resource.Name}-user-{server.Resource.Users.Count}-password"
+                ),
+                () => password,
+                secret: true
+            )
+            .WithParentRelationship(server);
         server.Resource.Users.Add(
             new TestUser(username, subjectId, displayName ?? username, secret)
         );
         return server;
     }
 
+    /// <summary>Declares an API audience; add its scopes with <see cref="IdentityApiResource.WithScopes" />.</summary>
     public static IdentityApiResource AddApiResource(
         this IResourceBuilder<IdentityServerResource> server,
         string audience
@@ -100,11 +151,13 @@ public static class IdentityServerExtensions
         return api;
     }
 
+    /// <summary>Registers an interactive authorization code client, public with PKCE until given credentials.</summary>
     public static IdentityClient AddAuthorizationCodeClient(
         this IResourceBuilder<IdentityServerResource> server,
         string clientId
     ) => AddClient(server, clientId, "authorization_code");
 
+    /// <summary>Registers a machine client; give it credentials and API scopes.</summary>
     public static IdentityClient AddClientCredentialsClient(
         this IResourceBuilder<IdentityServerResource> server,
         string clientId
@@ -128,28 +181,54 @@ public static class IdentityServerExtensions
         return client;
     }
 
-    private static void WriteConfiguration(
-        IdentityServerResource server,
-        IDictionary<string, object> environment
+    /// <summary>
+    /// A dashboard-friendly name, <c>{provider}-{owner}-{suffix}</c>, for a generated parameter;
+    /// the index-based fallback keeps names valid and unique for any owner.
+    /// </summary>
+    internal static string ParameterName(
+        IResourceBuilder<IdentityServerResource> server,
+        string owner,
+        string suffix,
+        string fallback
     )
+    {
+        var slug = string.Join(
+            '-',
+            new string(
+                owner
+                    .Select(c => char.IsAsciiLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-')
+                    .ToArray()
+            ).Split('-', StringSplitOptions.RemoveEmptyEntries)
+        );
+        // Aspire resource names: ASCII letters, digits and single hyphens, at most 64 characters.
+        var candidate = $"{server.Resource.Name}-{slug}-{suffix}";
+        return
+            slug.Length > 0
+            && candidate.Length <= 64
+            && !server.ApplicationBuilder.Resources.Any(r =>
+                string.Equals(r.Name, candidate, StringComparison.OrdinalIgnoreCase)
+            )
+            ? candidate
+            : fallback;
+    }
+
+    /// <summary>
+    /// Checks every registration rule of a provider. It runs before the AppHost starts any
+    /// resource, so a misconfiguration fails the AppHost instead of one provider process.
+    /// </summary>
+    internal static void Validate(IdentityServerResource server)
     {
         var scopes = server.Apis.SelectMany(a => a.Scopes).ToHashSet(StringComparer.Ordinal);
         var knownScopes = scopes
             .Concat(["openid", "profile", "email"])
             .ToHashSet(StringComparer.Ordinal);
-        for (var i = 0; i < server.Apis.Count; i++)
-        {
-            var api = server.Apis[i];
+        foreach (var api in server.Apis)
             if (api.Scopes.Count == 0)
                 throw new InvalidOperationException(
                     $"Audience '{api.Audience}' needs at least one scope."
                 );
-            environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
-            AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
-        }
-        for (var i = 0; i < server.Clients.Count; i++)
+        foreach (var client in server.Clients)
         {
-            var client = server.Clients[i];
             if (client.Scopes.Count == 0 || client.Scopes.Any(s => !knownScopes.Contains(s)))
                 throw new InvalidOperationException(
                     $"Client '{client.ClientId}' must use declared API scopes or openid/profile/email."
@@ -179,20 +258,10 @@ public static class IdentityServerExtensions
                 && string.Equals(client.AuthenticationMethod, "none", StringComparison.Ordinal)
                 && !client.UsePkce
             )
-                throw new InvalidOperationException("Public clients must use PKCE.");
-            var prefix = $"IdentityServer__Clients__{i}";
-            environment[$"{prefix}__ClientId"] = client.ClientId;
-            environment[$"{prefix}__GrantType"] = client.GrantType;
-            environment[$"{prefix}__AuthenticationMethod"] = client.AuthenticationMethod;
-            environment[$"{prefix}__RequirePkce"] = client.UsePkce.ToString();
-            if (client.ClientSecret is { } secret)
-                environment[$"{prefix}__ClientSecret"] = secret.Resource;
-            if (client.PublicJwk is { } jwk)
-                environment[$"{prefix}__PublicJwk"] = jwk;
-            AddList(environment, $"{prefix}__Scopes", client.Scopes);
-            for (var policyIndex = 0; policyIndex < client.TokenExchanges.Count; policyIndex++)
-            {
-                var policy = client.TokenExchanges[policyIndex];
+                throw new InvalidOperationException(
+                    $"Public client '{client.ClientId}' must use PKCE."
+                );
+            foreach (var policy in client.TokenExchanges)
                 if (
                     !policy
                         .Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal)
@@ -202,6 +271,37 @@ public static class IdentityServerExtensions
                     throw new InvalidOperationException(
                         $"Token exchange for '{client.ClientId}' requires an API scope shared with '{policy.SubjectClient.ClientId}'."
                     );
+        }
+    }
+
+    private static void WriteConfiguration(
+        IdentityServerResource server,
+        IDictionary<string, object> environment
+    )
+    {
+        Validate(server);
+        for (var i = 0; i < server.Apis.Count; i++)
+        {
+            var api = server.Apis[i];
+            environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
+            AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
+        }
+        for (var i = 0; i < server.Clients.Count; i++)
+        {
+            var client = server.Clients[i];
+            var prefix = $"IdentityServer__Clients__{i}";
+            environment[$"{prefix}__ClientId"] = client.ClientId;
+            environment[$"{prefix}__GrantType"] = client.GrantType;
+            environment[$"{prefix}__AuthenticationMethod"] = client.AuthenticationMethod;
+            environment[$"{prefix}__RequirePkce"] = client.UsePkce.ToString();
+            if (client.ClientSecret is { } secret)
+                environment[$"{prefix}__ClientSecretHash"] = new ClientSecretHash(secret.Resource);
+            if (client.PublicJwk is { } jwk)
+                environment[$"{prefix}__PublicJwk"] = jwk;
+            AddList(environment, $"{prefix}__Scopes", client.Scopes);
+            for (var policyIndex = 0; policyIndex < client.TokenExchanges.Count; policyIndex++)
+            {
+                var policy = client.TokenExchanges[policyIndex];
                 var policyPrefix = $"{prefix}__TokenExchanges__{policyIndex}";
                 environment[$"{policyPrefix}__SubjectClientId"] = policy.SubjectClient.ClientId;
                 environment[$"{policyPrefix}__Audience"] = policy.Api.Audience;

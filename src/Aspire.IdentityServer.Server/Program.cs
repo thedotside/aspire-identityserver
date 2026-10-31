@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Aspire.IdentityServer.Server;
 using Duende.IdentityServer;
@@ -5,24 +6,25 @@ using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Secret = Duende.IdentityServer.Models.Secret;
 
 namespace Aspire.IdentityServer.Server;
 
 internal static class ServerProgram
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        // Bind the development provider to loopback, including behind the Aspire proxy.
-        if (
-            int.TryParse(
-                builder.Configuration["HTTPS_PORTS"],
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var port
-            )
-        )
-            builder.WebHost.UseUrls($"https://localhost:{port}");
+        // Bind the development provider to loopback in code, including behind the Aspire proxy.
+        // Endpoints declared in code replace URLS and *_PORTS; extra configured endpoints are refused.
+        var port = LoopbackPort(builder.Configuration);
+        builder.WebHost.ConfigureKestrel(kestrel =>
+            kestrel.ListenLocalhost(port, listen => listen.UseHttps())
+        );
         if (!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing"))
             throw new InvalidOperationException(
                 "This identity server only runs in Development or Testing."
@@ -30,6 +32,11 @@ internal static class ServerProgram
         var config =
             builder.Configuration.GetSection("IdentityServer").Get<ServerConfiguration>()
             ?? throw new InvalidOperationException("Missing IdentityServer configuration.");
+        if (config.ContractVersion != RuntimeContract.Version)
+            throw new InvalidOperationException(
+                $"This runtime reads configuration contract {RuntimeContract.Version}, but the AppHost wrote {config.ContractVersion}. "
+                    + "Use the same version of TheDotSide.Aspire.IdentityServer.Hosting and TheDotSide.Aspire.IdentityServer.Runtime."
+            );
         if (
             !Uri.TryCreate(config.Issuer, UriKind.Absolute, out var issuer)
             || !string.Equals(issuer.Scheme, "https", StringComparison.Ordinal)
@@ -39,12 +46,40 @@ internal static class ServerProgram
                 "The development issuer must use a loopback HTTPS address."
             );
 
+        // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+            builder
+                .Services.AddOpenTelemetry()
+                .WithTracing(tracing =>
+                    tracing
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddSource(
+                            Tracing.TraceNames.Basic,
+                            Tracing.TraceNames.Cache,
+                            Tracing.TraceNames.Services,
+                            Tracing.TraceNames.Store,
+                            Tracing.TraceNames.Validation
+                        )
+                )
+                .WithMetrics(metrics =>
+                    metrics
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddMeter(Telemetry.ServiceName)
+                )
+                .WithLogging(logging => { }, options => options.IncludeFormattedMessage = true)
+                .UseOtlpExporter();
         builder
             .Services.AddDataProtection()
             .UseEphemeralDataProtectionProvider()
             .SetApplicationName($"AspireIdentityServer:{config.Name}");
         builder.Services.AddRazorPages();
-        builder.Services.AddAntiforgery(o => o.Cookie.Name = $"aspire-idp-{config.Name}.csrf");
+        builder.Services.AddAntiforgery(o =>
+        {
+            o.Cookie.Name = $"aspire-idp-{config.Name}.csrf";
+            o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        });
         builder.Services.AddSingleton(config);
         builder.Services.AddSingleton(TimeProvider.System);
         builder
@@ -52,10 +87,26 @@ internal static class ServerProgram
             {
                 options.IssuerUri = config.Issuer;
                 options.KeyManagement.Enabled = false;
+                // RFC 9068 and RFC 8693: scope is one space-delimited string, as real providers emit.
+                options.EmitScopesAsSpaceDelimitedStringInJwt = true;
+                // draft-ietf-oauth-rfc7523bis: the issuer as sole audience and an explicit type,
+                // unless the AppHost accepts the token endpoint audience for legacy clients.
+                options.StrictClientAssertionAudienceValidation =
+                    !config.AcceptTokenEndpointAudience;
+                // Registered client keys and the helper only use RS256: advertise and accept no other.
+                options.SupportedClientAssertionSigningAlgorithms =
+                [
+                    Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256,
+                ];
                 options.UserInteraction.LoginUrl = "/Account/Login";
                 options.UserInteraction.LogoutUrl = "/Account/Logout";
                 options.UserInteraction.ErrorUrl = "/Error";
                 options.Authentication.CheckSessionCookieName = $"aspire-idp-{config.Name}.session";
+                // Cookies are not isolated by port. On localhost the provider and its clients are
+                // same-site, so Lax keeps check-session and front-channel logout working while the
+                // session stays out of cross-site requests.
+                options.Authentication.CookieSameSiteMode = SameSiteMode.Lax;
+                options.Authentication.CheckSessionCookieSameSiteMode = SameSiteMode.Lax;
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("subject_token");
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("actor_token");
             })
@@ -96,7 +147,10 @@ internal static class ServerProgram
                                 Value = c.PublicJwk!,
                             },
                         ],
-                        "client_secret_post" => [new Secret(c.ClientSecret!.Sha256())],
+                        "client_secret_post" when c.ClientSecretHash is { Length: > 0 } hash =>
+                        [
+                            new Secret(hash),
+                        ],
                         "none"
                             when string.Equals(
                                 c.GrantType,
@@ -133,15 +187,42 @@ internal static class ServerProgram
             .AddDeveloperSigningCredential(persistKey: false);
         builder.Services.Configure<CookieAuthenticationOptions>(
             IdentityServerConstants.DefaultCookieAuthenticationScheme,
-            o => o.Cookie.Name = $"aspire-idp-{config.Name}"
+            o =>
+            {
+                o.Cookie.Name = $"aspire-idp-{config.Name}";
+                o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            }
         );
 
         var app = builder.Build();
+        app.Logger.LogWarning(
+            "Identity provider '{Name}' ({Environment}) is for local development and tests only. "
+                + "Never expose it, and never accept its tokens outside development.",
+            config.Name,
+            app.Environment.EnvironmentName
+        );
         app.Use(
             async (context, next) =>
             {
                 context.Response.Headers.XContentTypeOptions = "nosniff";
                 context.Response.Headers.CacheControl = "no-store";
+                // The sign-in pages are never framed and never leak their return URL. No
+                // form-action: after login, the redirect chain legitimately leaves this origin.
+                if (
+                    context.Request.Path.StartsWithSegments(
+                        "/Account",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || context.Request.Path.StartsWithSegments(
+                        "/Error",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    context.Response.Headers.ContentSecurityPolicy =
+                        "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'";
+                    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+                }
                 await next();
             }
         );
@@ -150,6 +231,34 @@ internal static class ServerProgram
         app.MapRazorPages();
         app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         app.MapGet("/", () => Results.Redirect("/.well-known/openid-configuration"));
-        app.Run();
+        await app.StartAsync(CancellationToken.None);
+        if (app.Urls.Count == 0 || app.Urls.Any(url => !new Uri(url).IsLoopback))
+        {
+            await app.StopAsync(CancellationToken.None);
+            throw new InvalidOperationException(
+                $"The development identity provider must listen on loopback only, not {string.Join(", ", app.Urls)}."
+            );
+        }
+        await app.WaitForShutdownAsync(CancellationToken.None);
+    }
+
+    private static int LoopbackPort(IConfiguration configuration)
+    {
+        if (configuration.GetSection("Kestrel:Endpoints").GetChildren().Any())
+            throw new InvalidOperationException(
+                "Kestrel endpoints cannot be configured: this identity provider listens on HTTPS loopback only."
+            );
+        if (
+            !int.TryParse(
+                configuration["HTTPS_PORTS"],
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var port
+            ) || port is < 1 or > 65535
+        )
+            throw new InvalidOperationException(
+                "Set ASPNETCORE_HTTPS_PORTS to a single port: this identity provider listens on HTTPS loopback only."
+            );
+        return port;
     }
 }

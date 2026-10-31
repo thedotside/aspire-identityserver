@@ -1,29 +1,126 @@
 <Project>
-  <!-- Dependencies are restored from their original NuGet packages on the consumer's machine. -->
+  <!--
+    The provider runs from its own folder with only the runtime closure of
+    TheDotSide.Aspire.IdentityServer.Runtime, restored from the original NuGet packages on the
+    consumer's machine. The folder has no deps.json: the host then loads the assemblies it holds,
+    which must therefore be portable. See docs/decisions/0001-dossier-runtime-du-fournisseur.md.
+  -->
+  <UsingTask
+    TaskName="SelectIdentityServerRuntime"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
+  >
+    <ParameterGroup>
+      <Dependencies ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <CopyLocal ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <Root ParameterType="System.String" Required="true" />
+      <ServerAssembly ParameterType="System.String" Required="true" />
+      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.Collections.Generic" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        // Package graph edges are "Id/Version" items whose ParentPackage is "Id/Version".
+        var children = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var dependency in Dependencies ?? new ITaskItem[0])
+        {
+          var parent = dependency.GetMetadata("ParentPackage");
+          if (string.IsNullOrEmpty(parent))
+            continue;
+          var parentId = parent.Split('/')[0];
+          List<string> list;
+          if (!children.TryGetValue(parentId, out list))
+            children[parentId] = list = new List<string>();
+          list.Add(dependency.ItemSpec.Split('/')[0]);
+        }
+        var closure = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { Root };
+        var pending = new Stack<string>();
+        pending.Push(Root);
+        while (pending.Count > 0)
+        {
+          List<string> next;
+          if (children.TryGetValue(pending.Pop(), out next))
+            foreach (var child in next)
+              if (closure.Add(child))
+                pending.Push(child);
+        }
+        var files = new List<ITaskItem>();
+        foreach (var item in CopyLocal ?? new ITaskItem[0])
+        {
+          if (!string.Equals(item.GetMetadata("Extension"), ".dll", StringComparison.OrdinalIgnoreCase))
+            continue;
+          var package = item.GetMetadata("NuGetPackageId");
+          var server = string.Equals(item.GetMetadata("Filename"), ServerAssembly, StringComparison.OrdinalIgnoreCase);
+          if (!server && !closure.Contains(package))
+            continue;
+          var subdirectory = item.GetMetadata("DestinationSubDirectory").Replace('\\', '/');
+          if (subdirectory.StartsWith("runtimes/", StringComparison.OrdinalIgnoreCase))
+          {
+            Log.LogError(
+              "The identity provider runtime cannot load the runtime-specific asset '{0}' of package '{1}' without a deps.json. Report this dependency to TheDotSide.Aspire.IdentityServer.",
+              item.GetMetadata("Filename") + item.GetMetadata("Extension"),
+              package);
+            continue;
+          }
+          files.Add(item);
+        }
+        Files = files.ToArray();
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
   <Target
     Name="CopyIdentityServerRuntime"
-    AfterTargets="Build"
+    AfterTargets="CopyFilesToOutputDirectory"
     Condition="'$(IsAspireHost)' == 'true' or '$(IsTestProject)' == 'true'"
   >
+    <!-- Before IncrementalClean records FileWrites, so that dotnet clean removes the folder. -->
+    <PropertyGroup>
+      <_IdentityServerRuntimeDirectory>$(TargetDir)identityserver/</_IdentityServerRuntimeDirectory>
+    </PropertyGroup>
+    <!-- The SDK task kept for EmitLegacyAssetsFileItems exposes the restored package graph. -->
+    <ResolvePackageDependencies
+      ProjectPath="$(MSBuildProjectFullPath)"
+      ProjectAssetsFile="$(ProjectAssetsFile)"
+      ProjectLanguage="$(Language)"
+      TargetFramework="$(TargetFramework)"
+    >
+      <Output TaskParameter="PackageDependencies" ItemName="_IdentityServerPackageDependencies" />
+    </ResolvePackageDependencies>
+    <SelectIdentityServerRuntime
+      Dependencies="@(_IdentityServerPackageDependencies)"
+      CopyLocal="@(ReferenceCopyLocalPaths)"
+      Root="TheDotSide.Aspire.IdentityServer.Runtime"
+      ServerAssembly="Aspire.IdentityServer.Server"
+    >
+      <Output TaskParameter="Files" ItemName="_IdentityServerRuntimeFiles" />
+    </SelectIdentityServerRuntime>
     <ItemGroup>
-      <_IdentityServerRuntimeFiles
-        Include="@(ReferenceCopyLocalPaths)"
-        Condition="'%(Extension)' == '.dll'"
+      <_IdentityServerRuntimeTargets Include="@(_IdentityServerRuntimeFiles->'$(_IdentityServerRuntimeDirectory)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
+      <_IdentityServerRuntimeTargets Include="$(_IdentityServerRuntimeDirectory)Aspire.IdentityServer.Server.runtimeconfig.json" />
+      <!--
+        Without a deps.json, the host loads every assembly of the folder, which belongs to this
+        integration: stale assemblies and an earlier deps.json are removed, other files stay.
+      -->
+      <_IdentityServerRuntimeStale
+        Include="$(_IdentityServerRuntimeDirectory)**/*.dll;$(_IdentityServerRuntimeDirectory)*.deps.json"
+        Exclude="@(_IdentityServerRuntimeTargets)"
       />
+      <!-- dotnet clean and incremental builds then manage the folder like other outputs. -->
+      <FileWrites Include="@(_IdentityServerRuntimeTargets)" />
     </ItemGroup>
+    <Delete Files="@(_IdentityServerRuntimeStale)" />
     <Copy
       SourceFiles="@(_IdentityServerRuntimeFiles)"
-      DestinationFiles="@(_IdentityServerRuntimeFiles->'$(TargetDir)identityserver/%(DestinationSubDirectory)%(Filename)%(Extension)')"
-      SkipUnchangedFiles="true"
-    />
-    <Copy
-      SourceFiles="$(TargetDir)$(AssemblyName).deps.json"
-      DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.deps.json"
+      DestinationFiles="@(_IdentityServerRuntimeFiles->'$(_IdentityServerRuntimeDirectory)%(DestinationSubDirectory)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
     />
     <Copy
       SourceFiles="$(MSBuildThisFileDirectory)server.runtimeconfig.json"
-      DestinationFiles="$(TargetDir)identityserver/Aspire.IdentityServer.Server.runtimeconfig.json"
+      DestinationFiles="$(_IdentityServerRuntimeDirectory)Aspire.IdentityServer.Server.runtimeconfig.json"
       SkipUnchangedFiles="true"
     />
   </Target>

@@ -6,9 +6,9 @@ This is a local-development OAuth/OIDC integration for Aspire. It must validate 
 - `src/Aspire.IdentityServer.Server`: independent Duende process, published as the `TheDotSide.Aspire.IdentityServer.Runtime` NuGet dependency. Local development/testing only.
 - `src/Aspire.IdentityServer.Client`: optional, engine-independent assertion helper. Generate a fresh `jti` for each request.
 - `samples`: two providers, three browser clients and three machine clients; local token exchange with private-key and secret authentication.
-- `tests`: one shared real AppHost and isolated browser contexts, plus projection contract tests.
+- `tests`: TUnit on Microsoft Testing Platform. `UnitTests` builds in-memory application models without network or a started AppHost; `DistributedTests` shares one real AppHost with isolated browser contexts.
 
-Use .NET 10 and aligned Aspire 13.6.2 hosting/testing/SDK packages. Run `dotnet build`, `dotnet test`, `pwsh eng/pack.ps1`, then `pwsh eng/package-smoke.ps1` for changes affecting packaging. The smoke script consumes actual packages in an isolated temporary project/cache. No Docker dependency.
+Use .NET 10. The `Aspire.Hosting` version in `Directory.Packages.props` is the floor of the published Hosting package: raise it deliberately; the repository AppHost, testing packages and SDK may follow later patches. Run `dotnet build`, `dotnet test`, `pwsh eng/pack.ps1`, then `pwsh eng/package-smoke.ps1` for changes affecting packaging. The smoke script consumes actual packages in an isolated temporary project/cache. No Docker dependency.
 
 NuGet archives contain only this repository's assemblies. Duende and other third-party code must remain ordinary NuGet dependencies, with their original licenses. Do not bundle those binaries or claim our MIT license covers them. Do not publish packages or push changes unless requested.
 

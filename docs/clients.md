@@ -66,7 +66,7 @@ var worker = idp.AddClientCredentialsClient("worker-secret")
     .WithScopes("orders.read");
 ```
 
-Le secret contient 32 octets aléatoires encodés en Base64, générés une fois à l'enregistrement. Il est représenté par un paramètre secret Aspire. Le serveur reçoit le secret puis enregistre sa valeur hachée SHA-256 dans la configuration Duende en mémoire.
+Le secret contient 32 octets aléatoires encodés en Base64, générés une fois à l'enregistrement. Il est représenté par un paramètre secret Aspire. Le fournisseur ne reçoit que son empreinte, `Base64(SHA-256(secret))`, calculée par l'AppHost au lancement : c'est la seule valeur que Duende conserve, et le secret n'entre ni dans l'environnement ni dans la mémoire du fournisseur. Les consommateurs projetés reçoivent, eux, la référence au paramètre secret.
 
 La projection indique `AuthenticationMethod = "client_secret_post"`. Le consommateur transmet `client_secret` dans le formulaire de demande de token. L'API fluide n'offre pas de sélection `client_secret_basic`.
 
@@ -143,17 +143,26 @@ Ces méthodes ne s'appliquent pas aux clients machine. Elles ne configurent pas 
 
 ## Assertions `private_key_jwt`
 
-Le package facultatif `TheDotSide.Aspire.IdentityServer.Client` expose `PrivateKeyJwt.CreateAssertion(client, audience)` :
+Le package facultatif `TheDotSide.Aspire.IdentityServer.Client` expose `PrivateKeyJwt.CreateAssertion(client, issuer)`. Il suit le profil [draft-ietf-oauth-rfc7523bis](https://datatracker.ietf.org/doc/draft-ietf-oauth-rfc7523bis/), qui empêche l'injection d'audience : l'assertion ne vaut que pour l'issuer qui la reçoit.
 
 | Élément | Valeur |
 | --- | --- |
 | Signature | RSA SHA-256 / `RS256`. |
+| En-tête `typ` | `client-authentication+jwt` (`PrivateKeyJwt.ClientAuthenticationType`). |
 | En-tête `kid` | PEM : `IdentityClientOptions.KeyId`. JWK Base64 : `kid` de la JWK ; `KeyId`, si fourni, doit correspondre. |
 | `iss` et `sub` | `ClientId`. |
-| `aud` | Audience absolue passée au helper ; nos exemples utilisent le token endpoint découvert. |
+| `aud` | L'issuer du fournisseur, seul et en chaîne : la valeur `issuer` de son document de découverte. |
 | `iat` | Heure UTC courante. |
 | `nbf` | Heure courante moins 5 secondes. |
 | `exp` | Heure courante plus 1 minute. |
 | `jti` | Nouveau GUID à chaque appel. |
+
+Le fournisseur local exige ce profil par défaut (`StrictClientAssertionAudienceValidation` de Duende). Pour un fournisseur réel qui refuse encore l'issuer comme audience, `PrivateKeyJwt.CreateTokenEndpointAssertion(client, tokenEndpoint)` produit le profil RFC 7523 d'origine : audience = token endpoint, `typ: JWT`. Pour tester un tel client contre le fournisseur local, active explicitement `AcceptTokenEndpointAudience` :
+
+```csharp
+var idp = builder.AddIdentityServer("idp", options => options.AcceptTokenEndpointAudience = true);
+```
+
+Une assertion typée `client-authentication+jwt` reste toujours validée strictement, même avec cette option.
 
 Crée une assertion neuve pour chaque requête, y compris une nouvelle tentative. Ne conserve pas une assertion en configuration ; la protection contre le rejeu est testée. Le helper ne découvre pas les endpoints et n'envoie pas de requête HTTP. Voir [l'intégration](integration.md).

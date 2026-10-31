@@ -1,31 +1,39 @@
-using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting;
 
 /// <summary>Maps client fields to arbitrary .NET configuration paths or environment variable names.</summary>
 public sealed class IdentityClientProjection
 {
     internal Dictionary<string, string> Fields { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Projects the provider issuer to <paramref name="key" />.</summary>
     public IdentityClientProjection Authority(string key) => Map(key, nameof(Authority));
 
+    /// <summary>Projects the client identifier to <paramref name="key" />.</summary>
     public IdentityClientProjection ClientId(string key) => Map(key, nameof(ClientId));
 
+    /// <summary>Projects the client secret parameter to <paramref name="key" />.</summary>
     public IdentityClientProjection ClientSecret(string key) => Map(key, nameof(ClientSecret));
 
+    /// <summary>Projects the PEM private key parameter to <paramref name="key" />.</summary>
     public IdentityClientProjection PrivateKeyPem(string key) => Map(key, nameof(PrivateKeyPem));
 
+    /// <summary>Projects the Base64 private JWK parameter to <paramref name="key" />.</summary>
     public IdentityClientProjection PrivateKeyBase64(string key) =>
         Map(key, nameof(PrivateKeyBase64));
 
+    /// <summary>Projects the key identifier to <paramref name="key" />.</summary>
     public IdentityClientProjection KeyId(string key) => Map(key, nameof(KeyId));
 
+    /// <summary>Projects the space-delimited scopes to <paramref name="key" />.</summary>
     public IdentityClientProjection Scopes(string key) => Map(key, nameof(Scopes));
 
+    /// <summary>Projects the authentication method to <paramref name="key" />.</summary>
     public IdentityClientProjection AuthenticationMethod(string key) =>
         Map(key, nameof(AuthenticationMethod));
 
+    /// <summary>Projects the single token-exchange audience to <paramref name="key" />.</summary>
     public IdentityClientProjection TokenExchangeAudience(string key) =>
         Map(key, nameof(TokenExchangeAudience));
 
@@ -39,8 +47,13 @@ public sealed class IdentityClientProjection
     }
 }
 
+/// <summary>Projects identity clients and API audiences into consumer configuration.</summary>
 public static class IdentityProjectionExtensions
 {
+    /// <summary>
+    /// Projects a client under <c>{section}</c> with the field names of
+    /// <c>IdentityClientOptions</c>, and makes the consumer wait for the provider.
+    /// </summary>
     public static IResourceBuilder<T> WithIdentityClient<T>(
         this IResourceBuilder<T> consumer,
         IdentityClient client,
@@ -69,6 +82,10 @@ public static class IdentityProjectionExtensions
         );
     }
 
+    /// <summary>
+    /// Projects only the selected client fields, to arbitrary configuration keys, and makes the
+    /// consumer wait for the provider.
+    /// </summary>
     public static IResourceBuilder<T> WithIdentityClient<T>(
         this IResourceBuilder<T> consumer,
         IdentityClient client,
@@ -110,8 +127,11 @@ public static class IdentityProjectionExtensions
         return consumer.WaitFor(client.Server);
     }
 
-    /// <summary>Configures inbound token validation without disclosing any client credentials.</summary>
-    public static IResourceBuilder<T> WithIdentityResource<T>(
+    /// <summary>
+    /// Configures inbound token validation of an API audience: <c>{section}:Authority</c> and
+    /// <c>{section}:Audience</c>, without disclosing any client credentials.
+    /// </summary>
+    public static IResourceBuilder<T> WithIdentityApiResource<T>(
         this IResourceBuilder<T> consumer,
         IdentityApiResource api,
         string section
@@ -130,4 +150,16 @@ public static class IdentityProjectionExtensions
             )
             .WaitFor(api.Server);
     }
+
+    /// <summary>Renamed <see cref="WithIdentityApiResource" />: Duende identity resources are openid or profile.</summary>
+    [Obsolete(
+        "Use WithIdentityApiResource: it projects an API audience, not an identity resource."
+    )]
+    public static IResourceBuilder<T> WithIdentityResource<T>(
+        this IResourceBuilder<T> consumer,
+        IdentityApiResource api,
+        string section
+    )
+        where T : IResourceWithEnvironment, IResourceWithWaitSupport =>
+        consumer.WithIdentityApiResource(api, section);
 }

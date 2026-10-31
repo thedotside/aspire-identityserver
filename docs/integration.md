@@ -9,7 +9,7 @@ La projection fournit des valeurs. Le consommateur configure sa bibliothèque OA
 Dans l'AppHost, pour une ressource `orders` et un projet `api` existants :
 
 ```csharp
-api.WithIdentityResource(orders, "Authentication:Inbound");
+api.WithIdentityApiResource(orders, "Authentication:Inbound");
 ```
 
 Dans l'API référençant `Microsoft.AspNetCore.Authentication.JwtBearer`, ce `Program.cs` illustre le comportement du sample avec un fournisseur :
@@ -93,7 +93,7 @@ builder.Services.AddAuthentication(options =>
                     .GetConfigurationAsync(context.HttpContext.RequestAborted);
                 context.TokenEndpointRequest!.ClientAssertionType = PrivateKeyJwt.AssertionType;
                 context.TokenEndpointRequest.ClientAssertion =
-                    PrivateKeyJwt.CreateAssertion(client, metadata.TokenEndpoint);
+                    PrivateKeyJwt.CreateAssertion(client, metadata.Issuer);
             };
         }
     });
@@ -133,6 +133,7 @@ static async Task<string> RequestTokenAsync(
     var metadata = await http.GetFromJsonAsync<JsonElement>(
         $"{client.Authority}/.well-known/openid-configuration", cancellationToken);
     var endpoint = metadata.GetProperty("token_endpoint").GetString()!;
+    var issuer = metadata.GetProperty("issuer").GetString()!;
     var fields = new Dictionary<string, string>
     {
         ["grant_type"] = "client_credentials",
@@ -143,7 +144,7 @@ static async Task<string> RequestTokenAsync(
     if (client.AuthenticationMethod == "private_key_jwt")
     {
         fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-        fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, endpoint);
+        fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, issuer);
     }
     else if (client.AuthenticationMethod == "client_secret_post")
     {
@@ -170,7 +171,7 @@ Cet extrait ne fournit pas de cache de métadonnées, de cache de tokens ou de s
 
 ## Duende BFF et gestion des tokens
 
-Le [guide JWK Base64](jwk-base64.md) détaille les configurations BFF et CC Xp/Capa avec `PrivateKeyBase64`, les appels remplaçant l'adaptation PEM du template et l'injection Kubernetes.
+Le [guide JWK Base64](jwk-base64.md) détaille les configurations BFF et CC Xp/Capa avec `PrivateKeyBase64`, les appels remplaçant une adaptation PEM et l'injection Kubernetes.
 
 La projection peut alimenter n'importe quelle section lue par un BFF .NET ou ses composants de gestion des tokens. Elle fournit l'authority, le client ID, les scopes et les credentials ; le BFF configure ensuite sa bibliothèque OIDC et ses clients sortants.
 

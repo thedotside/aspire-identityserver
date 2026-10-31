@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 var auth = builder.Services.AddAuthentication();
 foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
 {
@@ -18,11 +19,16 @@ foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
     );
 }
 builder.Services.AddAuthorization();
-builder.Services.AddHttpClient();
+
+// A token request carries a one-time assertion: a retried copy would be refused as a replay.
+// The opt-out from ServiceDefaults resilience is still experimental in Microsoft.Extensions.
+#pragma warning disable EXTEXP0001
+builder.Services.AddHttpClient("oauth").RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/health", () => Results.Ok());
+app.MapDefaultEndpoints();
 foreach (var scheme in new[] { "a", "b" })
 {
     app.MapGet(
@@ -77,12 +83,13 @@ if (app.Environment.IsDevelopment())
                 };
             else
                 return Results.NotFound();
-            var http = factory.CreateClient();
+            var http = factory.CreateClient("oauth");
             var metadata = await http.GetFromJsonAsync<JsonElement>(
                 $"{client.Authority}/.well-known/openid-configuration",
                 cancellationToken
             );
             var tokenEndpoint = metadata.GetProperty("token_endpoint").GetString()!;
+            var issuer = metadata.GetProperty("issuer").GetString()!;
             var fields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["client_id"] = client.ClientId,
@@ -98,7 +105,7 @@ if (app.Environment.IsDevelopment())
             )
             {
                 fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-                fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, tokenEndpoint);
+                fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, issuer);
             }
             else
                 fields["client_secret"] = client.ClientSecret!;

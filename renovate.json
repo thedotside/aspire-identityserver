@@ -1,8 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":semanticCommits"],
+  "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
   "timezone": "Europe/Paris",
-  "enabledManagers": ["nuget", "github-actions", "custom.regex"],
+  "enabledManagers": ["nuget", "github-actions", "npm", "custom.regex"],
   "ignorePaths": ["**/bin/**", "**/obj/**", "artifacts/**", "work/**"],
   "automerge": false,
   "prConcurrentLimit": 3,
@@ -11,6 +11,12 @@
     {
       "matchPackageNames": ["/^Aspire\\./"],
       "groupName": "Aspire"
+    },
+    {
+      "description": "Aspire.Hosting is the floor of the published Hosting package: raise it deliberately. AppHost, testing packages and SDK follow patches.",
+      "matchPackageNames": ["Aspire.Hosting"],
+      "groupName": "Aspire floor",
+      "dependencyDashboardApproval": true
     },
     {
       "matchPackageNames": ["/^Microsoft\\.AspNetCore\\./"],
@@ -22,19 +28,15 @@
       "allowedVersions": "/^10\\./"
     },
     {
+      "matchPackageNames": ["/^@commitlint\\//"],
+      "groupName": "commitlint"
+    },
+    {
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true
     }
   ],
   "customManagers": [
-    {
-      "customType": "regex",
-      "managerFilePatterns": ["/^eng\\/package-smoke\\.ps1$/"],
-      "matchStrings": [
-        "<(?:Sdk Name|PackageReference Include)=\"(?<depName>Aspire\\.(?:AppHost\\.Sdk|Hosting\\.AppHost))\" Version=\"(?<currentValue>[^\"]+)\""
-      ],
-      "datasourceTemplate": "nuget"
-    },
     {
       "customType": "regex",
       "managerFilePatterns": ["/^pipelines\\/renovate\\/action\\.yml$/"],

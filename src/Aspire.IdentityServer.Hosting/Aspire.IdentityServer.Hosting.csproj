@@ -1,16 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <!-- API compatibility against the last published version; intended breaks are suppressed. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>TheDotSide.Aspire.IdentityServer.Hosting</PackageId>
-    <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections.</Description>
+    <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections. Not for production: the provider runs Duende IdentityServer, licensed separately by Duende Software.</Description>
     <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
     <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
+    <Compile Include="../Shared/RuntimeContract.cs" Link="RuntimeContract.cs" />
     <PackageReference Include="Aspire.Hosting" />
-    <!-- Keep an explicit patched baseline for GHSA-qhrr-8q5h-9q3h. -->
-    <PackageReference Include="MessagePack" />
+    <InternalsVisibleTo Include="Aspire.IdentityServer.UnitTests" />
     <ProjectReference
       Include="../Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj"
       IsAspireProjectResource="false"

@@ -2,8 +2,10 @@ namespace Aspire.IdentityServer.Server;
 
 internal sealed class ServerConfiguration
 {
+    public int ContractVersion { get; set; }
     public string Name { get; set; } = "identityserver";
     public string Issuer { get; set; } = "";
+    public bool AcceptTokenEndpointAudience { get; set; }
     public List<ClientConfiguration> Clients { get; set; } = [];
     public List<ApiConfiguration> Apis { get; set; } = [];
     public List<UserConfiguration> Users { get; set; } = [];
@@ -14,7 +16,9 @@ internal sealed class ClientConfiguration
     public string ClientId { get; set; } = "";
     public string GrantType { get; set; } = "";
     public string AuthenticationMethod { get; set; } = "none";
-    public string? ClientSecret { get; set; }
+
+    /// <summary>Base64(SHA-256(secret)), as Duende stores it. The secret itself is never sent.</summary>
+    public string? ClientSecretHash { get; set; }
     public string? PublicJwk { get; set; }
     public bool RequirePkce { get; set; } = true;
     public List<string> Scopes { get; set; } = [];

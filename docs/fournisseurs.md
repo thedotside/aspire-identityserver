@@ -80,7 +80,7 @@ Ajouter un scope au client ne le déclare pas comme scope d'API. Il faut l'assoc
 
 Il n'existe pas de `WithAudience()` sur le client. L'audience du token d'accès découle des ressources associées aux scopes demandés. Plusieurs ressources peuvent conduire à plusieurs audiences. Évite de partager un scope entre plusieurs ressources si tu souhaites une audience unique.
 
-L'audience d'une assertion `private_key_jwt` est distincte : nos exemples utilisent le `token_endpoint` découvert chez l'IDP. Voir [les assertions](clients.md).
+L'audience d'une assertion `private_key_jwt` est distincte : c'est l'issuer de l'IDP, comme le demande draft-ietf-oauth-rfc7523bis. Voir [les assertions](clients.md#assertions-private_key_jwt).
 
 ## Règles des ressources
 
@@ -96,7 +96,7 @@ Une API doit valider issuer, signature, expiration et audience, puis vérifier l
 
 ## Emplacement du runtime
 
-`IdentityServerOptions` expose une seule option : `RuntimeDirectory`.
+`IdentityServerOptions` expose `RuntimeDirectory` et `AcceptTokenEndpointAudience` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
 
 ```csharp
 var idp = builder.AddIdentityServer("idp", options =>
@@ -123,7 +123,7 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Clients__{i}__GrantType` | `authorization_code` ou `client_credentials`. |
 | `IdentityServer__Clients__{i}__AuthenticationMethod` | `none`, `client_secret_post` ou `private_key_jwt`. |
 | `IdentityServer__Clients__{i}__RequirePkce` | Booléen de l'enregistrement. |
-| `IdentityServer__Clients__{i}__ClientSecret` | Paramètre secret pour un client avec secret. |
+| `IdentityServer__Clients__{i}__ClientSecretHash` | Empreinte `Base64(SHA-256(secret))` d'un client avec secret, calculée au lancement ; jamais le secret lui-même. |
 | `IdentityServer__Clients__{i}__PublicJwk` | Clé publique du client JWT ; aucune clé privée client. |
 | `IdentityServer__Clients__{i}__Scopes__{j}` | Scope autorisé au client. |
 | `IdentityServer__Clients__{i}__RedirectUris__{j}` | Redirection de connexion résolue. |
@@ -135,4 +135,4 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 
 Les listes serveur utilisent des indices. La projection de scopes vers un consommateur utilise une chaîne séparée par des espaces.
 
-Aspire configure aussi le port HTTPS de Kestrel et le certificat. Le runtime exige `Development` ou `Testing` et un issuer HTTPS loopback. Les réglages fixes figurent dans [la référence](reference.md).
+Aspire configure aussi le port HTTPS de Kestrel et le certificat. `ASPNETCORE_ENVIRONMENT` reprend l'environnement de l'AppHost, que `AddIdentityServer()` limite à `Development` ou `Testing` ; le runtime le vérifie à nouveau et exige un issuer HTTPS loopback. Les réglages fixes figurent dans [la référence](reference.md).

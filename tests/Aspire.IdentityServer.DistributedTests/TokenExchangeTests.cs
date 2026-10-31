@@ -11,17 +11,17 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Playwright;
-using Xunit;
 
 namespace Aspire.IdentityServer.Tests;
 
-[Collection("app")]
+[ClassDataSource<AppFixture>(Shared = SharedType.PerTestSession)]
 public sealed class TokenExchangeTests(AppFixture fixture)
 {
-    [Theory]
-    [InlineData("worker")]
-    [InlineData("device-secret")]
+    [Test]
+    [Arguments("worker")]
+    [Arguments("device-secret")]
     public async Task Named_http_client_handler_exchanges_only_for_opted_in_clients(string clientId)
     {
         var subject = (await UserTokens()).GetProperty("access_token").GetString()!;
@@ -57,41 +57,45 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         using var request = new HttpRequestMessage(HttpMethod.Get, "/orders/a");
         request.Options.Set(TokenExchange.SubjectTokenKey, subject);
         using var response = await orders.SendAsync(request);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(clientId, payload.GetProperty("client").GetString());
-        Assert.Equal("idp-a:alice", payload.GetProperty("subject").GetString());
-        Assert.Null(request.Headers.Authorization);
+        await Assert.That(payload.GetProperty("client").GetString()).IsEqualTo(clientId);
+        await Assert.That(payload.GetProperty("subject").GetString()).IsEqualTo("idp-a:alice");
+        await Assert.That(request.Headers.Authorization).IsNull();
         using var plain = factory.CreateClient("plain");
         using var unauthenticated = await plain.GetAsync("/orders/a");
-        Assert.Equal(HttpStatusCode.Unauthorized, unauthenticated.StatusCode);
+        await Assert.That(unauthenticated.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
         // The same configured client must fail closed when no user token is supplied.
-        await Assert.ThrowsAsync<InvalidOperationException>(() => orders.GetAsync("/orders/a"));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+            orders.GetAsync("/orders/a")
+        );
         using var alreadyAuthenticated = new HttpRequestMessage(HttpMethod.Get, "/orders/a");
         alreadyAuthenticated.Headers.Authorization = new AuthenticationHeaderValue(
             "Bearer",
             "existing"
         );
         alreadyAuthenticated.Options.Set(TokenExchange.SubjectTokenKey, subject);
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
             orders.SendAsync(alreadyAuthenticated)
         );
         using var insecure = new HttpRequestMessage(HttpMethod.Get, "http://localhost/orders/a");
         insecure.Options.Set(TokenExchange.SubjectTokenKey, subject);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => orders.SendAsync(insecure));
+        await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+            orders.SendAsync(insecure)
+        );
         var foreignSubject = (await UserTokens("b")).GetProperty("access_token").GetString()!;
         using var foreignRequest = new HttpRequestMessage(HttpMethod.Get, "/orders/a");
         foreignRequest.Options.Set(TokenExchange.SubjectTokenKey, foreignSubject);
-        var rejected = await Assert.ThrowsAsync<HttpRequestException>(() =>
+        var rejected = await Assert.ThrowsExactlyAsync<HttpRequestException>(() =>
             orders.SendAsync(foreignRequest)
         );
-        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
-        Assert.Null(foreignRequest.Headers.Authorization);
+        await Assert.That(rejected!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(foreignRequest.Headers.Authorization).IsNull();
     }
 
-    [Theory]
-    [InlineData("worker", true)]
-    [InlineData("device-secret", false)]
+    [Test]
+    [Arguments("worker", true)]
+    [Arguments("device-secret", false)]
     public async Task Same_provider_exchange_preserves_user_and_limits_claims_scopes_and_lifetime(
         string clientId,
         bool includeName
@@ -110,50 +114,55 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         using var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(
-            TokenExchange.AccessTokenType,
-            payload.GetProperty("issued_token_type").GetString()
-        );
-        Assert.Equal("Bearer", payload.GetProperty("token_type").GetString());
-        Assert.Equal("orders.read", payload.GetProperty("scope").GetString());
-        Assert.False(payload.TryGetProperty("refresh_token", out _));
+        await Assert
+            .That(payload.GetProperty("issued_token_type").GetString())
+            .IsEqualTo(TokenExchange.AccessTokenType);
+        await Assert.That(payload.GetProperty("token_type").GetString()).IsEqualTo("Bearer");
+        await Assert.That(payload.GetProperty("scope").GetString()).IsEqualTo("orders.read");
+        await Assert.That(payload.TryGetProperty("refresh_token", out _)).IsFalse();
         var token = payload.GetProperty("access_token").GetString()!;
         var jwt = new JsonWebToken(token);
-        Assert.Equal(source.Subject, jwt.Subject);
-        Assert.Equal("idp-a:alice", jwt.Subject);
-        Assert.Equal(client.Authority, jwt.Issuer);
-        Assert.Equal(["orders-api-a"], jwt.Audiences.ToArray());
-        Assert.Equal(clientId, jwt.GetClaim("client_id").Value);
-        Assert.Equal(source.GetClaim("auth_time").Value, jwt.GetClaim("auth_time").Value);
-        Assert.True(jwt.ValidTo <= source.ValidTo);
+        await Assert.That(jwt.Subject).IsEqualTo(source.Subject);
+        await Assert.That(jwt.Subject).IsEqualTo("idp-a:alice");
+        await Assert.That(jwt.Issuer).IsEqualTo(client.Authority);
+        await Assert.That(jwt.Audiences.ToArray()).IsEquivalentTo(["orders-api-a"]);
+        await Assert.That(ProtocolTests.ScopeClaim(jwt)).IsEqualTo("orders.read");
+        await Assert.That(jwt.GetClaim("client_id").Value).IsEqualTo(clientId);
+        await Assert
+            .That(jwt.GetClaim("auth_time").Value)
+            .IsEqualTo(source.GetClaim("auth_time").Value);
+        await Assert.That(Values(jwt, "amr")).IsEquivalentTo(Values(source, "amr"));
+        await Assert.That(Values(jwt, "amr")).IsNotEmpty();
+        await Assert.That(jwt.GetClaim("idp").Value).IsEqualTo(source.GetClaim("idp").Value);
+        await Assert.That(jwt.ValidTo).IsLessThanOrEqualTo(source.ValidTo);
         using var actor = JsonDocument.Parse(jwt.GetClaim("act").Value);
-        Assert.Equal(clientId, actor.RootElement.GetProperty("sub").GetString());
+        await Assert.That(actor.RootElement.GetProperty("sub").GetString()).IsEqualTo(clientId);
         if (includeName)
-            Assert.Equal("Alice A", jwt.GetClaim("name").Value);
+            await Assert.That(jwt.GetClaim("name").Value).IsEqualTo("Alice A");
         else
-            Assert.False(jwt.TryGetClaim("name", out _));
-        Assert.False(jwt.TryGetClaim("role", out _));
+            await Assert.That(jwt.TryGetClaim("name", out _)).IsFalse();
+        await Assert.That(jwt.TryGetClaim("role", out _)).IsFalse();
         using var api = fixture.App.CreateHttpClient("api", "https");
         api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var accepted = await api.GetAsync("/orders/a");
-        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        await Assert.That(accepted.StatusCode).IsEqualTo(HttpStatusCode.OK);
         using var foreign = await api.GetAsync("/orders/b");
-        Assert.Equal(HttpStatusCode.Unauthorized, foreign.StatusCode);
+        await Assert.That(foreign.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
     }
 
-    [Theory]
-    [InlineData("missing-subject", "invalid_request")]
-    [InlineData("id-token-type", "invalid_request")]
-    [InlineData("issued-id-token", "invalid_request")]
-    [InlineData("actor-token", "invalid_request")]
-    [InlineData("resource", "invalid_target")]
-    [InlineData("missing-audience", "invalid_request")]
-    [InlineData("wrong-audience", "invalid_grant")]
-    [InlineData("malformed", "invalid_grant")]
-    [InlineData("tampered", "invalid_grant")]
-    [InlineData("id-token", "invalid_grant")]
-    [InlineData("scope-escalation", "invalid_scope")]
-    [InlineData("wrong-secret", "invalid_client")]
+    [Test]
+    [Arguments("missing-subject", "invalid_request")]
+    [Arguments("id-token-type", "invalid_request")]
+    [Arguments("issued-id-token", "invalid_request")]
+    [Arguments("actor-token", "invalid_request")]
+    [Arguments("resource", "invalid_target")]
+    [Arguments("missing-audience", "invalid_request")]
+    [Arguments("wrong-audience", "invalid_target")]
+    [Arguments("malformed", "invalid_grant")]
+    [Arguments("tampered", "invalid_grant")]
+    [Arguments("id-token", "invalid_grant")]
+    [Arguments("scope-escalation", "invalid_scope")]
+    [Arguments("wrong-secret", "invalid_client")]
     public async Task Invalid_exchange_requests_are_rejected(string change, string expected)
     {
         var source = await UserTokens();
@@ -205,12 +214,12 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await AssertRejected(fields, expected);
     }
 
-    [Theory]
-    [InlineData("foreign-provider")]
-    [InlineData("untrusted-client")]
-    [InlineData("missing-source-audience")]
-    [InlineData("machine-subject")]
-    [InlineData("exchanged-subject")]
+    [Test]
+    [Arguments("foreign-provider")]
+    [Arguments("untrusted-client")]
+    [Arguments("missing-source-audience")]
+    [Arguments("machine-subject")]
+    [Arguments("exchanged-subject")]
     public async Task Only_configured_same_provider_authorization_code_subjects_are_accepted(
         string sourceKind
     )
@@ -258,7 +267,18 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await AssertRejected(ExchangeFields(client, source), "invalid_grant");
     }
 
-    [Fact]
+    [Test]
+    public async Task Sender_constrained_subject_tokens_cannot_become_bearer_tokens()
+    {
+        var source = await UserTokens(dpop: true);
+        await Assert.That(source.GetProperty("token_type").GetString()).IsEqualTo("DPoP");
+        var token = new JsonWebToken(source.GetProperty("access_token").GetString()!);
+        await Assert.That(token.TryGetPayloadValue<JsonElement>("cnf", out _)).IsTrue();
+        var client = await fixture.Client("idp-a", "device-secret");
+        await AssertRejected(ExchangeFields(client, token.EncodedToken), "invalid_grant");
+    }
+
+    [Test]
     public async Task Clients_without_opt_in_cannot_exchange_tokens()
     {
         var source = await UserTokens("b");
@@ -268,7 +288,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await AssertRejected(fields, "unsupported_grant_type", "b");
     }
 
-    [Fact]
+    [Test]
     public async Task Private_key_helper_uses_a_fresh_assertion_and_the_server_rejects_replay()
     {
         var source = (await UserTokens()).GetProperty("access_token").GetString()!;
@@ -291,11 +311,9 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         var second = QueryHelpers
             .ParseQuery(await secondRequest.Content!.ReadAsStringAsync())
             .ToDictionary(p => p.Key, p => p.Value.ToString(), StringComparer.Ordinal);
-        Assert.NotEqual(
-            new JsonWebToken(first["client_assertion"]).Id,
-            new JsonWebToken(second["client_assertion"]).Id,
-            StringComparer.Ordinal
-        );
+        await Assert
+            .That(new JsonWebToken(second["client_assertion"]).Id)
+            .IsNotEqualTo(new JsonWebToken(first["client_assertion"]).Id);
         using var http = fixture.App.CreateHttpClient("idp-a", "https");
         foreach (var fields in new[] { first, second })
         {
@@ -307,6 +325,12 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         }
         await AssertRejected(first, "invalid_client");
     }
+
+    private static string[] Values(JsonWebToken token, string type) =>
+        token
+            .Claims.Where(c => string.Equals(c.Type, type, StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToArray();
 
     private static Dictionary<string, string> ExchangeFields(
         IdentityClientOptions client,
@@ -334,25 +358,20 @@ public sealed class TokenExchangeTests(AppFixture fixture)
             "/connect/token",
             new FormUrlEncodedContent(fields)
         );
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(
-            error,
-            (await response.Content.ReadFromJsonAsync<JsonElement>())
-                .GetProperty("error")
-                .GetString()
-        );
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(await ProtocolTests.Error(response)).IsEqualTo(error);
     }
 
     private async Task<JsonElement> UserTokens(
         string provider = "a",
         string clientId = "web",
-        string? scope = null
+        string? scope = null,
+        bool dpop = false
     )
     {
         var client = await fixture.Client($"idp-{provider}", clientId);
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var callback = string.Equals(clientId, "public-web", StringComparison.Ordinal)
             ? "public"
@@ -415,11 +434,48 @@ public sealed class TokenExchangeTests(AppFixture fixture)
                 fields[pair.Key] = pair.Value;
         }
         using var http = fixture.App.CreateHttpClient($"idp-{provider}", "https");
-        using var response = await http.PostAsync(
-            "/connect/token",
-            new FormUrlEncodedContent(fields)
-        );
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/connect/token")
+        {
+            Content = new FormUrlEncodedContent(fields),
+        };
+        using var proofKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        if (dpop)
+            request.Headers.Add("DPoP", DPoPProof(proofKey, client.Authority + "/connect/token"));
+        using var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    /// <summary>A DPoP proof (RFC 9449) that binds the issued access token to this key.</summary>
+    private static string DPoPProof(ECDsa key, string tokenEndpoint)
+    {
+        var parameters = key.ExportParameters(false);
+        return new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                TokenType = "dpop+jwt",
+                IssuedAt = DateTime.UtcNow,
+                AdditionalHeaderClaims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["jwk"] = new Dictionary<string, object>(StringComparer.Ordinal)
+                    {
+                        ["kty"] = "EC",
+                        ["crv"] = "P-256",
+                        ["x"] = Base64UrlEncoder.Encode(parameters.Q.X!),
+                        ["y"] = Base64UrlEncoder.Encode(parameters.Q.Y!),
+                    },
+                },
+                Claims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["jti"] = Guid.NewGuid().ToString("N"),
+                    ["htm"] = "POST",
+                    ["htu"] = tokenEndpoint,
+                },
+                SigningCredentials = new SigningCredentials(
+                    new ECDsaSecurityKey(key),
+                    SecurityAlgorithms.EcdsaSha256
+                ),
+            }
+        );
     }
 }

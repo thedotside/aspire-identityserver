@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.IdentityServer.Client;
@@ -20,10 +22,23 @@ public sealed class TokenExchangeHandlerOptions
         ValueTask<string?>
     >? SubjectTokenProvider { get; set; }
 
+    /// <summary>The requested audience; defaults to <see cref="IdentityClientOptions.TokenExchangeAudience" />.</summary>
     public string? Audience { get; set; }
+
+    /// <summary>The requested scopes; defaults to <see cref="IdentityClientOptions.Scopes" />.</summary>
     public string? Scope { get; set; }
+
+    /// <summary>
+    /// The API origins (scheme, host and port) that may receive the exchanged token. When empty,
+    /// any HTTPS address of this named client may; declare the API base address to bound it.
+    /// </summary>
+    public ICollection<Uri> AllowedOrigins { get; } = [];
+
+    /// <summary>The time budget of discovery plus exchange, retries included. 30 s by default.</summary>
+    public TimeSpan BackchannelTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
+/// <summary>Adds token exchange to named <see cref="HttpClient" /> instances.</summary>
 public static class TokenExchangeHttpClientExtensions
 {
     /// <summary>The independent client used for discovery and token requests, without this handler.</summary>
@@ -46,11 +61,30 @@ public static class TokenExchangeHttpClientExtensions
             );
         var settings = new TokenExchangeHandlerOptions();
         configure?.Invoke(settings);
+        if (settings.BackchannelTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(
+                nameof(configure),
+                "BackchannelTimeout must be positive."
+            );
         builder.Services.AddOptions<IdentityClientOptions>(builder.Name).Bind(clientConfiguration);
-        builder.Services.AddHttpClient(BackchannelClientName);
+        // The shared backchannel is configured once, whatever the number of exchange handlers.
+        if (!builder.Services.Any(d => d.ServiceType == typeof(TokenExchangeMetadata)))
+        {
+            builder.Services.AddSingleton(services => new TokenExchangeMetadata(
+                services.GetService<TimeProvider>() ?? TimeProvider.System
+            ));
+            builder.Services.AddHttpClient(BackchannelClientName);
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<
+                    IHttpMessageHandlerBuilderFilter,
+                    FreshClientAssertionFilter
+                >()
+            );
+        }
         return builder.AddHttpMessageHandler(services => new TokenExchangeHandler(
             services.GetRequiredService<IHttpClientFactory>(),
             services.GetRequiredService<IOptionsMonitor<IdentityClientOptions>>(),
+            services.GetRequiredService<TokenExchangeMetadata>(),
             builder.Name,
             settings,
             services

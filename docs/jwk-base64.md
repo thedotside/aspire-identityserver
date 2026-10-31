@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Clients](clients.md) · [Projections](projections.md) · [Kubernetes](kubernetes.md)
 
-Ce support est ajouté dans la version `0.1.0-alpha.2`. Les packages `0.1.0-alpha.1` exposent seulement `PrivateKeyPem`. Installe la nouvelle version avant de retirer l'adaptation du template.
+Ce support est ajouté dans la version `0.1.0-alpha.2`. Les packages `0.1.0-alpha.1` exposent seulement `PrivateKeyPem` : un projet qui convertissait lui-même une JWK en PEM peut retirer cette adaptation après la mise à jour.
 
 ## Contrat exact
 
@@ -19,7 +19,6 @@ Le `kid` généré est le SHA-256 hexadécimal de la clé publique SubjectPublic
 Ces extraits supposent des ressources consommatrices Aspire `bff`, `xp`, `capa` déjà déclarées avec leur endpoint HTTPS. Les chemins de configuration sont des exemples ; utilise ceux que lisent tes applications.
 
 ```csharp
-using Aspire.IdentityServer.Hosting;
 
 var idp = builder.AddIdentityServer("idp");
 var xpApi = idp.AddApiResource("xp-api").WithScopes("xp.read");
@@ -41,13 +40,13 @@ var ccCapa = idp.AddClientCredentialsClient("cc-capa")
 bff.WithIdentityClient(bffClient, "Authentication:Bff")
     .WithIdentityClient(ccXp, "Integrations:Xp:OAuth");
 xp.WithIdentityClient(ccCapa, "Integrations:Capa:OAuth");
-xp.WithIdentityResource(xpApi, "Authentication:Inbound");
-capa.WithIdentityResource(capaApi, "Authentication:Inbound");
+xp.WithIdentityApiResource(xpApi, "Authentication:Inbound");
+capa.WithIdentityApiResource(capaApi, "Authentication:Inbound");
 ```
 
 La projection standard injecte `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `PrivateKeyBase64`, `KeyId` et, si applicable, `TokenExchangeAudience`. L'autorité reste une référence d'endpoint différée, la clé reste un paramètre secret Aspire et le consommateur attend l'IdP. Seuls `kty`, `kid`, `alg`, `use`, `n`, `e` sont enregistrés dans la configuration de l'IdP.
 
-Pour valider les tokens entrants, conserve séparément les `IdentityApiResource` retournées par `AddApiResource` et projette-les avec `WithIdentityResource`. Une API entrante reçoit uniquement l'autorité et l'audience, sans clé privée client.
+Pour valider les tokens entrants, conserve séparément les `IdentityApiResource` retournées par `AddApiResource` et projette-les avec `WithIdentityApiResource`. Une API entrante reçoit uniquement l'autorité et l'audience, sans clé privée client.
 
 ## Importer la valeur applicative
 
@@ -80,7 +79,7 @@ Cette surcharge ne résout pas le secret pendant l'enregistrement. La paire doit
 
 ## Consommateurs : retirer la conversion vers PEM
 
-Le binding devient direct, sans décodage ou conversion dans le template :
+Le binding devient direct, sans décodage ni conversion dans l'application :
 
 ```csharp
 using Aspire.IdentityServer.Client;
@@ -92,11 +91,11 @@ var ccXp = builder.Configuration.GetSection("Integrations:Xp:OAuth")
 var ccCapa = builder.Configuration.GetSection("Integrations:Capa:OAuth")
     .Get<IdentityClientOptions>()!;
 
-// Dans chaque demande de token, avec son endpoint découvert :
-var assertion = PrivateKeyJwt.CreateAssertion(ccCapa, tokenEndpoint);
+// Dans chaque demande de token, avec l'issuer découvert :
+var assertion = PrivateKeyJwt.CreateAssertion(ccCapa, issuer);
 ```
 
-Pour le BFF, l'événement OIDC `OnAuthorizationCodeReceived` appelle le même helper avec `bffClient`, comme dans [l'intégration ASP.NET Core](integration.md). Les appels CC Xp/Capa utilisent `client_assertion_type = PrivateKeyJwt.AssertionType` et une assertion fraîche à chaque demande. Les endpoints doivent provenir des métadonnées de l'IdP concerné. PAR, s'il est actif dans la bibliothèque BFF, doit également être authentifié ; aucun adaptateur Duende BFF automatique n'est ajouté.
+Pour le BFF, l'événement OIDC `OnAuthorizationCodeReceived` appelle le même helper avec `bffClient`, comme dans [l'intégration ASP.NET Core](integration.md). Les appels CC Xp/Capa utilisent `client_assertion_type = PrivateKeyJwt.AssertionType` et une assertion fraîche à chaque demande. L'issuer et les endpoints doivent provenir des métadonnées de l'IdP concerné. PAR, s'il est actif dans la bibliothèque BFF, doit également être authentifié ; aucun adaptateur Duende BFF automatique n'est ajouté.
 
 La projection personnalisée reste disponible :
 
@@ -138,35 +137,30 @@ data:
   private-key-base64: "<Base64(UTF8(valeur-applicative-Base64))>"
 ```
 
-Dans les deux cas, Kubernetes injecte exactement la même valeur applicative dans le conteneur :
+Dans les deux cas, Kubernetes écrit exactement la même valeur applicative dans le fichier monté. Préfère un volume à une variable d'environnement, comme dans [le guide Kubernetes](kubernetes.md#exemple-yaml--bff-ou-application-web-avec-clé-privée) : le nom du fichier est la clé de configuration lue par `AddKeyPerFile` :
 
 ```yaml
-env:
-  - name: Integrations__Capa__OAuth__PrivateKeyBase64
-    valueFrom:
-      secretKeyRef:
-        name: cc-capa-oauth
-        key: private-key-base64
+volumes:
+  - name: oidc-secrets
+    secret:
+      secretName: cc-capa-oauth
+      defaultMode: 0400
+      items:
+        - key: private-key-base64
+          path: Integrations__Capa__OAuth__PrivateKeyBase64
 ```
 
-Pour le BFF ou CC Xp, utilise respectivement `Authentication__Bff__PrivateKeyBase64` ou `Integrations__Xp__OAuth__PrivateKeyBase64`. Fournis aussi les champs publics de la section, dont `AuthenticationMethod: private_key_jwt` et le `KeyId` correspondant. Les marqueurs YAML sont à remplacer hors du dépôt ; ne versionne aucune valeur privée, même encodée.
+Pour le BFF ou CC Xp, utilise respectivement `Authentication__Bff__PrivateKeyBase64` ou `Integrations__Xp__OAuth__PrivateKeyBase64`. Une variable injectée par `secretKeyRef` sous le même nom reste possible si l'environnement l'impose. Fournis aussi les champs publics de la section, dont `AuthenticationMethod: private_key_jwt` et le `KeyId` correspondant. Les marqueurs YAML sont à remplacer hors du dépôt ; ne versionne aucune valeur privée, même encodée.
 
 L'API Kubernetes convertit `stringData` en `data` à l'écriture ; le décodage de `data` retire uniquement l'encodage Kubernetes. Voir la [documentation officielle des Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). Cela concerne les consommateurs avec un IdP accessible et adapté à leur environnement ; le fournisseur local de ce dépôt reste limité au développement et aux tests.
 
-## Vérifier les packages localement avant de migrer le template
+## Vérifier les packages localement
 
-Depuis ce dépôt, ces commandes construisent et vérifient les packages locaux :
-
-```powershell
-pwsh eng/pack.ps1 -Version 0.1.0-alpha.2
-pwsh eng/package-smoke.ps1 -Version 0.1.0-alpha.2
-```
-
-Dans le template, remplace les deux références `0.1.0-alpha.1` par `0.1.0-alpha.2`, puis utilise les appels ci-dessus. Avec Central Package Management, modifie `Directory.Packages.props`. Sinon, après disponibilité sur NuGet :
+Depuis ce dépôt, ces commandes construisent et vérifient les packages locaux, à la version de `Directory.Build.props` :
 
 ```powershell
-dotnet add <AppHost.csproj> package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.2 --source https://api.nuget.org/v3/index.json
-dotnet add <Consommateur.csproj> package TheDotSide.Aspire.IdentityServer.Client --version 0.1.0-alpha.2 --source https://api.nuget.org/v3/index.json
+pwsh eng/pack.ps1
+pwsh eng/package-smoke.ps1
 ```
 
-Pour utiliser les archives locales avant publication, remplace la source par `C:/dev/aspire-identityserver/artifacts/packages`. Le Runtime est une dépendance NuGet transitive de Hosting. Le dépôt du template reste inchangé par cette tâche.
+Dans un projet consommateur, pointe une source NuGet vers `artifacts/packages` de ce dépôt, ou attends la publication sur nuget.org. Avec Central Package Management, la version se change dans `Directory.Packages.props`. Le Runtime est une dépendance NuGet transitive de Hosting.

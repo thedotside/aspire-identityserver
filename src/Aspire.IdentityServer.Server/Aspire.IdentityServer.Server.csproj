@@ -2,12 +2,22 @@
   <PropertyGroup>
     <UseAppHost>false</UseAppHost>
     <IsPackable>true</IsPackable>
+    <!-- API compatibility against the last published version; intended breaks are suppressed. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageId>TheDotSide.Aspire.IdentityServer.Runtime</PackageId>
-    <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
+    <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting, for local development and tests only. Duende IdentityServer is restored as a NuGet dependency, not bundled, and stays under Duende Software's own license: read it before any use, and never run this provider in production.</Description>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
+    <Compile Include="../Shared/RuntimeContract.cs" Link="RuntimeContract.cs" />
     <PackageReference Include="Duende.IdentityServer" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
   </ItemGroup>

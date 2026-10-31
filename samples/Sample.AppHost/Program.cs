@@ -1,5 +1,3 @@
-using Aspire.IdentityServer.Hosting;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 var idpA = builder
@@ -59,8 +57,8 @@ var api = builder
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithHttpsEndpoint()
     .WithHttpHealthCheck("/health", endpointName: "https")
-    .WithIdentityResource(ordersA, "Authentication:IdpA")
-    .WithIdentityResource(ordersB, "Authentication:IdpB")
+    .WithIdentityApiResource(ordersA, "Authentication:IdpA")
+    .WithIdentityApiResource(ordersB, "Authentication:IdpB")
     .WithIdentityClient(workerA, "Integrations:Accounting:OAuth")
     .WithIdentityClient(
         workerB,

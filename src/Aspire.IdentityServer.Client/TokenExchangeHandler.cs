@@ -8,6 +8,7 @@ namespace Aspire.IdentityServer.Client;
 internal sealed class TokenExchangeHandler(
     IHttpClientFactory clients,
     IOptionsMonitor<IdentityClientOptions> clientOptions,
+    TokenExchangeMetadata metadata,
     string clientName,
     TokenExchangeHandlerOptions settings,
     IServiceProvider services
@@ -31,6 +32,22 @@ internal sealed class TokenExchangeHandler(
             throw new InvalidOperationException(
                 "Token exchange requires an HTTPS resource address."
             );
+        // The exchanged user token only travels to the declared API origins.
+        if (
+            settings.AllowedOrigins.Count > 0
+            && !settings.AllowedOrigins.Any(o =>
+                Uri.Compare(
+                    o,
+                    resource,
+                    UriComponents.SchemeAndServer,
+                    UriFormat.Unescaped,
+                    StringComparison.OrdinalIgnoreCase
+                ) == 0
+            )
+        )
+            throw new InvalidOperationException(
+                "The resource address is not one of the allowed origins of this exchange handler."
+            );
         string? subject;
         if (settings.SubjectTokenProvider is { } provider)
             subject = await provider(services, request, cancellationToken).ConfigureAwait(false);
@@ -52,64 +69,9 @@ internal sealed class TokenExchangeHandler(
             throw new InvalidOperationException(
                 "Configure an absolute HTTPS identity-provider authority."
             );
-        using var backchannel = clients.CreateClient(
-            TokenExchangeHttpClientExtensions.BackchannelClientName
-        );
-        var metadata = await backchannel
-            .GetFromJsonAsync<JsonElement>(
-                client.Authority.TrimEnd('/') + "/.well-known/openid-configuration",
-                cancellationToken
-            )
+        var accessToken = await ExchangeAsync(client, subject, cancellationToken)
             .ConfigureAwait(false);
-        if (
-            !metadata.TryGetProperty("issuer", out var issuer)
-            || (
-                !string.Equals(issuer.GetString(), client.Authority, StringComparison.Ordinal)
-                && !string.Equals(
-                    issuer.GetString(),
-                    client.Authority.TrimEnd('/'),
-                    StringComparison.Ordinal
-                )
-            )
-            || !metadata.TryGetProperty("token_endpoint", out var endpoint)
-            || string.IsNullOrWhiteSpace(endpoint.GetString())
-        )
-            throw new HttpRequestException(
-                "The discovery response does not match the configured identity provider."
-            );
-        using var exchangeRequest = TokenExchange.CreateRequest(
-            client,
-            endpoint.GetString()!,
-            subject,
-            settings.Audience,
-            settings.Scope
-        );
-        using var exchangeResponse = await backchannel
-            .SendAsync(exchangeRequest, cancellationToken)
-            .ConfigureAwait(false);
-        exchangeResponse.EnsureSuccessStatusCode();
-        var payload = await exchangeResponse
-            .Content.ReadFromJsonAsync<JsonElement>(cancellationToken)
-            .ConfigureAwait(false);
-        if (
-            !payload.TryGetProperty("access_token", out var accessToken)
-            || string.IsNullOrWhiteSpace(accessToken.GetString())
-            || !payload.TryGetProperty("token_type", out var tokenType)
-            || !string.Equals(tokenType.GetString(), "Bearer", StringComparison.OrdinalIgnoreCase)
-            || !payload.TryGetProperty("issued_token_type", out var issuedType)
-            || !string.Equals(
-                issuedType.GetString(),
-                TokenExchange.AccessTokenType,
-                StringComparison.Ordinal
-            )
-        )
-            throw new HttpRequestException(
-                "The provider returned an invalid token-exchange response."
-            );
-        request.Headers.Authorization = new AuthenticationHeaderValue(
-            "Bearer",
-            accessToken.GetString()
-        );
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         try
         {
             return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -119,6 +81,68 @@ internal sealed class TokenExchangeHandler(
             // Keep user-specific state off pooled handlers, and permit an outer retry to
             // perform a new exchange with fresh client authentication.
             request.Headers.Authorization = null;
+        }
+    }
+
+    private async Task<string> ExchangeAsync(
+        IdentityClientOptions client,
+        string subject,
+        CancellationToken cancellationToken
+    )
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(settings.BackchannelTimeout);
+        try
+        {
+            using var backchannel = clients.CreateClient(
+                TokenExchangeHttpClientExtensions.BackchannelClientName
+            );
+            var (issuer, endpoint) = await metadata
+                .GetAsync(backchannel, client.Authority, timeout.Token)
+                .ConfigureAwait(false);
+            using var exchangeRequest = TokenExchange.CreateRequest(
+                client,
+                endpoint,
+                subject,
+                settings.Audience,
+                settings.Scope,
+                issuer
+            );
+            using var exchangeResponse = await backchannel
+                .SendAsync(exchangeRequest, timeout.Token)
+                .ConfigureAwait(false);
+            exchangeResponse.EnsureSuccessStatusCode();
+            var payload = await exchangeResponse
+                .Content.ReadFromJsonAsync<JsonElement>(timeout.Token)
+                .ConfigureAwait(false);
+            if (
+                !payload.TryGetProperty("access_token", out var accessToken)
+                || string.IsNullOrWhiteSpace(accessToken.GetString())
+                || !payload.TryGetProperty("token_type", out var tokenType)
+                || !string.Equals(
+                    tokenType.GetString(),
+                    "Bearer",
+                    StringComparison.OrdinalIgnoreCase
+                )
+                || !payload.TryGetProperty("issued_token_type", out var issuedType)
+                || !string.Equals(
+                    issuedType.GetString(),
+                    TokenExchange.AccessTokenType,
+                    StringComparison.Ordinal
+                )
+            )
+                throw new HttpRequestException(
+                    "The provider returned an invalid token-exchange response."
+                );
+            return accessToken.GetString()!;
+        }
+        catch (OperationCanceledException error)
+            when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"The token-exchange backchannel did not answer within {settings.BackchannelTimeout.TotalSeconds:0.#} s.",
+                error
+            );
         }
     }
 }

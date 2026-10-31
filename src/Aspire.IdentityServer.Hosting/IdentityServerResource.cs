@@ -1,23 +1,37 @@
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer.Hosting;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting.ApplicationModel;
 
-/// <summary>A local, ephemeral OAuth/OIDC server process managed by Aspire.</summary>
+/// <summary>
+/// A local, ephemeral OAuth/OIDC server process managed by Aspire. As a service-discovery
+/// resource, <c>WithReference(provider)</c> gives a consumer its HTTPS address.
+/// </summary>
 public sealed class IdentityServerResource(string name, string runtimeDirectory)
-    : ExecutableResource(name, "dotnet", runtimeDirectory)
+    : ExecutableResource(name, DotnetHost.Path, runtimeDirectory),
+        IResourceWithServiceDiscovery
 {
     internal List<IdentityClient> Clients { get; } = [];
     internal List<IdentityApiResource> Apis { get; } = [];
     internal List<TestUser> Users { get; } = [];
+
+    /// <summary>The clients registered with this provider, in declaration order.</summary>
     public IReadOnlyList<IdentityClient> RegisteredClients => Clients.AsReadOnly();
 }
 
-/// <summary>Overrides the bundled server location when developing this repository.</summary>
+/// <summary>Options of one local identity provider.</summary>
 public sealed class IdentityServerOptions
 {
+    /// <summary>Overrides the bundled server location when developing this repository.</summary>
     public string RuntimeDirectory { get; set; } =
         Path.Combine(AppContext.BaseDirectory, "identityserver");
+
+    /// <summary>
+    /// Also accepts private_key_jwt assertions in the original RFC 7523 profile, whose audience is
+    /// the token endpoint. By default the provider requires the draft-ietf-oauth-rfc7523bis profile:
+    /// the issuer as sole audience and the <c>client-authentication+jwt</c> type. Enable this only
+    /// for clients written for providers that refuse the issuer audience.
+    /// </summary>
+    public bool AcceptTokenEndpointAudience { get; set; }
 }
 
 internal sealed record TestUser(
@@ -36,12 +50,20 @@ public sealed class IdentityApiResource
         Audience = audience;
     }
 
+    /// <summary>The provider that issues tokens for this API.</summary>
     public IResourceBuilder<IdentityServerResource> Server { get; }
+
+    /// <summary>The audience (<c>aud</c>) of access tokens issued for this API.</summary>
     public string Audience { get; }
+
+    /// <summary>The deferred HTTPS address of the provider, its issuer.</summary>
     public EndpointReference Authority => Server.GetEndpoint("https");
     internal HashSet<string> ScopeNames { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The scopes that issue tokens for this API.</summary>
     public IReadOnlyCollection<string> Scopes => ScopeNames;
 
+    /// <summary>Adds API scopes; identity scopes and <c>offline_access</c> are reserved.</summary>
     public IdentityApiResource WithScopes(params string[] scopes)
     {
         foreach (var scope in scopes)

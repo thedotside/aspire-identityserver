@@ -118,7 +118,14 @@ using var response = await http.GetAsync("/orders/a", cancellationToken);
 response.EnsureSuccessStatusCode();
 ```
 
-À chaque requête, le handler lit le jeton utilisateur, découvre le token endpoint, effectue l'échange et place le nouveau Bearer sur l'appel API. Le backchannel nommé `TokenExchangeHttpClientExtensions.BackchannelClientName` n'utilise pas ce handler : ni récursion ni propagation des credentials machine à l'API. Configure une adresse de ressource HTTPS ; ne fixe pas de header `Authorization` sur ce client, car le handler refuse de remplacer une authentification existante.
+À chaque requête, le handler lit le jeton utilisateur, effectue l'échange et place le nouveau Bearer sur l'appel API. Le document de découverte est mis en cache 15 minutes par authority, partagé par tous les handlers. Découverte et échange ont un budget commun de 30 secondes (`BackchannelTimeout`), nouvelles tentatives comprises ; au-delà, l'appel échoue avec `TimeoutException`. Si une couche de résilience, comme celle des ServiceDefaults, relance ou duplique (hedging) la demande de jeton, chaque tentative porte une assertion `private_key_jwt` neuve, quel que soit l'ordre d'enregistrement des handlers : rejouer la première serait refusé.
+
+Déclare les origines de l'API dans `AllowedOrigins` : le jeton échangé ne part alors que vers elles, et une autre adresse HTTPS est refusée avant tout échange.
+
+```csharp
+options.AllowedOrigins.Add(new Uri(builder.Configuration["services:api:https:0"]!));
+```
+ Le backchannel nommé `TokenExchangeHttpClientExtensions.BackchannelClientName` n'utilise pas ce handler : ni récursion ni propagation des credentials machine à l'API. Configure une adresse de ressource HTTPS ; ne fixe pas de header `Authorization` sur ce client, car le handler refuse de remplacer une authentification existante.
 
 Les options facultatives `Audience` et `Scope` permettent de choisir un sous-ensemble explicite. Par défaut, elles utilisent `IdentityClientOptions.TokenExchangeAudience` et `Scopes` projetés depuis l'AppHost. Le sample utilise `options.Scope = "orders.read"` sur ses deux clients nommés.
 
@@ -164,7 +171,7 @@ var exchanged = await response.Content.ReadFromJsonAsync<JsonElement>(cancellati
 var accessToken = exchanged.GetProperty("access_token").GetString();
 ```
 
-Le helper construit une requête HTTP et ne l'envoie pas. Il exige un endpoint HTTPS, prend en charge les deux méthodes d'authentification et crée une nouvelle assertion avec un nouveau `jti` à chaque appel. Utilise une nouvelle requête pour chaque tentative. Sans argument `scope`, il demande les scopes projetés du client machine ; indique un sous-ensemble si nécessaire, par exemple `TokenExchange.CreateRequest(machine, tokenEndpoint, userAccessToken, scope: "orders.read")`. Une audience peut aussi être fournie explicitement avec `audience: "orders-api"`.
+Le helper construit une requête HTTP et ne l'envoie pas. Il exige un endpoint HTTPS, prend en charge les deux méthodes d'authentification et crée une nouvelle assertion avec un nouveau `jti` à chaque appel. L'audience de l'assertion est l'issuer : par défaut l'authority configurée, que la découverte OpenID impose identique, ou la valeur passée en `issuer:`. Utilise une nouvelle requête pour chaque tentative. Sans argument `scope`, il demande les scopes projetés du client machine ; indique un sous-ensemble si nécessaire, par exemple `TokenExchange.CreateRequest(machine, tokenEndpoint, userAccessToken, scope: "orders.read")`. Une audience peut aussi être fournie explicitement avec `audience: "orders-api"`.
 
 Sans ce package, envoie un formulaire `application/x-www-form-urlencoded` au token endpoint :
 
@@ -198,16 +205,20 @@ Le jeton signé porte notamment :
 | `scope` | `orders.read`. |
 | `name` | `Alice`, uniquement si sélectionné. |
 | `auth_time` | Heure d'authentification du jeton source. |
+| `amr` | Méthodes d'authentification du jeton source, par exemple `pwd`. L'échange ne les remplace pas. |
+| `idp` | Fournisseur d'identité du jeton source, `local` pour les utilisateurs de test. |
 
 Les scopes demandés doivent appartenir au client machine, à l'API et au jeton utilisateur. Le jeton échangé ne peut pas prolonger la validité du jeton source. Une marge d'une seconde évite de prolonger sa validité pendant l'émission ; un jeton trop proche de son expiration est refusé.
 
 Si un scope demandé désigne plusieurs ressources API du même fournisseur, l'échange est refusé plutôt que d'émettre des audiences supplémentaires. Utilise des scopes distincts pour les API cibles dans cette V1.
 
-Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre issuer, sans utilisateur actif, issus d'un client source non autorisé, ainsi que les ID tokens et les jetons purement machine. Les échanges en chaîne, `actor_token`, `resource`, plusieurs audiences et les types de jeton autres que l'access token sont exclus de cette V1. `subject_token` et `actor_token` sont masqués dans les journaux de requête Duende.
+Une audience qu'aucune politique du client machine n'autorise renvoie `invalid_target`, comme le recommande la RFC 8693. Une audience autorisée avec un jeton source inattendu renvoie `invalid_grant`.
+
+Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre issuer, sans utilisateur actif, issus d'un client source non autorisé, ainsi que les ID tokens et les jetons purement machine. Il refuse aussi, en `invalid_grant`, un jeton lié à une clé par DPoP ou mTLS (claim `cnf`) : l'échange émettrait un jeton porteur sans preuve de possession. Les échanges en chaîne, `actor_token`, `resource`, plusieurs audiences et les types de jeton autres que l'access token sont exclus de cette V1. `subject_token` et `actor_token` sont masqués dans les journaux de requête Duende.
 
 Un access token utilisateur peut servir à plusieurs échanges tant qu'il reste valide. Une assertion `private_key_jwt` ne peut pas être rejouée. La déconnexion navigateur ne révoque pas les access tokens déjà émis ; leur expiration reste applicable.
 
-Le [sample AppHost](../samples/Sample.AppHost/Program.cs) montre un client RSA autorisant `name` et un client avec secret sans claim utilisateur supplémentaire. Les [tests réels](../tests/Aspire.IdentityServer.Tests/TokenExchangeTests.cs) couvrent les parcours PKCE, l'authentification du client machine, l'acceptation du jeton par l'API et les refus.
+Le [sample AppHost](../samples/Sample.AppHost/Program.cs) montre un client RSA autorisant `name` et un client avec secret sans claim utilisateur supplémentaire. Les [tests réels](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs) couvrent les parcours PKCE, l'authentification du client machine, l'acceptation du jeton par l'API et les refus.
 
 ## Étape suivante : deux IdP
 

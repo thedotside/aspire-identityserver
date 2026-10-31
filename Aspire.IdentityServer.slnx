@@ -2,6 +2,7 @@
   <Folder Name="/samples/">
     <Project Path="samples/Sample.Api/Sample.Api.csproj" />
     <Project Path="samples/Sample.AppHost/Sample.AppHost.csproj" />
+    <Project Path="samples/Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
     <Project Path="samples/Sample.Web/Sample.Web.csproj" />
   </Folder>
   <Folder Name="/src/">
@@ -10,6 +11,7 @@
     <Project Path="src/Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Aspire.IdentityServer.Tests/Aspire.IdentityServer.Tests.csproj" />
+    <Project Path="tests/Aspire.IdentityServer.DistributedTests/Aspire.IdentityServer.DistributedTests.csproj" />
+    <Project Path="tests/Aspire.IdentityServer.UnitTests/Aspire.IdentityServer.UnitTests.csproj" />
   </Folder>
 </Solution>

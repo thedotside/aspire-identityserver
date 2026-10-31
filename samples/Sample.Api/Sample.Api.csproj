@@ -2,5 +2,6 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <ProjectReference Include="../../src/Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
+    <ProjectReference Include="../Sample.ServiceDefaults/Sample.ServiceDefaults.csproj" />
   </ItemGroup>
 </Project>

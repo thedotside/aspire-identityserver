@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
+using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using Duende.IdentityServer.Validation;
@@ -55,10 +56,24 @@ internal sealed class TokenExchangeGrantValidator(
         var sourceClient = SingleClaim(claims, "client_id");
         var expires = SingleClaim(claims, "exp");
         var authTime = SingleClaim(claims, "auth_time");
+        var identityProvider = SingleClaim(claims, "idp");
+        // How the user authenticated stays a fact of the validated source token.
+        var authenticationMethods = claims
+            .Where(c => string.Equals(c.Type, "amr", StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        // A sender-constrained subject (DPoP or mTLS cnf) must never become a bearer token.
         if (
             string.IsNullOrWhiteSpace(subject)
             || string.IsNullOrWhiteSpace(sourceClient)
-            || claims.Any(c => string.Equals(c.Type, "act", StringComparison.Ordinal))
+            || string.IsNullOrWhiteSpace(identityProvider)
+            || authenticationMethods.Count == 0
+            || authenticationMethods.Any(string.IsNullOrWhiteSpace)
+            || claims.Any(c =>
+                string.Equals(c.Type, "act", StringComparison.Ordinal)
+                || string.Equals(c.Type, "cnf", StringComparison.Ordinal)
+            )
             || !long.TryParse(
                 expires,
                 NumberStyles.None,
@@ -79,6 +94,17 @@ internal sealed class TokenExchangeGrantValidator(
         var client = configuration.Clients.Single(c =>
             string.Equals(c.ClientId, context.Request.Client.ClientId, StringComparison.Ordinal)
         );
+        // RFC 8693 section 2.2.2: an audience that no policy of this client allows is a target
+        // error. A known audience with an unexpected source token stays invalid_grant.
+        if (
+            !client.TokenExchanges.Any(p =>
+                string.Equals(p.Audience, audiences[0], StringComparison.Ordinal)
+            )
+        )
+        {
+            context.Result = new GrantValidationResult(TokenRequestErrors.InvalidTarget);
+            return;
+        }
         var policy = client.TokenExchanges.SingleOrDefault(p =>
             string.Equals(p.SubjectClientId, sourceClient, StringComparison.Ordinal)
             && string.Equals(p.Audience, audiences[0], StringComparison.Ordinal)
@@ -136,12 +162,16 @@ internal sealed class TokenExchangeGrantValidator(
         transferred.Add(
             new Claim("act", JsonSerializer.Serialize(new { sub = client.ClientId }), "JSON")
         );
+        var principal = new IdentityServerUser(subject)
+        {
+            AuthenticationTime = DateTimeOffset.FromUnixTimeSeconds(authenticationTime).UtcDateTime,
+            AuthenticationMethods = authenticationMethods,
+            IdentityProvider = identityProvider,
+            AdditionalClaims = transferred,
+        }.CreatePrincipal();
         context.Result = new GrantValidationResult(
-            subject,
-            "token_exchange",
-            DateTimeOffset.FromUnixTimeSeconds(authenticationTime).UtcDateTime,
-            transferred,
-            customResponse: new Dictionary<string, object>(StringComparer.Ordinal)
+            principal,
+            new Dictionary<string, object>(StringComparer.Ordinal)
             {
                 ["issued_token_type"] = AccessTokenType,
             }
