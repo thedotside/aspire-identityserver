@@ -203,7 +203,7 @@ Les scopes demandés doivent appartenir au client machine, à l'API et au jeton 
 
 Si un scope demandé désigne plusieurs ressources API du même fournisseur, l'échange est refusé plutôt que d'émettre des audiences supplémentaires. Utilise des scopes distincts pour les API cibles dans cette V1.
 
-Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre issuer, sans utilisateur actif, issus d'un client source non autorisé, ainsi que les ID tokens et les jetons purement machine. Les échanges en chaîne, `actor_token`, `resource`, plusieurs audiences et les types de jeton autres que l'access token sont exclus de cette V1. `subject_token` et `actor_token` sont masqués dans les journaux de requête Duende.
+Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre issuer, sans utilisateur actif, issus d'un client source non autorisé, ainsi que les ID tokens et les jetons purement machine. Il refuse aussi, en `invalid_grant`, un jeton lié à une clé par DPoP ou mTLS (claim `cnf`) : l'échange émettrait un jeton porteur sans preuve de possession. Les échanges en chaîne, `actor_token`, `resource`, plusieurs audiences et les types de jeton autres que l'access token sont exclus de cette V1. `subject_token` et `actor_token` sont masqués dans les journaux de requête Duende.
 
 Un access token utilisateur peut servir à plusieurs échanges tant qu'il reste valide. Une assertion `private_key_jwt` ne peut pas être rejouée. La déconnexion navigateur ne révoque pas les access tokens déjà émis ; leur expiration reste applicable.
 

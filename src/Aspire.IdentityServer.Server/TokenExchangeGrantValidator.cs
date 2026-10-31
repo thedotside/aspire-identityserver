@@ -55,10 +55,14 @@ internal sealed class TokenExchangeGrantValidator(
         var sourceClient = SingleClaim(claims, "client_id");
         var expires = SingleClaim(claims, "exp");
         var authTime = SingleClaim(claims, "auth_time");
+        // A sender-constrained subject (DPoP or mTLS cnf) must never become a bearer token.
         if (
             string.IsNullOrWhiteSpace(subject)
             || string.IsNullOrWhiteSpace(sourceClient)
-            || claims.Any(c => string.Equals(c.Type, "act", StringComparison.Ordinal))
+            || claims.Any(c =>
+                string.Equals(c.Type, "act", StringComparison.Ordinal)
+                || string.Equals(c.Type, "cnf", StringComparison.Ordinal)
+            )
             || !long.TryParse(
                 expires,
                 NumberStyles.None,

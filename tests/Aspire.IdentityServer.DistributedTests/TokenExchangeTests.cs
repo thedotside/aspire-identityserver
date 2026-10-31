@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Playwright;
 
 namespace Aspire.IdentityServer.Tests;
@@ -263,6 +264,17 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task Sender_constrained_subject_tokens_cannot_become_bearer_tokens()
+    {
+        var source = await UserTokens(dpop: true);
+        await Assert.That(source.GetProperty("token_type").GetString()).IsEqualTo("DPoP");
+        var token = new JsonWebToken(source.GetProperty("access_token").GetString()!);
+        await Assert.That(token.TryGetPayloadValue<JsonElement>("cnf", out _)).IsTrue();
+        var client = await fixture.Client("idp-a", "device-secret");
+        await AssertRejected(ExchangeFields(client, token.EncodedToken), "invalid_grant");
+    }
+
+    [Test]
     public async Task Clients_without_opt_in_cannot_exchange_tokens()
     {
         var source = await UserTokens("b");
@@ -343,7 +355,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     private async Task<JsonElement> UserTokens(
         string provider = "a",
         string clientId = "web",
-        string? scope = null
+        string? scope = null,
+        bool dpop = false
     )
     {
         var client = await fixture.Client($"idp-{provider}", clientId);
@@ -411,11 +424,48 @@ public sealed class TokenExchangeTests(AppFixture fixture)
                 fields[pair.Key] = pair.Value;
         }
         using var http = fixture.App.CreateHttpClient($"idp-{provider}", "https");
-        using var response = await http.PostAsync(
-            "/connect/token",
-            new FormUrlEncodedContent(fields)
-        );
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/connect/token")
+        {
+            Content = new FormUrlEncodedContent(fields),
+        };
+        using var proofKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        if (dpop)
+            request.Headers.Add("DPoP", DPoPProof(proofKey, client.Authority + "/connect/token"));
+        using var response = await http.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    /// <summary>A DPoP proof (RFC 9449) that binds the issued access token to this key.</summary>
+    private static string DPoPProof(ECDsa key, string tokenEndpoint)
+    {
+        var parameters = key.ExportParameters(false);
+        return new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                TokenType = "dpop+jwt",
+                IssuedAt = DateTime.UtcNow,
+                AdditionalHeaderClaims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["jwk"] = new Dictionary<string, object>(StringComparer.Ordinal)
+                    {
+                        ["kty"] = "EC",
+                        ["crv"] = "P-256",
+                        ["x"] = Base64UrlEncoder.Encode(parameters.Q.X!),
+                        ["y"] = Base64UrlEncoder.Encode(parameters.Q.Y!),
+                    },
+                },
+                Claims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["jti"] = Guid.NewGuid().ToString("N"),
+                    ["htm"] = "POST",
+                    ["htu"] = tokenEndpoint,
+                },
+                SigningCredentials = new SigningCredentials(
+                    new ECDsaSecurityKey(key),
+                    SecurityAlgorithms.EcdsaSha256
+                ),
+            }
+        );
     }
 }
