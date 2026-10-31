@@ -9,6 +9,7 @@
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
     <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
     <PackageReference Include="Aspire.Hosting" />
+    <InternalsVisibleTo Include="Aspire.IdentityServer.UnitTests" />
     <ProjectReference
       Include="../Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj"
       IsAspireProjectResource="false"

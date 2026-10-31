@@ -5,7 +5,7 @@ namespace Aspire.IdentityServer.Hosting;
 
 /// <summary>A local, ephemeral OAuth/OIDC server process managed by Aspire.</summary>
 public sealed class IdentityServerResource(string name, string runtimeDirectory)
-    : ExecutableResource(name, "dotnet", runtimeDirectory)
+    : ExecutableResource(name, DotnetHost.Path, runtimeDirectory)
 {
     internal List<IdentityClient> Clients { get; } = [];
     internal List<IdentityApiResource> Apis { get; } = [];

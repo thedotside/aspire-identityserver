@@ -141,7 +141,7 @@ if (builder.ExecutionContext.IsRunMode)
 
 ## Préparation du runtime
 
-Au build, `Hosting` copie les assemblies résolues par NuGet dans `identityserver`, à côté de l'AppHost. Les projets de test bénéficient du même mécanisme. `AddIdentityServer()` y démarre `dotnet Aspire.IdentityServer.Server.dll`.
+Au build, `Hosting` copie les assemblies résolues par NuGet dans `identityserver`, à côté de l'AppHost. Les projets de test bénéficient du même mécanisme. `AddIdentityServer()` y démarre `Aspire.IdentityServer.Server.dll` avec l'hôte `dotnet` du runtime qui exécute l'AppHost, et non le premier `dotnet` du PATH : un poste peut avoir plusieurs installations de .NET. À défaut, il utilise `DOTNET_HOST_PATH`, puis le PATH.
 
 Il n'y a pas de publication manuelle du serveur à effectuer avec les packages. Les références projet du dépôt importent explicitement le fichier `.targets`, car une référence projet n'importe pas les assets `buildTransitive` d'un package.
 
