@@ -138,13 +138,7 @@ public sealed class IdentityClient
     {
         EnsureAuthenticationUnset();
         var value = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
-        return WithClientSecret(
-            Server.ApplicationBuilder.AddParameter(
-                $"{ParameterPrefix}-secret",
-                () => value,
-                secret: true
-            )
-        );
+        return WithClientSecret(GeneratedParameter("secret", () => value));
     }
 
     public IdentityClient WithGeneratedPrivateKeyJwt()
@@ -186,11 +180,7 @@ public sealed class IdentityClient
             Modulus = parameters.Modulus,
             Exponent = parameters.Exponent,
         };
-        var key = Server.ApplicationBuilder.AddParameter(
-            $"{ParameterPrefix}-key",
-            () => privateKeyBase64,
-            secret: true
-        );
+        var key = GeneratedParameter("key", () => privateKeyBase64);
         return WithBase64PrivateKeyJwt(key, RsaJwk.Serialize(publicParameters, keyId));
     }
 
@@ -236,11 +226,7 @@ public sealed class IdentityClient
                 e = Base64Url(parameters.Exponent!),
             }
         );
-        var key = Server.ApplicationBuilder.AddParameter(
-            $"{ParameterPrefix}-key",
-            () => pem,
-            secret: true
-        );
+        var key = GeneratedParameter("key", () => pem);
         return WithPrivateKeyJwt(key, jwk);
     }
 
@@ -255,6 +241,24 @@ public sealed class IdentityClient
         PrivateKeyPem = privateKey;
         return this;
     }
+
+    /// <summary>A secret generated for this client, named after it and grouped under its provider.</summary>
+    private IResourceBuilder<ParameterResource> GeneratedParameter(
+        string suffix,
+        Func<string> value
+    ) =>
+        Server
+            .ApplicationBuilder.AddParameter(
+                IdentityServerExtensions.ParameterName(
+                    Server,
+                    ClientId,
+                    suffix,
+                    $"{ParameterPrefix}-{suffix}"
+                ),
+                value,
+                secret: true
+            )
+            .WithParentRelationship(Server);
 
     private void RegisterPublicKey(IResourceBuilder<ParameterResource> privateKey, string publicJwk)
     {
