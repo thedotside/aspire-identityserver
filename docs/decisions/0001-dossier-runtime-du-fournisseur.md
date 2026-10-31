@@ -12,15 +12,15 @@ Jusqu'à `0.1.0-alpha.2`, la cible `buildTransitive` copiait dans ce dossier **t
 
 - Au build, la cible lit le graphe de paquets restauré par le consommateur, avec la tâche SDK `ResolvePackageDependencies`. Elle calcule la fermeture de `TheDotSide.Aspire.IdentityServer.Runtime` et ne copie que ses assemblies, dans les versions résolues pour ce consommateur. À l'intérieur du dépôt, l'assembly du serveur vient de la référence de projet.
 - Le dossier n'a pas de `deps.json` : l'hôte .NET charge alors les assemblies qu'il contient. Une dépendance avec des actifs propres à un RID (`runtimes/...`) ne pourrait pas être chargée ainsi : le build échoue avec un message explicite.
-- Si le dossier contient des fichiers qui n'appartiennent plus à la fermeture, il est recréé, pour qu'aucune assembly périmée ne soit chargée.
+- Le dossier appartient à l'intégration. Les assemblies et le `deps.json` qui n'appartiennent plus à la fermeture y sont supprimés, pour qu'aucune assembly périmée ne soit chargée ; les autres fichiers restent. Ses fichiers sont déclarés dans `FileWrites` : `dotnet clean` et les builds incrémentaux les gèrent comme les autres sorties.
 - Le `runtimeconfig.json` vise `net10.0` avec `rollForward: Major` : le fournisseur tourne sur .NET 10 quand il est installé, sinon sur la version majeure suivante.
 - Hosting et Runtime partagent un contrat de configuration versionné (`IdentityServer__ContractVersion`), vérifié au démarrage du fournisseur.
 
 ## Conséquences
 
-- Le dossier de l'AppHost d'exemple passe à 18 fichiers et 4 Mo, identique pour les projets de test. Aucune assembly de l'AppHost, d'Aspire, de Playwright ou du framework de test n'entre dans le processus du fournisseur.
+- Le dossier de l'AppHost d'exemple passe à 18 fichiers et 4 Mo au moment de cette décision, identique pour les projets de test. Aucune assembly de l'AppHost, d'Aspire, de Playwright ou du framework de test n'entre dans le processus du fournisseur.
 - Le fournisseur utilise exactement les versions que le consommateur a restaurées : un seul graphe NuGet, aucune copie de Duende dans nos archives.
-- La cible dépend d'une tâche du SDK conservée pour `EmitLegacyAssetsFileItems` et d'une tâche inline `RoslynCodeTaskFactory`, compatibles avec MSBuild .NET et .NET Framework.
+- La cible dépend d'une tâche du SDK conservée pour la compatibilité (`ResolvePackageDependencies`, appelée par le SDK seulement avec `EmitLegacyAssetsFileItems`) et d'une tâche inline `RoslynCodeTaskFactory`. Son retrait d'un futur SDK casserait le build des consommateurs : la CI, qui suit le SDK par Renovate, le verrait avant une publication. Visual Studio (MSBuild .NET Framework) n'a pas encore été vérifié.
 - Une future dépendance à actifs natifs ou propres à un RID exigera de générer un `deps.json` limité à la fermeture.
 - Les tests unitaires et le smoke test vérifient l'absence de `deps.json` et d'assemblies du consommateur dans le dossier.
 

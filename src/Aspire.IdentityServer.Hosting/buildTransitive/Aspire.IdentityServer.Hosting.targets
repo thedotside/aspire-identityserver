@@ -11,8 +11,8 @@
     AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll"
   >
     <ParameterGroup>
-      <Dependencies ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
-      <CopyLocal ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <Dependencies ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <CopyLocal ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
       <Root ParameterType="System.String" Required="true" />
       <ServerAssembly ParameterType="System.String" Required="true" />
       <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
@@ -24,7 +24,7 @@
         <![CDATA[
         // Package graph edges are "Id/Version" items whose ParentPackage is "Id/Version".
         var children = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-        foreach (var dependency in Dependencies)
+        foreach (var dependency in Dependencies ?? new ITaskItem[0])
         {
           var parent = dependency.GetMetadata("ParentPackage");
           if (string.IsNullOrEmpty(parent))
@@ -47,7 +47,7 @@
                 pending.Push(child);
         }
         var files = new List<ITaskItem>();
-        foreach (var item in CopyLocal)
+        foreach (var item in CopyLocal ?? new ITaskItem[0])
         {
           if (!string.Equals(item.GetMetadata("Extension"), ".dll", StringComparison.OrdinalIgnoreCase))
             continue;
@@ -74,9 +74,10 @@
 
   <Target
     Name="CopyIdentityServerRuntime"
-    AfterTargets="Build"
+    AfterTargets="CopyFilesToOutputDirectory"
     Condition="'$(IsAspireHost)' == 'true' or '$(IsTestProject)' == 'true'"
   >
+    <!-- Before IncrementalClean records FileWrites, so that dotnet clean removes the folder. -->
     <PropertyGroup>
       <_IdentityServerRuntimeDirectory>$(TargetDir)identityserver/</_IdentityServerRuntimeDirectory>
     </PropertyGroup>
@@ -100,16 +101,18 @@
     <ItemGroup>
       <_IdentityServerRuntimeTargets Include="@(_IdentityServerRuntimeFiles->'$(_IdentityServerRuntimeDirectory)%(DestinationSubDirectory)%(Filename)%(Extension)')" />
       <_IdentityServerRuntimeTargets Include="$(_IdentityServerRuntimeDirectory)Aspire.IdentityServer.Server.runtimeconfig.json" />
-      <!-- Without a deps.json, any assembly left in the folder would be loaded too. -->
+      <!--
+        Without a deps.json, the host loads every assembly of the folder, which belongs to this
+        integration: stale assemblies and an earlier deps.json are removed, other files stay.
+      -->
       <_IdentityServerRuntimeStale
-        Include="$(_IdentityServerRuntimeDirectory)**/*"
+        Include="$(_IdentityServerRuntimeDirectory)**/*.dll;$(_IdentityServerRuntimeDirectory)*.deps.json"
         Exclude="@(_IdentityServerRuntimeTargets)"
       />
+      <!-- dotnet clean and incremental builds then manage the folder like other outputs. -->
+      <FileWrites Include="@(_IdentityServerRuntimeTargets)" />
     </ItemGroup>
-    <RemoveDir
-      Directories="$(_IdentityServerRuntimeDirectory)"
-      Condition="'@(_IdentityServerRuntimeStale)' != ''"
-    />
+    <Delete Files="@(_IdentityServerRuntimeStale)" />
     <Copy
       SourceFiles="@(_IdentityServerRuntimeFiles)"
       DestinationFiles="@(_IdentityServerRuntimeFiles->'$(_IdentityServerRuntimeDirectory)%(DestinationSubDirectory)%(Filename)%(Extension)')"
