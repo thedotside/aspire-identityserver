@@ -19,7 +19,12 @@ foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
     );
 }
 builder.Services.AddAuthorization();
-builder.Services.AddHttpClient();
+
+// A token request carries a one-time assertion: a retried copy would be refused as a replay.
+// The opt-out from ServiceDefaults resilience is still experimental in Microsoft.Extensions.
+#pragma warning disable EXTEXP0001
+builder.Services.AddHttpClient("oauth").RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -78,7 +83,7 @@ if (app.Environment.IsDevelopment())
                 };
             else
                 return Results.NotFound();
-            var http = factory.CreateClient();
+            var http = factory.CreateClient("oauth");
             var metadata = await http.GetFromJsonAsync<JsonElement>(
                 $"{client.Authority}/.well-known/openid-configuration",
                 cancellationToken

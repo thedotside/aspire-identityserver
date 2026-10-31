@@ -12,11 +12,16 @@ namespace Aspire.IdentityServer.Tests;
 public sealed class TokenExchangeHandlerTests
 {
     [Test]
-    public async Task A_retried_exchange_signs_a_new_assertion_and_discovery_is_cached()
+    [Arguments(Resilience.DefaultsRetry)]
+    [Arguments(Resilience.BackchannelRetryAddedLast)]
+    [Arguments(Resilience.DefaultsHedging)]
+    public async Task Every_attempt_signs_a_new_assertion_and_discovery_is_cached(
+        Resilience resilience
+    )
     {
         var provider = new FakeProvider { FailedAttempts = 1 };
         var api = new FakeApi();
-        await using var services = Build(provider, api, retry: true);
+        await using var services = Build(provider, api, resilience);
         using var orders = services.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
         for (var call = 0; call < 2; call++)
         {
@@ -24,7 +29,7 @@ public sealed class TokenExchangeHandlerTests
             await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
         }
         await Assert.That(provider.Discoveries).IsEqualTo(1);
-        // First call: a 503 then a retried attempt. Second call: one attempt.
+        // First call: a 503, then a retried or hedged attempt. Second call: one attempt.
         var ids = provider.Assertions.Select(a => new JsonWebToken(a).Id).ToArray();
         await Assert.That(ids.Length).IsEqualTo(3);
         await Assert.That(ids.Distinct(StringComparer.Ordinal).Count()).IsEqualTo(3);
@@ -75,10 +80,24 @@ public sealed class TokenExchangeHandlerTests
         return request;
     }
 
+    public enum Resilience
+    {
+        None,
+
+        /// <summary>A retry on every client, registered first, as ServiceDefaults does.</summary>
+        DefaultsRetry,
+
+        /// <summary>The standard retry, added to the backchannel after the exchange handler.</summary>
+        BackchannelRetryAddedLast,
+
+        /// <summary>The standard hedging handler, which sends cloned requests.</summary>
+        DefaultsHedging,
+    }
+
     private static ServiceProvider Build(
         FakeProvider provider,
         FakeApi api,
-        bool retry = false,
+        Resilience resilience = Resilience.None,
         Action<TokenExchangeHandlerOptions>? configure = null
     )
     {
@@ -97,18 +116,25 @@ public sealed class TokenExchangeHandlerTests
             )
             .Build();
         var services = new ServiceCollection();
-        // A resilience pipeline such as ServiceDefaults adds one to every client.
-        if (retry)
+        if (resilience == Resilience.DefaultsRetry)
             services.ConfigureHttpClientDefaults(http =>
                 http.AddHttpMessageHandler(() => new RetryUnavailable())
             );
+        if (resilience == Resilience.DefaultsHedging)
+            services.ConfigureHttpClientDefaults(http => http.AddStandardHedgingHandler());
         services
             .AddHttpClient("orders")
             .AddTokenExchangeHandler(configuration.GetSection("Device"), configure)
             .ConfigurePrimaryHttpMessageHandler(() => api);
-        services
+        var backchannel = services
             .AddHttpClient(TokenExchangeHttpClientExtensions.BackchannelClientName)
             .ConfigurePrimaryHttpMessageHandler(() => provider);
+        if (resilience == Resilience.BackchannelRetryAddedLast)
+            backchannel.AddStandardResilienceHandler(o =>
+            {
+                o.Retry.Delay = TimeSpan.Zero;
+                o.Retry.UseJitter = false;
+            });
         return services.BuildServiceProvider(validateScopes: true);
     }
 

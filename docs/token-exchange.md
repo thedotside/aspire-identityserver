@@ -118,7 +118,7 @@ using var response = await http.GetAsync("/orders/a", cancellationToken);
 response.EnsureSuccessStatusCode();
 ```
 
-À chaque requête, le handler lit le jeton utilisateur, effectue l'échange et place le nouveau Bearer sur l'appel API. Le document de découverte est mis en cache 15 minutes par authority, partagé par tous les handlers. Découverte et échange ont un budget commun de 30 secondes (`BackchannelTimeout`), nouvelles tentatives comprises ; au-delà, l'appel échoue avec `TimeoutException`. Si une couche de résilience, comme celle des ServiceDefaults, relance la demande de jeton, chaque tentative porte une assertion `private_key_jwt` neuve : rejouer la première serait refusé.
+À chaque requête, le handler lit le jeton utilisateur, effectue l'échange et place le nouveau Bearer sur l'appel API. Le document de découverte est mis en cache 15 minutes par authority, partagé par tous les handlers. Découverte et échange ont un budget commun de 30 secondes (`BackchannelTimeout`), nouvelles tentatives comprises ; au-delà, l'appel échoue avec `TimeoutException`. Si une couche de résilience, comme celle des ServiceDefaults, relance ou duplique (hedging) la demande de jeton, chaque tentative porte une assertion `private_key_jwt` neuve, quel que soit l'ordre d'enregistrement des handlers : rejouer la première serait refusé.
 
 Déclare les origines de l'API dans `AllowedOrigins` : le jeton échangé ne part alors que vers elles, et une autre adresse HTTPS est refusée avant tout échange.
 

@@ -53,7 +53,8 @@ public static class ServiceDefaultsExtensions
             .Services.AddHealthChecks()
             .AddCheck("self", () => HealthCheckResult.Healthy(), ["live"]);
         builder.Services.AddServiceDiscovery();
-        // Retries are safe for token exchange: its backchannel signs a new assertion per attempt.
+        // The token-exchange backchannel signs a new assertion for each attempt. A client that
+        // posts its own assertion must opt out, as the sample API's "oauth" client does.
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
             http.AddStandardResilienceHandler();

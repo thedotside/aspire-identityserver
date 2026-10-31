@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.IdentityServer.Client;
@@ -71,9 +73,13 @@ public static class TokenExchangeHttpClientExtensions
             builder.Services.AddSingleton(services => new TokenExchangeMetadata(
                 services.GetService<TimeProvider>() ?? TimeProvider.System
             ));
-            builder
-                .Services.AddHttpClient(BackchannelClientName)
-                .AddHttpMessageHandler(() => new FreshClientAssertionHandler());
+            builder.Services.AddHttpClient(BackchannelClientName);
+            builder.Services.TryAddEnumerable(
+                ServiceDescriptor.Singleton<
+                    IHttpMessageHandlerBuilderFilter,
+                    FreshClientAssertionFilter
+                >()
+            );
         }
         return builder.AddHttpMessageHandler(services => new TokenExchangeHandler(
             services.GetRequiredService<IHttpClientFactory>(),
