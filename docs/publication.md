@@ -47,17 +47,26 @@ Dans NuGet, le compte personnel administrateur crée une politique **Trusted Pub
 | Repository Owner | `thedotside` |
 | Repository | `aspire-identityserver` |
 | Workflow File | `publish.yml`, sans chemin |
-| Environment | Vide : le workflow n'utilise pas d'environnement GitHub. |
+| Environment | `nuget`, l'environnement GitHub du job de publication : un jeton n'est alors délivré qu'à ce job. |
 | Package pattern | `TheDotSide.Aspire.IdentityServer.*` |
 | Scopes | Publier de nouveaux packages et de nouvelles versions, sans droit d'unlisting. |
 
 Dans les variables Actions du dépôt GitHub, `NUGET_USER` contient le nom du **compte personnel qui a créé la politique**, ici `Jean_Guy`. Il ne contient ni l'adresse e-mail ni le nom de l'organisation. Ce nom de profil n'est pas un secret.
 
-Le job de publication possède `contents: read`, `actions: read` pour récupérer les archives, et `id-token: write`. `NuGet/login@v1` échange le jeton GitHub contre une clé NuGet temporaire immédiatement avant l'envoi. Aucune clé NuGet permanente n'est stockée dans le dépôt ou dans les secrets Actions.
+Le job de publication possède `contents: read`, `actions: read` pour récupérer les archives, et `id-token: write`. L'action `NuGet/login`, épinglée par SHA, échange le jeton GitHub contre une clé NuGet temporaire immédiatement avant l'envoi. Aucune clé NuGet permanente n'est stockée dans le dépôt ou dans les secrets Actions.
 
 Pour un dépôt privé, NuGet peut afficher une politique temporairement active pendant sept jours. Une première publication réussie permet son activation durable. La politique reste liée au compte qui l'a créée et à son appartenance à l'organisation.
 
 Références officielles : [Trusted Publishing](https://learn.microsoft.com/en-us/nuget/nuget-org/trusted-publishing), [action NuGet/login](https://github.com/NuGet/login), [organisations NuGet](https://learn.microsoft.com/en-us/nuget/nuget-org/organizations-on-nuget-org).
+
+## Protéger la publication
+
+Sans protection, quiconque a le droit d'écriture sur le dépôt peut publier sous **TheDotSide** en poussant un tag. Le workflow fait déjà sa part : le job `publish` s'exécute dans l'environnement GitHub `nuget`, et toutes les actions sont épinglées par SHA, avec leur version en commentaire, tenues à jour par Renovate (`helpers:pinGitHubActionDigests`). Le reste se règle dans les paramètres, par un administrateur :
+
+1. **Environnement `nuget`** (Settings → Environments) : relecteurs requis, et règle de déploiement limitée aux tags `[0-9]*.[0-9]*.[0-9]*`. Le premier lancement crée l'environnement sans protection s'il n'existe pas encore : configure-le avant le prochain tag.
+2. **Politique NuGet** : renseigne `nuget` dans le champ Environment de la politique Trusted Publishing, ci-dessus.
+3. **Règles sur `main` et sur les tags** (rulesets) : PR obligatoire et CI verte pour `main`, création de tags de version réservée aux mainteneurs. GitHub ne les applique pas à un dépôt privé du plan gratuit : ce point dépend du choix de rendre le dépôt public ou de changer de plan.
+4. **Jeton Renovate** : `RENOVATE_TOKEN` peut aujourd'hui écrire sur le contenu et les workflows, donc sur `main`. Une règle de PR obligatoire sur `main`, ou l'application Mend Renovate, limiterait ce jeton aux branches de PR. Ce choix documenté est à rediscuter.
 
 ## Vérifier une version publiée
 
