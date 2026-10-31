@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.4 - Unreleased
+
+- Start the next development iteration after 0.1.0-alpha.3.
+
 ## 0.1.0-alpha.3 - 2026-10-31
 
 Hardening and engineering pass following the October 2026 audit.

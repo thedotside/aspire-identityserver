@@ -63,7 +63,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
 | `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration, assertion helpers and token-exchange handler for named HTTP clients. |
 
-Version: `0.1.0-alpha.3`. Requires .NET 10, Aspire 13.6.4 or later and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
+Version: `0.1.0-alpha.4`. Requires .NET 10, Aspire 13.6.4 or later and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
 
 Local development/testing only: the AppHost must run in `Development` or `Testing`, state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
 
