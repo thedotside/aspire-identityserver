@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
@@ -132,6 +133,54 @@ public sealed class ProtocolTests(AppFixture fixture)
         using var response = await TokenRequest(provider, fields);
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         await Assert.That(await Error(response)).IsEqualTo(expected);
+    }
+
+    [Test]
+    public async Task Discovery_advertises_only_RS256_client_assertions()
+    {
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        var metadata = await http.GetFromJsonAsync<JsonElement>(
+            "/.well-known/openid-configuration"
+        );
+        var algorithms = metadata
+            .GetProperty("token_endpoint_auth_signing_alg_values_supported")
+            .EnumerateArray()
+            .Select(a => a.GetString()!)
+            .ToArray();
+        await Assert.That(algorithms).IsEquivalentTo(["RS256"]);
+    }
+
+    [Test]
+    [Arguments(SecurityAlgorithms.RsaSha256, true)]
+    [Arguments(SecurityAlgorithms.RsaSsaPssSha256, false)]
+    [Arguments(SecurityAlgorithms.RsaSha512, false)]
+    public async Task Only_RS256_client_assertions_are_accepted(string algorithm, bool accepted)
+    {
+        var client = await fixture.Client("idp-a", "worker");
+        var key = new JsonWebKey(
+            Encoding.UTF8.GetString(Convert.FromBase64String(client.PrivateKeyBase64!))
+        );
+        var fields = Fields(client);
+        fields["client_assertion"] = new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                TokenType = "client-authentication+jwt",
+                Issuer = client.ClientId,
+                Audience = client.Authority,
+                Expires = DateTime.UtcNow.AddMinutes(1),
+                Claims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["sub"] = client.ClientId,
+                    ["jti"] = Guid.NewGuid().ToString("N"),
+                },
+                SigningCredentials = new SigningCredentials(key, algorithm),
+            }
+        );
+        using var response = await TokenRequest("a", fields);
+        if (accepted)
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        else
+            await Assert.That(await Error(response)).IsEqualTo("invalid_client");
     }
 
     [Test]

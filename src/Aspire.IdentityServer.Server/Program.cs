@@ -52,6 +52,11 @@ internal static class ServerProgram
                 options.KeyManagement.Enabled = false;
                 // RFC 9068 and RFC 8693: scope is one space-delimited string, as real providers emit.
                 options.EmitScopesAsSpaceDelimitedStringInJwt = true;
+                // Registered client keys and the helper only use RS256: advertise and accept no other.
+                options.SupportedClientAssertionSigningAlgorithms =
+                [
+                    Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256,
+                ];
                 options.UserInteraction.LoginUrl = "/Account/Login";
                 options.UserInteraction.LogoutUrl = "/Account/Logout";
                 options.UserInteraction.ErrorUrl = "/Error";
