@@ -186,7 +186,8 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | Client public récupérant un ancien secret | Une projection absente n'efface pas un ancien `appsettings` ; retirer le credential du fichier et utiliser la méthode `none`. |
 | Le PEM est un chemin ou contient les caractères littéraux `\n` | Fournir le contenu PEM réel ; le binding ne lit pas un fichier ni ne convertit une chaîne arbitraire de caractères échappés. |
 | Consommateur en attente | Vérifier que l'IDP est sain via `/health` et ses logs, sans y afficher les credentials. |
-| Publication Aspire refusée | Limite volontaire de cette alpha ; voir [Kubernetes](kubernetes.md). |
+| Publication Aspire refusée | Limite volontaire : déclarer le fournisseur dans `if (builder.ExecutionContext.IsRunMode)`, voir [le démarrage](demarrage.md#environnement-de-lapphost-et-publication). |
+| `runs only in an AppHost started in Development or Testing` | Lancer l'AppHost avec son profil, ou définir `DOTNET_ENVIRONMENT=Development`. |
 | Session perdue après redémarrage | État et Data Protection éphémères, comportement prévu. |
 
 ## Licence et contributions

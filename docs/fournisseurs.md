@@ -135,4 +135,4 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 
 Les listes serveur utilisent des indices. La projection de scopes vers un consommateur utilise une chaîne séparée par des espaces.
 
-Aspire configure aussi le port HTTPS de Kestrel et le certificat. Le runtime exige `Development` ou `Testing` et un issuer HTTPS loopback. Les réglages fixes figurent dans [la référence](reference.md).
+Aspire configure aussi le port HTTPS de Kestrel et le certificat. `ASPNETCORE_ENVIRONMENT` reprend l'environnement de l'AppHost, que `AddIdentityServer()` limite à `Development` ou `Testing` ; le runtime le vérifie à nouveau et exige un issuer HTTPS loopback. Les réglages fixes figurent dans [la référence](reference.md).

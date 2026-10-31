@@ -52,6 +52,6 @@ builder.Build().Run();
 
 Version: `0.1.0-alpha.2`. Requires .NET 10, Aspire 13.6.2 and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
 
-Local development/testing only: state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
+Local development/testing only: the AppHost must run in `Development` or `Testing`, state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this alpha. Performance against Keycloak has not been benchmarked.
 
 Original code: [MIT](LICENSE). Dependencies retain their own licenses, including Duende; see [third-party notices](THIRD-PARTY-NOTICES.md).

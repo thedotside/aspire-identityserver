@@ -121,6 +121,24 @@ api.WithIdentityClient(worker, "Integrations:Orders:OAuth");
 
 La projection attend que le fournisseur soit sain et transmet ses paramètres au processus consommateur. Elle ne configure pas le middleware d'authentification de l'application.
 
+## Environnement de l'AppHost et publication
+
+`AddIdentityServer()` n'accepte qu'un AppHost démarré en `Development` ou `Testing`. Le profil `launchSettings.json` d'un AppHost Aspire fixe déjà `Development` ; un AppHost lancé autrement, par son binaire, un script ou la CI, doit définir `DOTNET_ENVIRONMENT`. Le fournisseur reçoit ce nom réel, refuse lui aussi tout autre environnement et journalise un avertissement à chaque démarrage.
+
+`aspire publish` échoue dès qu'un fournisseur est déclaré. Pour garder un AppHost publiable, déclare le fournisseur et ses projections seulement en mode exécution. En publication, les consommateurs reçoivent la configuration du fournisseur réel par leurs propres paramètres ; voir [Kubernetes](kubernetes.md).
+
+```csharp
+if (builder.ExecutionContext.IsRunMode)
+{
+    var idp = builder.AddIdentityServer("idp");
+    idp.AddApiResource("orders-api").WithScopes("orders.read");
+    var worker = idp.AddClientCredentialsClient("worker")
+        .WithGeneratedPrivateKeyJwt()
+        .WithScopes("orders.read");
+    api.WithIdentityClient(worker, "Integrations:Orders:OAuth");
+}
+```
+
 ## Préparation du runtime
 
 Au build, `Hosting` copie les assemblies résolues par NuGet dans `identityserver`, à côté de l'AppHost. Les projets de test bénéficient du même mécanisme. `AddIdentityServer()` y démarre `dotnet Aspire.IdentityServer.Server.dll`.

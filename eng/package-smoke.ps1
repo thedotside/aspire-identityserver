@@ -87,8 +87,20 @@ try {
     dotnet build --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'Package consumer build failed.' }
     # Direct execution keeps the finite smoke check independent of the interactive Aspire CLI.
-    $runOutput = & dotnet (Join-Path $consumer 'bin/Debug/net10.0/Consumer.dll') 2>&1
-    $runResult = $LASTEXITCODE
+    # Without a launch profile, the AppHost environment must be set explicitly.
+    $consumerAssembly = Join-Path $consumer 'bin/Debug/net10.0/Consumer.dll'
+    $previousEnvironment = $env:DOTNET_ENVIRONMENT
+    try {
+        $env:DOTNET_ENVIRONMENT = 'Production'
+        $refusedOutput = & dotnet $consumerAssembly 2>&1
+        if ($LASTEXITCODE -eq 0 -or !($refusedOutput -match 'runs only in an AppHost started in Development or Testing')) {
+            $refusedOutput | Write-Output
+            throw 'The packaged provider accepted a Production AppHost.'
+        }
+        $env:DOTNET_ENVIRONMENT = 'Development'
+        $runOutput = & dotnet $consumerAssembly 2>&1
+        $runResult = $LASTEXITCODE
+    } finally { $env:DOTNET_ENVIRONMENT = $previousEnvironment }
     $runOutput | Write-Output
     if ($runResult -ne 0 -or !($runOutput -match 'PACKAGE_SMOKE_OK:')) { throw 'Package consumer failed.' }
     Write-Host "Verified independent consumer: $consumer"

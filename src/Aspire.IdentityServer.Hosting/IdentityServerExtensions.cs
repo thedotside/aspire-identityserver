@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.Hosting;
 
 namespace Aspire.IdentityServer.Hosting;
 
@@ -14,7 +15,16 @@ public static class IdentityServerExtensions
     {
         if (builder.ExecutionContext.IsPublishMode)
             throw new InvalidOperationException(
-                "Aspire IdentityServer is a local development/testing resource and cannot be deployed."
+                "Aspire IdentityServer is a local development/testing resource and cannot be deployed. "
+                    + "Declare it only in run mode, inside if (builder.ExecutionContext.IsRunMode)."
+            );
+        // The provider inherits the AppHost environment instead of being forced to Development,
+        // so its own Development/Testing guard keeps a meaning.
+        var environment = builder.Environment.EnvironmentName;
+        if (!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing"))
+            throw new InvalidOperationException(
+                $"Aspire IdentityServer runs only in an AppHost started in Development or Testing, not '{environment}'. "
+                    + "Set DOTNET_ENVIRONMENT for the AppHost process."
             );
         var options = new IdentityServerOptions();
         configure?.Invoke(options);
@@ -40,7 +50,7 @@ public static class IdentityServerExtensions
                         context.Password;
                 return Task.CompletedTask;
             })
-            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", environment)
             .WithEnvironment("IdentityServer__Name", name)
             .WithHttpHealthCheck("/health", endpointName: "https");
 #pragma warning restore ASPIRECERTIFICATES001

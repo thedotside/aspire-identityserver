@@ -137,6 +137,12 @@ internal static class ServerProgram
         );
 
         var app = builder.Build();
+        app.Logger.LogWarning(
+            "Identity provider '{Name}' ({Environment}) is for local development and tests only. "
+                + "Never expose it, and never accept its tokens outside development.",
+            config.Name,
+            app.Environment.EnvironmentName
+        );
         app.Use(
             async (context, next) =>
             {

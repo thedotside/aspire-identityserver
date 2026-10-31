@@ -141,7 +141,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Environnement accepté | `Development` ou `Testing`. L'extension configure `Development`. |
+| Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
 | Consentement | `RequireConsent = false`. |
