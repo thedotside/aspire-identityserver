@@ -65,6 +65,54 @@ public sealed class BrowserTests(AppFixture fixture)
         }
     }
 
+    [Test]
+    public async Task Provider_pages_and_cookies_are_hardened()
+    {
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        using var login = await http.GetAsync("/Account/Login?ReturnUrl=%2F");
+        await Assert.That(login.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        await Assert
+            .That(string.Join(' ', login.Headers.GetValues("Content-Security-Policy")))
+            .Contains("frame-ancestors 'none'");
+        await Assert
+            .That(string.Join(' ', login.Headers.GetValues("Referrer-Policy")))
+            .IsEqualTo("no-referrer");
+        var antiforgery = login
+            .Headers.GetValues("Set-Cookie")
+            .Single(c => c.StartsWith("aspire-idp-idp-a.csrf=", StringComparison.Ordinal));
+        await Assert.That(antiforgery).Contains("secure", StringComparison.OrdinalIgnoreCase);
+
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
+        var page = await context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(origin + "/login/a");
+        await Login(page);
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        var provider = fixture.App.GetEndpoint("idp-a", "https").ToString();
+        var cookies = (await context.CookiesAsync([provider]))
+            .Where(c => c.Name.StartsWith("aspire-idp-idp-a", StringComparison.Ordinal))
+            .ToArray();
+        await Assert.That(cookies.Select(c => c.Name).ToArray()).Contains("aspire-idp-idp-a");
+        await Assert
+            .That(cookies.Select(c => c.Name).ToArray())
+            .Contains("aspire-idp-idp-a.session");
+        foreach (var cookie in cookies)
+        {
+            await Assert.That(cookie.Secure).IsTrue();
+            await Assert.That(cookie.SameSite).IsNotEqualTo(SameSiteAttribute.None);
+        }
+        await Assert
+            .That(
+                cookies
+                    .Single(c =>
+                        string.Equals(c.Name, "aspire-idp-idp-a", StringComparison.Ordinal)
+                    )
+                    .SameSite
+            )
+            .IsEqualTo(SameSiteAttribute.Lax);
+    }
+
     private static async Task<JsonElement> DelegatedOrders(
         IBrowserContext context,
         string origin,

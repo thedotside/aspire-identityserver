@@ -42,7 +42,11 @@ internal static class ServerProgram
             .UseEphemeralDataProtectionProvider()
             .SetApplicationName($"AspireIdentityServer:{config.Name}");
         builder.Services.AddRazorPages();
-        builder.Services.AddAntiforgery(o => o.Cookie.Name = $"aspire-idp-{config.Name}.csrf");
+        builder.Services.AddAntiforgery(o =>
+        {
+            o.Cookie.Name = $"aspire-idp-{config.Name}.csrf";
+            o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        });
         builder.Services.AddSingleton(config);
         builder.Services.AddSingleton(TimeProvider.System);
         builder
@@ -61,6 +65,11 @@ internal static class ServerProgram
                 options.UserInteraction.LogoutUrl = "/Account/Logout";
                 options.UserInteraction.ErrorUrl = "/Error";
                 options.Authentication.CheckSessionCookieName = $"aspire-idp-{config.Name}.session";
+                // Cookies are not isolated by port. On localhost the provider and its clients are
+                // same-site, so Lax keeps check-session and front-channel logout working while the
+                // session stays out of cross-site requests.
+                options.Authentication.CookieSameSiteMode = SameSiteMode.Lax;
+                options.Authentication.CheckSessionCookieSameSiteMode = SameSiteMode.Lax;
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("subject_token");
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("actor_token");
             })
@@ -138,7 +147,11 @@ internal static class ServerProgram
             .AddDeveloperSigningCredential(persistKey: false);
         builder.Services.Configure<CookieAuthenticationOptions>(
             IdentityServerConstants.DefaultCookieAuthenticationScheme,
-            o => o.Cookie.Name = $"aspire-idp-{config.Name}"
+            o =>
+            {
+                o.Cookie.Name = $"aspire-idp-{config.Name}";
+                o.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+            }
         );
 
         var app = builder.Build();
@@ -153,6 +166,23 @@ internal static class ServerProgram
             {
                 context.Response.Headers.XContentTypeOptions = "nosniff";
                 context.Response.Headers.CacheControl = "no-store";
+                // The sign-in pages are never framed and never leak their return URL. No
+                // form-action: after login, the redirect chain legitimately leaves this origin.
+                if (
+                    context.Request.Path.StartsWithSegments(
+                        "/Account",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                    || context.Request.Path.StartsWithSegments(
+                        "/Error",
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+                {
+                    context.Response.Headers.ContentSecurityPolicy =
+                        "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'";
+                    context.Response.Headers["Referrer-Policy"] = "no-referrer";
+                }
                 await next();
             }
         );

@@ -154,6 +154,8 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | Stockages | En mémoire. |
 | Health check | `/health`. |
 | Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. |
+| Cookies | Session `aspire-idp-{name}` et `aspire-idp-{name}.session` : `Secure`, `SameSite=Lax`. Antiforgery `aspire-idp-{name}.csrf` : `Secure`. Les cookies ne sont pas isolés par port : ils partent vers les autres applications `https://localhost` du poste. |
+| En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |
 | Racine `/` | Redirection vers `/.well-known/openid-configuration`. |
 
 Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour refresh tokens, fédération, CORS, claims personnalisés, persistance ou rotation durable de clés.
