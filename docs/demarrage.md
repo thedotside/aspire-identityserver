@@ -12,7 +12,7 @@
 
 Le fournisseur exécute **Duende IdentityServer**, sous la [licence de Duende Software](https://duendesoftware.com/license), distincte de la licence MIT de ce dépôt. Son usage gratuit est limité au développement, aux tests et à l'évaluation internes : lis cette licence avant d'installer les packages, et n'utilise jamais ce fournisseur en production. Voir les [notices tierces](../THIRD-PARTY-NOTICES.md).
 
-Les IDP et applications exemples démarrent comme des processus .NET. Docker et une base de données ne sont pas nécessaires. Windows est la plateforme validée localement ; les autres systèmes ne sont pas encore vérifiés pour ce dépôt.
+Les IDP et applications exemples démarrent comme des processus .NET. Docker et une base de données ne sont pas nécessaires. La CI exécute la validation complète sous Windows et Linux ; le dernier passage local consigné l'a été sous macOS arm64. Voir [le développement](developpement.md#exécuter-les-tests).
 
 ## Lancer les exemples du dépôt
 

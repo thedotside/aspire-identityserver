@@ -15,7 +15,7 @@ git tag -a 0.1.0-alpha.3 -m "Release 0.1.0-alpha.3"
 git push origin 0.1.0-alpha.3
 ```
 
-Juste après la publication, passe `Version` de [Directory.Build.props](../Directory.Build.props) à la version suivante, avec une entrée `Unreleased` dans le CHANGELOG. La CI des branches refuse une version déjà présente sur nuget.org : les archives d'une branche ne peuvent donc pas porter une version publiée.
+Juste après la publication, passe `Version` de [Directory.Build.props](../Directory.Build.props) à la version suivante, avec une entrée `Unreleased` dans le CHANGELOG. La CI des branches refuse une version déjà présente sur nuget.org : les archives d'une branche ne peuvent donc pas porter une version publiée. Tant que ce changement n'est pas fusionné, toutes les PR échouent, celles de Renovate comprises : fais-le en premier. Une panne réseau vers nuget.org ne produit qu'un avertissement.
 
 Choisis un nouveau numéro à chaque publication. Les tags acceptent `X.Y.Z` et `X.Y.Z-prerelease`, sans `v`, sans zéros de tête dans les nombres et sans métadonnées `+build`. Les préversions peuvent contenir plusieurs identifiants, comme `0.2.0-rc.1`.
 
@@ -31,7 +31,7 @@ Le déclencheur GitHub est dans [.github/workflows/publish.yml](../.github/workf
 4. Il publie `Runtime`, `Client`, puis `Hosting`, chacun avec son paquet de symboles `.snupkg`. Seules les trois archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
 5. Il attend leur indexation pendant au plus dix minutes, puis restaure les packages uniquement depuis nuget.org dans un nouveau consommateur. Celui-ci démarre le fournisseur et obtient un token réel avec `private_key_jwt`.
 
-Une publication réussie atteste donc la validation des packages et leur consommation depuis le registre. La validation s'exécute sur Windows ; elle ne constitue pas une validation des autres systèmes.
+Une publication réussie atteste donc la validation des packages et leur consommation depuis le registre. La validation de publication s'exécute sur Windows ; la CI des PR couvre aussi Linux.
 
 Les publications sont sérialisées et une publication en cours n'est pas annulée par un nouveau tag. En cas d'interruption après un envoi partiel, relance le workflow GitHub existant : `--skip-duplicate` ignore les versions déjà présentes. Une version publiée reste immuable ; une correction nécessite une nouvelle version et un nouveau tag.
 
