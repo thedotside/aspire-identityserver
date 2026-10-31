@@ -2,7 +2,7 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>TheDotSide.Aspire.IdentityServer.Client</PackageId>
-    <Description>Optional client configuration and private_key_jwt assertions for Aspire IdentityServer development clients.</Description>
+    <Description>Optional, engine-independent OAuth client helpers: configuration binding, RS256 private_key_jwt assertions and an RFC 8693 token-exchange handler for named HTTP clients.</Description>
     <PackageTags>openid-connect;oauth;private-key-jwt;testing</PackageTags>
   </PropertyGroup>
   <ItemGroup>

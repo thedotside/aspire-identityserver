@@ -138,18 +138,20 @@ data:
   private-key-base64: "<Base64(UTF8(valeur-applicative-Base64))>"
 ```
 
-Dans les deux cas, Kubernetes injecte exactement la même valeur applicative dans le conteneur :
+Dans les deux cas, Kubernetes écrit exactement la même valeur applicative dans le fichier monté. Préfère un volume à une variable d'environnement, comme dans [le guide Kubernetes](kubernetes.md#exemple-yaml--bff-ou-application-web-avec-clé-privée) : le nom du fichier est la clé de configuration lue par `AddKeyPerFile` :
 
 ```yaml
-env:
-  - name: Integrations__Capa__OAuth__PrivateKeyBase64
-    valueFrom:
-      secretKeyRef:
-        name: cc-capa-oauth
-        key: private-key-base64
+volumes:
+  - name: oidc-secrets
+    secret:
+      secretName: cc-capa-oauth
+      defaultMode: 0400
+      items:
+        - key: private-key-base64
+          path: Integrations__Capa__OAuth__PrivateKeyBase64
 ```
 
-Pour le BFF ou CC Xp, utilise respectivement `Authentication__Bff__PrivateKeyBase64` ou `Integrations__Xp__OAuth__PrivateKeyBase64`. Fournis aussi les champs publics de la section, dont `AuthenticationMethod: private_key_jwt` et le `KeyId` correspondant. Les marqueurs YAML sont à remplacer hors du dépôt ; ne versionne aucune valeur privée, même encodée.
+Pour le BFF ou CC Xp, utilise respectivement `Authentication__Bff__PrivateKeyBase64` ou `Integrations__Xp__OAuth__PrivateKeyBase64`. Une variable injectée par `secretKeyRef` sous le même nom reste possible si l'environnement l'impose. Fournis aussi les champs publics de la section, dont `AuthenticationMethod: private_key_jwt` et le `KeyId` correspondant. Les marqueurs YAML sont à remplacer hors du dépôt ; ne versionne aucune valeur privée, même encodée.
 
 L'API Kubernetes convertit `stringData` en `data` à l'écriture ; le décodage de `data` retire uniquement l'encodage Kubernetes. Voir la [documentation officielle des Secrets](https://kubernetes.io/docs/concepts/configuration/secret/). Cela concerne les consommateurs avec un IdP accessible et adapté à leur environnement ; le fournisseur local de ce dépôt reste limité au développement et aux tests.
 

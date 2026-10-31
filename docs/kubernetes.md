@@ -4,17 +4,23 @@
 
 ## État actuel
 
+Le fournisseur `TheDotSide.Aspire.IdentityServer.Runtime` est **exclu de tout déploiement**, dans cette version comme dans les suivantes. C'est un outil de développement et de test : état en mémoire, clé de signature éphémère, écoute loopback, et licence Duende limitée aux tests et à l'évaluation internes. Cette page ne concerne que les **applications consommatrices**, qui parlent en cluster à un fournisseur réel.
+
 | Scénario | Prise en charge |
 | --- | --- |
-| IDP et consommateurs .NET locaux, lancés par Aspire | Périmètre de cette alpha. |
+| IDP et consommateurs .NET locaux, lancés par Aspire | Seul usage prévu du fournisseur. |
 | Générer un déploiement de cet IDP avec Aspire | Refusé par `AddIdentityServer()` en mode publication. |
-| Exécuter ce runtime comme IDP dans un cluster | Non pris en charge : issuer HTTPS loopback et runtime Development/Testing uniquement. |
+| Exécuter ce runtime comme IDP dans un cluster | Exclu : issuer et écoute loopback, environnement Development/Testing uniquement. |
 | Donner les mêmes clés de configuration à un BFF/API sur Kubernetes | Possible avec l'environnement .NET standard et un IDP adapté, accessible depuis cet environnement. Exemple manuel ci-dessous. |
 | Transformer automatiquement nos paramètres Aspire en ConfigMap/Secret Kubernetes | Non implémenté dans ce package. |
 
 Un `ParameterResource` Aspire marqué secret n'est pas un objet Kubernetes `Secret`. Le package ne crée pas de chart Helm, de manifests ni de ressources dans un cluster.
 
 Le YAML de cette page décrit la configuration d'un **consommateur**. Il n'est pas une sortie d'`aspire publish` et ne rend pas déployable le fournisseur local.
+
+## Le paquet Client face à un fournisseur réel
+
+`TheDotSide.Aspire.IdentityServer.Client` ne dépend d'aucun moteur. Ses helpers suivent des profils standard : assertions `private_key_jwt` RS256 et Token Exchange RFC 8693. Ils fonctionnent donc contre un fournisseur réel conforme, ce que montre cette page. Le paquet reste en préversion : valide-le contre ton fournisseur et ses exigences d'assertion avant de l'utiliser hors développement.
 
 ## Contrat de configuration réutilisable
 
@@ -47,18 +53,33 @@ Le fichier complet est [examples/kubernetes/web.yaml](examples/kubernetes/web.ya
 4. Utilise une image réelle de ton application, configurée pour lire cette section et authentifier ses demandes.
 5. Fournis dans le même namespace un Secret `web-oidc` avec la clé `private-key.pem`.
 
-Le Deployment importe les champs de la ConfigMap et lit seulement la clé privée nécessaire dans le Secret :
+Le Deployment importe les champs publics de la ConfigMap et **monte** la clé privée en fichier, plutôt que de la placer dans une variable d'environnement. Une variable est visible des processus enfants, des vidages mémoire et de `/proc/<pid>/environ` ; un volume en lecture seule limite cette exposition. Le nom du fichier est la clé de configuration, avec `__` comme séparateur :
 
 ```yaml
 envFrom:
   - configMapRef:
       name: web-oidc-config
-env:
-  - name: Authentication__IdpA__PrivateKeyPem
-    valueFrom:
-      secretKeyRef:
-        name: web-oidc
-        key: private-key.pem
+volumeMounts:
+  - name: oidc-secrets
+    mountPath: /run/secrets/oidc
+    readOnly: true
+# ...
+volumes:
+  - name: oidc-secrets
+    secret:
+      secretName: web-oidc
+      defaultMode: 0400
+      items:
+        - key: private-key.pem
+          path: Authentication__IdpA__PrivateKeyPem
+```
+
+L'application lit ce dossier avec le provider [Key-per-file](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/#key-per-file-configuration-provider) (package `Microsoft.Extensions.Configuration.KeyPerFile`), puis lie la section comme en local :
+
+```csharp
+builder.Configuration.AddKeyPerFile("/run/secrets/oidc", optional: true);
+var client = builder.Configuration.GetSection("Authentication:IdpA")
+    .Get<IdentityClientOptions>();
 ```
 
 Pour un environnement de démonstration, cette commande crée le Secret depuis un fichier local existant, hors du dépôt. Remplace le chemin et le namespace ; ne mets pas le contenu PEM dans la ligne de commande :
@@ -68,21 +89,18 @@ $privateKeyPath = 'C:/chemin-local/non-versionne/web-private-key.pem'
 kubectl -n mon-namespace create secret generic web-oidc --from-file="private-key.pem=$privateKeyPath"
 ```
 
-La configuration attend le contenu de la clé, pas son chemin. `secretKeyRef` injecte le contenu PEM dans la variable, avec ses retours à la ligne. Une clé montée en fichier ne sera pas lue automatiquement par `IdentityClientOptions.PrivateKeyPem` ; il faudrait lier cette lecture dans l'application ou employer un provider de configuration approprié.
+La configuration attend le contenu de la clé, pas son chemin : Key-per-file lit le fichier et place son contenu PEM, retours à la ligne compris, dans `Authentication:IdpA:PrivateKeyPem`. Si ton environnement impose des variables, `secretKeyRef` reste possible avec le nom `Authentication__IdpA__PrivateKeyPem`, au prix de l'exposition décrite ci-dessus.
 
 Le fichier YAML ne contient aucune clé privée ni ressource Secret avec un faux PEM. Il reste un modèle de configuration : aucune validation de déploiement sur un cluster n'est revendiquée. Le gestionnaire de secrets et les droits d'accès restent ceux de l'environnement d'accueil ; un Secret Kubernetes n'est pas une garantie d'encryption au repos par lui-même.
 
 ## Variante avec secret client
 
-Dans la ConfigMap, définis `Authentication__IdpA__AuthenticationMethod: "client_secret_post"`. N'ajoute pas `KeyId` pour ce cas. Remplace l'entrée privée du conteneur par :
+Dans la ConfigMap, définis `Authentication__IdpA__AuthenticationMethod: "client_secret_post"`. N'ajoute pas `KeyId` pour ce cas. Monte le secret sous le nom de sa clé de configuration :
 
 ```yaml
-env:
-  - name: Authentication__IdpA__ClientSecret
-    valueFrom:
-      secretKeyRef:
-        name: web-oidc
-        key: client-secret
+items:
+  - key: client-secret
+    path: Authentication__IdpA__ClientSecret
 ```
 
 L'IDP doit avoir un client enregistré avec ce secret, et le consommateur doit utiliser la méthode correspondante.
