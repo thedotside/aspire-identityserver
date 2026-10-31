@@ -18,6 +18,7 @@ Les packages NuGet se nomment `TheDotSide.Aspire.IdentityServer.Hosting`, `TheDo
 | Type / propriété | Type de valeur | Rôle |
 | --- | --- | --- |
 | `IdentityServerOptions.RuntimeDirectory` | `string` modifiable. | Dossier contenant le serveur ; défaut `AppContext.BaseDirectory/identityserver`. Chemin relatif résolu depuis l'AppHost. |
+| `IdentityServerOptions.AcceptTokenEndpointAudience` | `bool`, défaut `false`. | Accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Par défaut, seul le profil draft-ietf-oauth-rfc7523bis est accepté. |
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
 | `IdentityApiResource.Server` | Builder du fournisseur. | Fournisseur associé. |
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
@@ -113,7 +114,9 @@ Le binding ne valide pas automatiquement les champs et ne configure aucun handle
 | Membre | Comportement |
 | --- | --- |
 | `PrivateKeyJwt.AssertionType` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer`. |
-| `PrivateKeyJwt.CreateAssertion(IdentityClientOptions client, string audience)` | Retourne un JWT signé RS256 ; exige client ID, clé privée RSA >= 2048 bits, `kid` et audience URI absolue. |
+| `PrivateKeyJwt.ClientAuthenticationType` | `client-authentication+jwt`. |
+| `PrivateKeyJwt.CreateAssertion(IdentityClientOptions client, string issuer)` | Retourne un JWT signé RS256 au profil draft-ietf-oauth-rfc7523bis : `typ: client-authentication+jwt`, `aud` = issuer seul. Exige client ID, clé privée RSA >= 2048 bits, `kid` et issuer URI absolue. |
+| `PrivateKeyJwt.CreateTokenEndpointAssertion(IdentityClientOptions client, string tokenEndpoint)` | Profil RFC 7523 d'origine, pour un fournisseur qui refuse l'issuer : `typ: JWT`, `aud` = token endpoint. Refusé par le fournisseur local sans `AcceptTokenEndpointAudience`. |
 
 Le JWT dure une minute, avec un nouveau `jti` à chaque appel. Le helper d'assertion n'envoie pas de requête HTTP. Voir [clients](clients.md) et [intégration](integration.md).
 

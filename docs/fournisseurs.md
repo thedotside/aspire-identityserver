@@ -80,7 +80,7 @@ Ajouter un scope au client ne le déclare pas comme scope d'API. Il faut l'assoc
 
 Il n'existe pas de `WithAudience()` sur le client. L'audience du token d'accès découle des ressources associées aux scopes demandés. Plusieurs ressources peuvent conduire à plusieurs audiences. Évite de partager un scope entre plusieurs ressources si tu souhaites une audience unique.
 
-L'audience d'une assertion `private_key_jwt` est distincte : nos exemples utilisent le `token_endpoint` découvert chez l'IDP. Voir [les assertions](clients.md).
+L'audience d'une assertion `private_key_jwt` est distincte : c'est l'issuer de l'IDP, comme le demande draft-ietf-oauth-rfc7523bis. Voir [les assertions](clients.md#assertions-private_key_jwt).
 
 ## Règles des ressources
 
@@ -96,7 +96,7 @@ Une API doit valider issuer, signature, expiration et audience, puis vérifier l
 
 ## Emplacement du runtime
 
-`IdentityServerOptions` expose une seule option : `RuntimeDirectory`.
+`IdentityServerOptions` expose `RuntimeDirectory` et `AcceptTokenEndpointAudience` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
 
 ```csharp
 var idp = builder.AddIdentityServer("idp", options =>

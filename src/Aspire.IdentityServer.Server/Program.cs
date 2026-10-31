@@ -56,6 +56,10 @@ internal static class ServerProgram
                 options.KeyManagement.Enabled = false;
                 // RFC 9068 and RFC 8693: scope is one space-delimited string, as real providers emit.
                 options.EmitScopesAsSpaceDelimitedStringInJwt = true;
+                // draft-ietf-oauth-rfc7523bis: the issuer as sole audience and an explicit type,
+                // unless the AppHost accepts the token endpoint audience for legacy clients.
+                options.StrictClientAssertionAudienceValidation =
+                    !config.AcceptTokenEndpointAudience;
                 // Registered client keys and the helper only use RS256: advertise and accept no other.
                 options.SupportedClientAssertionSigningAlgorithms =
                 [

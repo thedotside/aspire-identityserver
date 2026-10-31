@@ -82,7 +82,8 @@ internal sealed class TokenExchangeHandler(
             endpoint.GetString()!,
             subject,
             settings.Audience,
-            settings.Scope
+            settings.Scope,
+            issuer.GetString()
         );
         using var exchangeResponse = await backchannel
             .SendAsync(exchangeRequest, cancellationToken)

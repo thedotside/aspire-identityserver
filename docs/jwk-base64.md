@@ -92,11 +92,11 @@ var ccXp = builder.Configuration.GetSection("Integrations:Xp:OAuth")
 var ccCapa = builder.Configuration.GetSection("Integrations:Capa:OAuth")
     .Get<IdentityClientOptions>()!;
 
-// Dans chaque demande de token, avec son endpoint découvert :
-var assertion = PrivateKeyJwt.CreateAssertion(ccCapa, tokenEndpoint);
+// Dans chaque demande de token, avec l'issuer découvert :
+var assertion = PrivateKeyJwt.CreateAssertion(ccCapa, issuer);
 ```
 
-Pour le BFF, l'événement OIDC `OnAuthorizationCodeReceived` appelle le même helper avec `bffClient`, comme dans [l'intégration ASP.NET Core](integration.md). Les appels CC Xp/Capa utilisent `client_assertion_type = PrivateKeyJwt.AssertionType` et une assertion fraîche à chaque demande. Les endpoints doivent provenir des métadonnées de l'IdP concerné. PAR, s'il est actif dans la bibliothèque BFF, doit également être authentifié ; aucun adaptateur Duende BFF automatique n'est ajouté.
+Pour le BFF, l'événement OIDC `OnAuthorizationCodeReceived` appelle le même helper avec `bffClient`, comme dans [l'intégration ASP.NET Core](integration.md). Les appels CC Xp/Capa utilisent `client_assertion_type = PrivateKeyJwt.AssertionType` et une assertion fraîche à chaque demande. L'issuer et les endpoints doivent provenir des métadonnées de l'IdP concerné. PAR, s'il est actif dans la bibliothèque BFF, doit également être authentifié ; aucun adaptateur Duende BFF automatique n'est ajouté.
 
 La projection personnalisée reste disponible :
 

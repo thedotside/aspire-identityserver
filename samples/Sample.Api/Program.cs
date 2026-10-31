@@ -83,6 +83,7 @@ if (app.Environment.IsDevelopment())
                 cancellationToken
             );
             var tokenEndpoint = metadata.GetProperty("token_endpoint").GetString()!;
+            var issuer = metadata.GetProperty("issuer").GetString()!;
             var fields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["client_id"] = client.ClientId,
@@ -98,7 +99,7 @@ if (app.Environment.IsDevelopment())
             )
             {
                 fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-                fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, tokenEndpoint);
+                fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, issuer);
             }
             else
                 fields["client_secret"] = client.ClientSecret!;

@@ -17,7 +17,7 @@ namespace Aspire.IdentityServer.Tests;
 /// <summary>One real sample AppHost and browser, shared by every distributed test class.</summary>
 public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
 {
-    private static readonly string[] Required = ["idp-a", "idp-b", "web", "api"];
+    private static readonly string[] Required = ["idp-a", "idp-b", "idp-legacy", "web", "api"];
     private IDistributedApplicationTestingBuilder? builder;
     private IPlaywright? playwright;
     public DistributedApplication App { get; private set; } = null!;
@@ -33,9 +33,10 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
             ["DcpPublisher:RandomizePorts=true"],
             timeout.Token
         );
-        Servers = builder.Resources.OfType<IdentityServerResource>().ToList();
         var provider = builder.CreateResourceBuilder(
-            Servers.Single(s => string.Equals(s.Name, "idp-a", StringComparison.Ordinal))
+            builder
+                .Resources.OfType<IdentityServerResource>()
+                .Single(s => string.Equals(s.Name, "idp-a", StringComparison.Ordinal))
         );
         using (var rsa = RSA.Create(2048))
         {
@@ -60,6 +61,16 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
                 .WithBase64PrivateKeyJwt(secret, TestKeys.Public(other, "fixture-key"))
                 .WithScopes("orders.read");
         }
+        var legacy = builder.AddIdentityServer(
+            "idp-legacy",
+            options => options.AcceptTokenEndpointAudience = true
+        );
+        legacy.AddApiResource("legacy-api").WithScopes("legacy.read");
+        legacy
+            .AddClientCredentialsClient("legacy-worker")
+            .WithGeneratedBase64PrivateKeyJwt()
+            .WithScopes("legacy.read");
+        Servers = builder.Resources.OfType<IdentityServerResource>().ToList();
         App = await builder.BuildAsync(timeout.Token);
         await App.StartAsync(timeout.Token);
         await WaitUntilHealthyAsync(timeout.Token);

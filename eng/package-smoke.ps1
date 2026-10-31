@@ -51,6 +51,7 @@ try
     using var http = new HttpClient();
     var metadata = await http.GetFromJsonAsync<JsonElement>($"{generated.Authority.Url}/.well-known/openid-configuration", timeout.Token);
     var endpoint = metadata.GetProperty("token_endpoint").GetString()!;
+    var issuer = metadata.GetProperty("issuer").GetString()!;
     foreach (var client in new[] { generated, imported, deferred, pem })
     {
         var options = new IdentityClientOptions
@@ -62,7 +63,7 @@ try
         using var response = await http.PostAsync(endpoint, new FormUrlEncodedContent(new Dictionary<string, string>
         {
             ["grant_type"] = "client_credentials", ["scope"] = "read", ["client_id"] = client.ClientId,
-            ["client_assertion_type"] = PrivateKeyJwt.AssertionType, ["client_assertion"] = PrivateKeyJwt.CreateAssertion(options, endpoint)
+            ["client_assertion_type"] = PrivateKeyJwt.AssertionType, ["client_assertion"] = PrivateKeyJwt.CreateAssertion(options, issuer)
         }), timeout.Token);
         response.EnsureSuccessStatusCode();
         var token = await response.Content.ReadFromJsonAsync<JsonElement>(timeout.Token);

@@ -12,12 +12,17 @@ public static class TokenExchange
     );
 
     /// <summary>Creates a request with fresh client authentication. The caller owns and sends it.</summary>
+    /// <param name="issuer">
+    /// The provider's issuer identifier, the audience of a private_key_jwt assertion. Defaults to
+    /// the configured authority, which OpenID discovery requires to be identical.
+    /// </param>
     public static HttpRequestMessage CreateRequest(
         IdentityClientOptions client,
         string tokenEndpoint,
         string subjectToken,
         string? audience = null,
-        string? scope = null
+        string? scope = null,
+        string? issuer = null
     )
     {
         ArgumentNullException.ThrowIfNull(client);
@@ -47,7 +52,10 @@ public static class TokenExchange
         if (string.Equals(client.AuthenticationMethod, "private_key_jwt", StringComparison.Ordinal))
         {
             fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, tokenEndpoint);
+            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(
+                client,
+                issuer ?? client.Authority
+            );
         }
         else if (
             string.Equals(

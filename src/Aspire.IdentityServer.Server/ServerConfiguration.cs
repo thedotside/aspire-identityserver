@@ -4,6 +4,7 @@ internal sealed class ServerConfiguration
 {
     public string Name { get; set; } = "identityserver";
     public string Issuer { get; set; } = "";
+    public bool AcceptTokenEndpointAudience { get; set; }
     public List<ClientConfiguration> Clients { get; set; } = [];
     public List<ApiConfiguration> Apis { get; set; } = [];
     public List<UserConfiguration> Users { get; set; } = [];

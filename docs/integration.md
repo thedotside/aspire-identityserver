@@ -93,7 +93,7 @@ builder.Services.AddAuthentication(options =>
                     .GetConfigurationAsync(context.HttpContext.RequestAborted);
                 context.TokenEndpointRequest!.ClientAssertionType = PrivateKeyJwt.AssertionType;
                 context.TokenEndpointRequest.ClientAssertion =
-                    PrivateKeyJwt.CreateAssertion(client, metadata.TokenEndpoint);
+                    PrivateKeyJwt.CreateAssertion(client, metadata.Issuer);
             };
         }
     });
@@ -133,6 +133,7 @@ static async Task<string> RequestTokenAsync(
     var metadata = await http.GetFromJsonAsync<JsonElement>(
         $"{client.Authority}/.well-known/openid-configuration", cancellationToken);
     var endpoint = metadata.GetProperty("token_endpoint").GetString()!;
+    var issuer = metadata.GetProperty("issuer").GetString()!;
     var fields = new Dictionary<string, string>
     {
         ["grant_type"] = "client_credentials",
@@ -143,7 +144,7 @@ static async Task<string> RequestTokenAsync(
     if (client.AuthenticationMethod == "private_key_jwt")
     {
         fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-        fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, endpoint);
+        fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, issuer);
     }
     else if (client.AuthenticationMethod == "client_secret_post")
     {

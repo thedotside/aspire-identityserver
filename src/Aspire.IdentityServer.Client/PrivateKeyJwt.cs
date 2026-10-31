@@ -9,8 +9,29 @@ public static class PrivateKeyJwt
 {
     public const string AssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
-    /// <param name="audience">The audience required by the provider, usually its token endpoint.</param>
-    public static string CreateAssertion(IdentityClientOptions client, string audience)
+    /// <summary>The explicit JWT type of draft-ietf-oauth-rfc7523bis client assertions.</summary>
+    public const string ClientAuthenticationType = "client-authentication+jwt";
+
+    /// <summary>
+    /// Creates an assertion with the draft-ietf-oauth-rfc7523bis profile, which prevents audience
+    /// injection: the audience is the provider's issuer identifier alone, and the JWT is typed
+    /// <c>client-authentication+jwt</c>.
+    /// </summary>
+    /// <param name="issuer">The <c>issuer</c> value of the provider's discovery document.</param>
+    public static string CreateAssertion(IdentityClientOptions client, string issuer) =>
+        Create(client, issuer, ClientAuthenticationType);
+
+    /// <summary>
+    /// Creates an assertion with the original RFC 7523 profile: the audience is the token endpoint
+    /// and the JWT is typed <c>JWT</c>. Use it only for providers that refuse the issuer audience.
+    /// </summary>
+    /// <param name="tokenEndpoint">The <c>token_endpoint</c> of the provider's discovery document.</param>
+    public static string CreateTokenEndpointAssertion(
+        IdentityClientOptions client,
+        string tokenEndpoint
+    ) => Create(client, tokenEndpoint, JwtConstants.HeaderType);
+
+    private static string Create(IdentityClientOptions client, string audience, string type)
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentException.ThrowIfNullOrWhiteSpace(client.ClientId, nameof(client));
@@ -28,6 +49,7 @@ public static class PrivateKeyJwt
         return new JsonWebTokenHandler().CreateToken(
             new SecurityTokenDescriptor
             {
+                TokenType = type,
                 Issuer = client.ClientId,
                 Audience = audience,
                 IssuedAt = now,

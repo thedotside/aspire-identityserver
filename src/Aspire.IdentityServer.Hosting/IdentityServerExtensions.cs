@@ -52,6 +52,10 @@ public static class IdentityServerExtensions
             })
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", environment)
             .WithEnvironment("IdentityServer__Name", name)
+            .WithEnvironment(
+                "IdentityServer__AcceptTokenEndpointAudience",
+                options.AcceptTokenEndpointAudience ? "true" : "false"
+            )
             .WithHttpHealthCheck("/health", endpointName: "https");
 #pragma warning restore ASPIRECERTIFICATES001
         server.WithEnvironment("IdentityServer__Issuer", server.GetEndpoint("https"));

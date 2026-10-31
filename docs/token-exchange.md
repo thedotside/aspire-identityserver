@@ -164,7 +164,7 @@ var exchanged = await response.Content.ReadFromJsonAsync<JsonElement>(cancellati
 var accessToken = exchanged.GetProperty("access_token").GetString();
 ```
 
-Le helper construit une requête HTTP et ne l'envoie pas. Il exige un endpoint HTTPS, prend en charge les deux méthodes d'authentification et crée une nouvelle assertion avec un nouveau `jti` à chaque appel. Utilise une nouvelle requête pour chaque tentative. Sans argument `scope`, il demande les scopes projetés du client machine ; indique un sous-ensemble si nécessaire, par exemple `TokenExchange.CreateRequest(machine, tokenEndpoint, userAccessToken, scope: "orders.read")`. Une audience peut aussi être fournie explicitement avec `audience: "orders-api"`.
+Le helper construit une requête HTTP et ne l'envoie pas. Il exige un endpoint HTTPS, prend en charge les deux méthodes d'authentification et crée une nouvelle assertion avec un nouveau `jti` à chaque appel. L'audience de l'assertion est l'issuer : par défaut l'authority configurée, que la découverte OpenID impose identique, ou la valeur passée en `issuer:`. Utilise une nouvelle requête pour chaque tentative. Sans argument `scope`, il demande les scopes projetés du client machine ; indique un sous-ensemble si nécessaire, par exemple `TokenExchange.CreateRequest(machine, tokenEndpoint, userAccessToken, scope: "orders.read")`. Une audience peut aussi être fournie explicitement avec `audience: "orders-api"`.
 
 Sans ce package, envoie un formulaire `application/x-www-form-urlencoded` au token endpoint :
 

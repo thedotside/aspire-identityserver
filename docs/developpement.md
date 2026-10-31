@@ -179,7 +179,7 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | `Client authentication is already configured` | Choisir une seule méthode de credentials par client, ou créer un autre client. |
 | `has no PrivateKeyPem to project` | La projection demande une clé absente ; vérifier la méthode et l'ordre de déclaration. |
 | `Configuration key ... is already assigned` | Donner des sections distinctes aux projections de clients ; voir [les collisions](projections.md). |
-| `invalid_client` avec clé privée | Vérifier la paire privée/JWK, le `kid`, le client ID et l'audience d'assertion ; créer une assertion neuve. |
+| `invalid_client` avec clé privée | Vérifier la paire privée/JWK, le `kid`, le client ID et l'audience d'assertion, qui doit être l'issuer ; créer une assertion neuve. |
 | Assertion acceptée une fois puis refusée | Ne pas réutiliser l'assertion ; le `jti` protège contre le rejeu. |
 | Token refusé par une API | Vérifier issuer, audience et scope. Une assertion client n'est pas un token d'accès API. |
 | Connexion mélangeant les IDP | Séparer schémas, cookies et chemins de callback ; vérifier les sections projetées. |

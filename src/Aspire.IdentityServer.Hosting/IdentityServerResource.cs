@@ -13,11 +13,20 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
     public IReadOnlyList<IdentityClient> RegisteredClients => Clients.AsReadOnly();
 }
 
-/// <summary>Overrides the bundled server location when developing this repository.</summary>
+/// <summary>Options of one local identity provider.</summary>
 public sealed class IdentityServerOptions
 {
+    /// <summary>Overrides the bundled server location when developing this repository.</summary>
     public string RuntimeDirectory { get; set; } =
         Path.Combine(AppContext.BaseDirectory, "identityserver");
+
+    /// <summary>
+    /// Also accepts private_key_jwt assertions in the original RFC 7523 profile, whose audience is
+    /// the token endpoint. By default the provider requires the draft-ietf-oauth-rfc7523bis profile:
+    /// the issuer as sole audience and the <c>client-authentication+jwt</c> type. Enable this only
+    /// for clients written for providers that refuse the issuer audience.
+    /// </summary>
+    public bool AcceptTokenEndpointAudience { get; set; }
 }
 
 internal sealed record TestUser(

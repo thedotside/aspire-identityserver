@@ -55,7 +55,7 @@ foreach (var (provider, section) in new[] { ("a", "IdpA"), ("b", "IdpB"), ("publ
                         context.TokenEndpointRequest!.ClientAssertionType =
                             PrivateKeyJwt.AssertionType;
                         context.TokenEndpointRequest.ClientAssertion =
-                            PrivateKeyJwt.CreateAssertion(client, metadata.TokenEndpoint);
+                            PrivateKeyJwt.CreateAssertion(client, metadata.Issuer);
                     };
                 }
             }

@@ -124,7 +124,7 @@ public sealed class ProtocolTests(AppFixture fixture)
         if (string.Equals(change, "audience", StringComparison.Ordinal))
             fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(
                 client,
-                "https://wrong.example/connect/token"
+                "https://wrong.example"
             );
         if (string.Equals(change, "scope", StringComparison.Ordinal))
             fields["scope"] = "orders.write";
@@ -133,6 +133,41 @@ public sealed class ProtocolTests(AppFixture fixture)
         using var response = await TokenRequest(provider, fields);
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         await Assert.That(await Error(response)).IsEqualTo(expected);
+    }
+
+    [Test]
+    [Arguments("idp-a", "token-endpoint", false)]
+    [Arguments("idp-legacy", "token-endpoint", true)]
+    [Arguments("idp-legacy", "typed-token-endpoint", false)]
+    [Arguments("idp-legacy", "issuer", true)]
+    public async Task Token_endpoint_audiences_require_an_explicit_opt_in(
+        string provider,
+        string profile,
+        bool accepted
+    )
+    {
+        var client = await fixture.Client(
+            provider,
+            string.Equals(provider, "idp-a", StringComparison.Ordinal) ? "worker" : "legacy-worker"
+        );
+        var tokenEndpoint = $"{client.Authority}/connect/token";
+        var fields = Fields(client);
+        fields["client_assertion"] = profile switch
+        {
+            "token-endpoint" => PrivateKeyJwt.CreateTokenEndpointAssertion(client, tokenEndpoint),
+            // The explicit type always selects strict validation, whatever the provider option.
+            "typed-token-endpoint" => PrivateKeyJwt.CreateAssertion(client, tokenEndpoint),
+            _ => PrivateKeyJwt.CreateAssertion(client, client.Authority),
+        };
+        using var http = fixture.App.CreateHttpClient(provider, "https");
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        if (accepted)
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.OK);
+        else
+            await Assert.That(await Error(response)).IsEqualTo("invalid_client");
     }
 
     [Test]
@@ -220,10 +255,7 @@ public sealed class ProtocolTests(AppFixture fixture)
         if (string.Equals(client.AuthenticationMethod, "private_key_jwt", StringComparison.Ordinal))
         {
             fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(
-                client,
-                $"{client.Authority}/connect/token"
-            );
+            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, client.Authority);
         }
         else
             fields["client_secret"] = client.ClientSecret!;

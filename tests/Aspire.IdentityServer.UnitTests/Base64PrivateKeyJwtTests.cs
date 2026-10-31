@@ -300,11 +300,37 @@ public sealed class Base64PrivateKeyJwtTests
         await Assert.That(leaked).IsFalse();
     }
 
+    [Test]
+    public async Task Assertions_follow_rfc7523bis_unless_the_token_endpoint_profile_is_requested()
+    {
+        using var rsa = RSA.Create(2048);
+        var options = new IdentityClientOptions
+        {
+            ClientId = "worker",
+            PrivateKeyBase64 = TestKeys.Encode(rsa, "profile-key"),
+        };
+        var issuer = new JsonWebToken(PrivateKeyJwt.CreateAssertion(options, "https://idp.test"));
+        await Assert.That(issuer.Typ).IsEqualTo(PrivateKeyJwt.ClientAuthenticationType);
+        await Assert.That(issuer.Audiences.ToArray()).IsEquivalentTo(["https://idp.test"]);
+        using (var payload = JsonDocument.Parse(Base64UrlEncoder.Decode(issuer.EncodedPayload)))
+            await Assert
+                .That(payload.RootElement.GetProperty("aud").ValueKind)
+                .IsEqualTo(JsonValueKind.String);
+        var legacy = new JsonWebToken(
+            PrivateKeyJwt.CreateTokenEndpointAssertion(options, "https://idp.test/connect/token")
+        );
+        await Assert.That(legacy.Typ).IsEqualTo("JWT");
+        await Assert
+            .That(legacy.Audiences.ToArray())
+            .IsEquivalentTo(["https://idp.test/connect/token"]);
+    }
+
     private static async Task ValidateAssertion(IdentityClientOptions options, string publicJwk)
     {
-        const string audience = "https://localhost/connect/token";
+        const string audience = "https://localhost";
         var assertion = PrivateKeyJwt.CreateAssertion(options, audience);
         var jwt = new JsonWebToken(assertion);
+        await Assert.That(jwt.Typ).IsEqualTo(PrivateKeyJwt.ClientAuthenticationType);
         await Assert.That(jwt.Alg).IsEqualTo("RS256");
         await Assert.That(jwt.Kid).IsEqualTo(new JsonWebKey(publicJwk).Kid);
         await Assert.That(jwt.Subject).IsEqualTo(options.ClientId);
