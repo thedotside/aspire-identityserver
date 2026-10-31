@@ -54,10 +54,10 @@ runs:
       run: dotnet build --no-restore "/p:Version=$env:PACKAGE_VERSION"
     - name: Install browser
       shell: pwsh
-      run: pwsh tests/Aspire.IdentityServer.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
+      run: pwsh tests/Aspire.IdentityServer.DistributedTests/bin/Debug/net10.0/playwright.ps1 install chromium
     - name: Test
       shell: pwsh
-      run: dotnet test --no-build --logger trx --results-directory artifacts/test-results
+      run: dotnet test --no-build --report-trx --results-directory artifacts/test-results
     - name: Pack
       shell: pwsh
       run: pwsh eng/pack.ps1 -Version $env:PACKAGE_VERSION

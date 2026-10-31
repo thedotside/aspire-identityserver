@@ -219,5 +219,5 @@ Ce transport n'est pas un coffre de secrets de production. Ne journalise pas les
 ## Sources et implémentation
 
 - [IdentityProjectionExtensions.cs](../src/Aspire.IdentityServer.Hosting/IdentityProjectionExtensions.cs)
-- [Tests de projection](../tests/Aspire.IdentityServer.Tests/ProjectionTests.cs)
+- [Tests de projection](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs)
 - [Configuration ASP.NET Core : providers et environnement](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/?view=aspnetcore-10.0)

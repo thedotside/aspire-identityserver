@@ -12,7 +12,8 @@
 | `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, deux clients machine. |
 | `samples/Sample.Web` | Connexion et déconnexion OIDC avec les trois clients. |
 | `samples/Sample.Api` | Validation de tokens de deux IDP et deux composants OAuth sortants. |
-| `tests/Aspire.IdentityServer.Tests` | Tests de protocoles, navigateurs et projections. |
+| `tests/Aspire.IdentityServer.UnitTests` | Tests unitaires : projections, règles de l'API, clés et helpers client, sans réseau ni AppHost démarré. |
+| `tests/Aspire.IdentityServer.DistributedTests` | Tests distribués : protocoles, Token Exchange et navigateur contre un vrai AppHost d'exemple. |
 | `eng` | Construction des packages et vérification d'un consommateur indépendant. |
 | `pipelines/build` | Étapes YAML de la CI, sous forme d'action composite GitHub Actions. |
 | `pipelines/renovate` | Exécution de Renovate pour proposer les mises à jour de dépendances. |
@@ -52,7 +53,7 @@ CSharpier `1.3.0` est le formateur unique des fichiers C# et XML, dont les proje
 
 Meziantou.Analyzer `3.0.315` est une `GlobalPackageReference` privée, appliquée aux projets via Central Package Management. L'analyse s'exécute au build et les avertissements restent traités comme des erreurs. Le package d'analyse n'est pas transmis aux consommateurs NuGet.
 
-La politique se trouve dans [.editorconfig](../.editorconfig) : les règles actives par défaut sont conservées, avec comparaisons, comparateurs, culture et propagation de cancellation explicites. Les règles de nommage fichier/type (`MA0048`) et de longueur des méthodes (`MA0051`) restent des suggestions IDE, car des modèles liés partagent un fichier et les configurations fluides restent linéaires. `MA0004` reste appliquée aux bibliothèques mais est désactivée dans les applications et tests, notamment pour préserver le contexte xUnit.
+La politique se trouve dans [.editorconfig](../.editorconfig) : les règles actives par défaut sont conservées, avec comparaisons, comparateurs, culture et propagation de cancellation explicites. Les règles de nommage fichier/type (`MA0048`) et de longueur des méthodes (`MA0051`) restent des suggestions IDE, car des modèles liés partagent un fichier et les configurations fluides restent linéaires. `MA0004` reste appliquée aux bibliothèques mais est désactivée dans les applications et tests, qui n'ont pas besoin de la convention `ConfigureAwait(false)`.
 
 Pour appliquer des corrections proposées par l'analyseur, `dotnet format analyzers` peut être utilisé sur les diagnostics concernés, puis CSharpier doit être relancé. CSharpier conserve la responsabilité du formatage ; ne lance pas `dotnet format whitespace` en parallèle.
 
@@ -63,23 +64,30 @@ Depuis la racine, après préparation du certificat de développement :
 ```powershell
 dotnet restore
 dotnet build
-pwsh tests/Aspire.IdentityServer.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
-dotnet test --no-build --logger trx --results-directory artifacts/test-results
+pwsh tests/Aspire.IdentityServer.DistributedTests/bin/Debug/net10.0/playwright.ps1 install chromium
+dotnet test --no-build --report-trx --results-directory artifacts/test-results
 ```
 
-Les tests de protocoles et navigateurs partagent une vraie instance d'AppHost. Les ports sont randomisés, les ressources doivent devenir saines et chaque parcours navigateur utilise son contexte isolé.
+Les tests utilisent [TUnit](https://tunit.dev) sur Microsoft Testing Platform, conformément à l'ADR des outils imposés (OUT-16). Le bloc `test` de [global.json](../global.json) active ce mode de `dotnet test` ; les options sont donc celles de la plateforme (`--report-trx`, `--results-directory`, `--treenode-filter`). Pour un seul projet : `dotnet test --project tests/Aspire.IdentityServer.UnitTests`.
+
+Les deux projets suivent la séparation des tests unitaires et distribués (TST-01, TST-02) :
+
+- `Aspire.IdentityServer.UnitTests` construit des modèles d'application en mémoire, sans réseau ni AppHost démarré ;
+- `Aspire.IdentityServer.DistributedTests` partage une vraie instance de l'AppHost d'exemple et un navigateur Chromium entre toutes ses classes. Les ports sont randomisés, les ressources doivent devenir saines et chaque parcours navigateur utilise son contexte isolé.
+
+TUnit exécute les tests en parallèle. Un test qui modifie un état global du processus, comme les diagnostics IdentityModel, porte `[NotInParallel]`.
 
 | Couverture | Source |
 | --- | --- |
-| Issuers et clés de signature différents entre IDP | [ProtocolTests](../tests/Aspire.IdentityServer.Tests/ProtocolTests.cs). |
+| Issuers et clés de signature différents entre IDP | [ProtocolTests](../tests/Aspire.IdentityServer.DistributedTests/ProtocolTests.cs). |
 | Tokens machine, audiences et scopes validés par l'API | ProtocolTests. |
 | Plusieurs composants OAuth sortants dans une API | ProtocolTests. |
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
-| Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.Tests/BrowserTests.cs). |
+| Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
 | Sessions A/B coexistantes et indépendantes | BrowserTests. |
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
-| Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.Tests/ProjectionTests.cs). |
+| Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
 | Scopes inconnus, champs absents et collisions de projections | ProjectionTests. |
 
 La validation locale Windows consignée le **17 octobre 2026** a produit **21 tests réussis, zéro échec**. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ou d'un autre OS.

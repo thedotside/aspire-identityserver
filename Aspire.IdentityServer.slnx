@@ -10,6 +10,7 @@
     <Project Path="src/Aspire.IdentityServer.Server/Aspire.IdentityServer.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Aspire.IdentityServer.Tests/Aspire.IdentityServer.Tests.csproj" />
+    <Project Path="tests/Aspire.IdentityServer.DistributedTests/Aspire.IdentityServer.DistributedTests.csproj" />
+    <Project Path="tests/Aspire.IdentityServer.UnitTests/Aspire.IdentityServer.UnitTests.csproj" />
   </Folder>
 </Solution>

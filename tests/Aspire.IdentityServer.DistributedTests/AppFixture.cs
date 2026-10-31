@@ -5,14 +5,12 @@ using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
 using Aspire.IdentityServer.Hosting;
 using Microsoft.Playwright;
-using Xunit;
+using TUnit.Core.Interfaces;
 
 namespace Aspire.IdentityServer.Tests;
 
-[CollectionDefinition("app")]
-public sealed class AppCollection : ICollectionFixture<AppFixture>;
-
-public sealed class AppFixture : IAsyncLifetime
+/// <summary>One real sample AppHost and browser, shared by every distributed test class.</summary>
+public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
 {
     private IDistributedApplicationTestingBuilder? builder;
     private IPlaywright? playwright;
@@ -35,8 +33,8 @@ public sealed class AppFixture : IAsyncLifetime
         );
         using (var rsa = RSA.Create(2048))
         {
-            var value = Base64PrivateKeyJwtTests.Encode(rsa, "fixture-key");
-            var publicJwk = Base64PrivateKeyJwtTests.Public(rsa, "fixture-key");
+            var value = TestKeys.Encode(rsa, "fixture-key");
+            var publicJwk = TestKeys.Public(rsa, "fixture-key");
             provider
                 .AddClientCredentialsClient("imported-jwk")
                 .WithBase64PrivateKeyJwt(value)
@@ -53,10 +51,7 @@ public sealed class AppFixture : IAsyncLifetime
             using var other = RSA.Create(2048);
             provider
                 .AddClientCredentialsClient("mismatched-jwk")
-                .WithBase64PrivateKeyJwt(
-                    secret,
-                    Base64PrivateKeyJwtTests.Public(other, "fixture-key")
-                )
+                .WithBase64PrivateKeyJwt(secret, TestKeys.Public(other, "fixture-key"))
                 .WithScopes("orders.read");
         }
         App = await builder.BuildAsync(timeout.Token);
@@ -98,7 +93,7 @@ public sealed class AppFixture : IAsyncLifetime
         };
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (Browser is not null)
             await Browser.DisposeAsync();

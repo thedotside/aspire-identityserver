@@ -7,16 +7,15 @@ using System.Text.RegularExpressions;
 using Aspire.Hosting.Testing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Playwright;
-using Xunit;
 
 namespace Aspire.IdentityServer.Tests;
 
-[Collection("app")]
+[ClassDataSource<AppFixture>(Shared = SharedType.PerTestSession)]
 public sealed class BrowserTests(AppFixture fixture)
 {
-    [Theory]
-    [InlineData("private-key", "worker", "Alice A")]
-    [InlineData("secret", "device-secret", null)]
+    [Test]
+    [Arguments("private-key", "worker", "Alice A")]
+    [Arguments("secret", "device-secret", null)]
     public async Task Named_client_can_use_the_current_browser_user(
         string method,
         string machineClient,
@@ -32,12 +31,12 @@ public sealed class BrowserTests(AppFixture fixture)
         await Login(page);
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         var payload = await DelegatedOrders(context, origin, method);
-        Assert.Equal("idp-a:alice", payload.GetProperty("subject").GetString());
-        Assert.Equal(machineClient, payload.GetProperty("client").GetString());
-        Assert.Equal(name, payload.GetProperty("name").GetString());
+        await Assert.That(payload.GetProperty("subject").GetString()).IsEqualTo("idp-a:alice");
+        await Assert.That(payload.GetProperty("client").GetString()).IsEqualTo(machineClient);
+        await Assert.That(payload.GetProperty("name").GetString()).IsEqualTo(name);
     }
 
-    [Fact]
+    [Test]
     public async Task A_pooled_named_client_handler_keeps_concurrent_browser_users_isolated()
     {
         await using var alice = await fixture.Browser.NewContextAsync(
@@ -60,10 +59,12 @@ public sealed class BrowserTests(AppFixture fixture)
                 DelegatedOrders(alice, origin, "private-key"),
                 DelegatedOrders(bob, origin, "private-key")
             );
-            Assert.Equal("idp-a:alice", results[0].GetProperty("subject").GetString());
-            Assert.Equal("Alice A", results[0].GetProperty("name").GetString());
-            Assert.Equal("idp-a:bob", results[1].GetProperty("subject").GetString());
-            Assert.Equal("Bob A", results[1].GetProperty("name").GetString());
+            await Assert
+                .That(results[0].GetProperty("subject").GetString())
+                .IsEqualTo("idp-a:alice");
+            await Assert.That(results[0].GetProperty("name").GetString()).IsEqualTo("Alice A");
+            await Assert.That(results[1].GetProperty("subject").GetString()).IsEqualTo("idp-a:bob");
+            await Assert.That(results[1].GetProperty("name").GetString()).IsEqualTo("Bob A");
         }
     }
 
@@ -76,7 +77,7 @@ public sealed class BrowserTests(AppFixture fixture)
         var response = await context.APIRequest.GetAsync(origin + $"/delegated-orders/{method}");
         try
         {
-            Assert.Equal(200, response.Status);
+            await Assert.That(response.Status).IsEqualTo(200);
             using var document = JsonDocument.Parse(await response.TextAsync());
             return document.RootElement.Clone();
         }
@@ -86,10 +87,10 @@ public sealed class BrowserTests(AppFixture fixture)
         }
     }
 
-    [Theory]
-    [InlineData("a", "Alice A")]
-    [InlineData("b", "Alice B")]
-    [InlineData("public", "Alice A")]
+    [Test]
+    [Arguments("a", "Alice A")]
+    [Arguments("b", "Alice B")]
+    [Arguments("public", "Alice A")]
     public async Task Browser_can_sign_in_with_pkce_and_sign_out(string provider, string name)
     {
         await using var context = await fixture.Browser.NewContextAsync(
@@ -100,19 +101,21 @@ public sealed class BrowserTests(AppFixture fixture)
         await page.GotoAsync($"{origin}/login/{provider}");
         await Login(page);
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
-        Assert.Equal(name, await page.Locator($"#user-{provider}").InnerTextAsync());
+        await Assert.That(await page.Locator($"#user-{provider}").InnerTextAsync()).IsEqualTo(name);
         await page.GetByRole(AriaRole.Button, new() { Name = $"Sign out {provider}", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
-        Assert.Equal("Signed out", await page.Locator($"#user-{provider}").InnerTextAsync());
+        await Assert
+            .That(await page.Locator($"#user-{provider}").InnerTextAsync())
+            .IsEqualTo("Signed out");
         await page.GotoAsync($"{origin}/login/{provider}");
         await Assertions.Expect(page.GetByLabel("Username")).ToBeVisibleAsync();
     }
 
-    [Fact]
+    [Test]
     public async Task Two_provider_sessions_coexist_and_sign_out_independently()
     {
         await using var context = await fixture.Browser.NewContextAsync(
@@ -126,21 +129,21 @@ public sealed class BrowserTests(AppFixture fixture)
             await Login(page);
             await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
         }
-        Assert.Equal("Alice A", await page.Locator("#user-a").InnerTextAsync());
-        Assert.Equal("Alice B", await page.Locator("#user-b").InnerTextAsync());
+        await Assert.That(await page.Locator("#user-a").InnerTextAsync()).IsEqualTo("Alice A");
+        await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out a", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
-        Assert.Equal("Signed out", await page.Locator("#user-a").InnerTextAsync());
-        Assert.Equal("Alice B", await page.Locator("#user-b").InnerTextAsync());
+        await Assert.That(await page.Locator("#user-a").InnerTextAsync()).IsEqualTo("Signed out");
+        await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
+    [Test]
+    [Arguments(false)]
+    [Arguments(true)]
     public async Task Missing_or_wrong_pkce_verifier_is_rejected(bool includeWrongVerifier)
     {
         await using var context = await fixture.Browser.NewContextAsync(
@@ -187,7 +190,7 @@ public sealed class BrowserTests(AppFixture fixture)
                 new() { Timeout = 30_000 }
             );
         var code = QueryHelpers.ParseQuery(new Uri(page.Url).Query)["code"].ToString();
-        Assert.NotEmpty(code);
+        await Assert.That(code).IsNotEmpty();
         var fields = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["grant_type"] = "authorization_code",
@@ -204,10 +207,15 @@ public sealed class BrowserTests(AppFixture fixture)
             "/connect/token",
             new FormUrlEncodedContent(fields)
         );
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.True(
-            (await response.Content.ReadFromJsonAsync<JsonElement>()).TryGetProperty("error", out _)
-        );
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert
+            .That(
+                (await response.Content.ReadFromJsonAsync<JsonElement>()).TryGetProperty(
+                    "error",
+                    out _
+                )
+            )
+            .IsTrue();
     }
 
     private static async Task Login(IPage page, string username = "alice")

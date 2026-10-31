@@ -207,7 +207,7 @@ Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre iss
 
 Un access token utilisateur peut servir à plusieurs échanges tant qu'il reste valide. Une assertion `private_key_jwt` ne peut pas être rejouée. La déconnexion navigateur ne révoque pas les access tokens déjà émis ; leur expiration reste applicable.
 
-Le [sample AppHost](../samples/Sample.AppHost/Program.cs) montre un client RSA autorisant `name` et un client avec secret sans claim utilisateur supplémentaire. Les [tests réels](../tests/Aspire.IdentityServer.Tests/TokenExchangeTests.cs) couvrent les parcours PKCE, l'authentification du client machine, l'acceptation du jeton par l'API et les refus.
+Le [sample AppHost](../samples/Sample.AppHost/Program.cs) montre un client RSA autorisant `name` et un client avec secret sans claim utilisateur supplémentaire. Les [tests réels](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs) couvrent les parcours PKCE, l'authentification du client machine, l'acceptation du jeton par l'API et les refus.
 
 ## Étape suivante : deux IdP
 

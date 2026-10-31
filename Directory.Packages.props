@@ -16,10 +16,9 @@
       Include="Microsoft.Extensions.Options.ConfigurationExtensions"
       Version="10.0.14"
     />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="Microsoft.Playwright" Version="1.64.1" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.5.2" />
+    <PackageVersion Include="TUnit" Version="1.76.45" />
   </ItemGroup>
   <ItemGroup>
     <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" PrivateAssets="all" />

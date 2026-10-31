@@ -8,18 +8,15 @@ using Aspire.IdentityServer.Client;
 using Aspire.IdentityServer.Hosting;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-using Xunit;
 
 namespace Aspire.IdentityServer.Tests;
 
 public sealed class Base64PrivateKeyJwtTests
 {
-    [Fact]
+    [Test]
     public async Task Generated_pair_projects_only_a_secret_reference_and_registers_the_matching_public_key()
     {
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions { DisableDashboard = true }
-        );
+        var builder = TestApp.CreateBuilder();
         var server = builder.AddIdentityServer("base64-idp");
         server.AddApiResource("orders").WithScopes("read");
         var client = server
@@ -31,52 +28,56 @@ public sealed class Base64PrivateKeyJwtTests
             .WithIdentityClient(client, "OAuth")
             .WithIdentityClient(client, p => p.PrivateKeyBase64("Custom:Key").KeyId("Custom:Kid"));
         var environment = await ProjectionTests.Evaluate(consumer);
-        Assert.Same(client.PrivateKeyBase64!.Resource, environment["OAuth__PrivateKeyBase64"]);
-        Assert.Same(client.PrivateKeyBase64.Resource, environment["Custom__Key"]);
-        Assert.True(client.PrivateKeyBase64.Resource.Secret);
-        Assert.Null(client.PrivateKeyPem);
-        Assert.False(environment.ContainsKey("OAuth__PrivateKeyPem"));
-        Assert.IsType<EndpointReference>(environment["OAuth__Authority"]);
-        Assert.Equal(client.KeyId, environment["OAuth__KeyId"]);
-        Assert.Contains(
-            consumer.Resource.Annotations.OfType<WaitAnnotation>(),
-            a => ReferenceEquals(a.Resource, server.Resource)
-        );
+        await Assert
+            .That(environment["OAuth__PrivateKeyBase64"])
+            .IsSameReferenceAs(client.PrivateKeyBase64!.Resource);
+        await Assert
+            .That(environment["Custom__Key"])
+            .IsSameReferenceAs(client.PrivateKeyBase64.Resource);
+        await Assert.That(client.PrivateKeyBase64.Resource.Secret).IsTrue();
+        await Assert.That(client.PrivateKeyPem).IsNull();
+        await Assert.That(environment).DoesNotContainKey("OAuth__PrivateKeyPem");
+        await Assert.That(environment["OAuth__Authority"]).IsTypeOf<EndpointReference>();
+        await Assert.That(environment["OAuth__KeyId"]).IsEqualTo(client.KeyId);
+        await Assert
+            .That(consumer.Resource.Annotations.OfType<WaitAnnotation>())
+            .Contains(a => ReferenceEquals(a.Resource, server.Resource));
         var value = (await client.PrivateKeyBase64.Resource.GetValueAsync(default))!;
         using var privateDocument = JsonDocument.Parse(Convert.FromBase64String(value));
         using var publicDocument = JsonDocument.Parse(client.PublicJwk!);
         var privateKey = privateDocument.RootElement;
         var publicKey = publicDocument.RootElement;
-        Assert.Equal("RS256", privateKey.GetProperty("alg").GetString());
-        Assert.Equal("sig", privateKey.GetProperty("use").GetString());
-        Assert.Equal("RSA", privateKey.GetProperty("kty").GetString());
+        await Assert.That(privateKey.GetProperty("alg").GetString()).IsEqualTo("RS256");
+        await Assert.That(privateKey.GetProperty("use").GetString()).IsEqualTo("sig");
+        await Assert.That(privateKey.GetProperty("kty").GetString()).IsEqualTo("RSA");
         foreach (var field in new[] { "kid", "n", "e" })
-            Assert.Equal(
-                publicKey.GetProperty(field).GetString(),
-                privateKey.GetProperty(field).GetString()
-            );
+            await Assert
+                .That(privateKey.GetProperty(field).GetString())
+                .IsEqualTo(publicKey.GetProperty(field).GetString());
         foreach (var field in new[] { "n", "e", "d", "p", "q", "dp", "dq", "qi" })
         {
             var component = privateKey.GetProperty(field).GetString()!;
-            Assert.True(component.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'));
+            await Assert
+                .That(component.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+                .IsTrue();
             if (field is not "n" and not "e")
-                Assert.False(publicKey.TryGetProperty(field, out _));
+                await Assert.That(publicKey.TryGetProperty(field, out _)).IsFalse();
         }
-        Assert.True(new JsonWebKey(privateKey.GetRawText()).KeySize >= 2048);
+        await Assert.That(new JsonWebKey(privateKey.GetRawText()).KeySize >= 2048).IsTrue();
         var provider = await ProjectionTests.Evaluate(server);
-        Assert.DoesNotContain(
-            provider.Keys,
-            k => k.Contains("PrivateKey", StringComparison.Ordinal)
-        );
-        Assert.DoesNotContain(
-            provider.Values,
-            v => ReferenceEquals(v, client.PrivateKeyBase64.Resource)
-        );
-        Assert.Equal(client.PublicJwk, provider["IdentityServer__Clients__0__PublicJwk"]);
+        await Assert
+            .That(provider.Keys)
+            .DoesNotContain(k => k.Contains("PrivateKey", StringComparison.Ordinal));
+        await Assert
+            .That(provider.Values)
+            .DoesNotContain(v => ReferenceEquals(v, client.PrivateKeyBase64.Resource));
+        await Assert
+            .That(provider["IdentityServer__Clients__0__PublicJwk"])
+            .IsEqualTo(client.PublicJwk);
         var leaked = provider
             .Values.OfType<string>()
             .Any(v => v.Contains(value, StringComparison.Ordinal));
-        Assert.False(leaked); // A failing assertion must not print private input.
+        await Assert.That(leaked).IsFalse(); // A failing assertion must not print private input.
         await ValidateAssertion(
             new IdentityClientOptions
             {
@@ -88,25 +89,23 @@ public sealed class Base64PrivateKeyJwtTests
         );
     }
 
-    [Fact]
+    [Test]
     public async Task Imported_pair_preserves_its_kid_and_signs_without_a_separate_KeyId()
     {
         using var rsa = RSA.Create(2048);
-        var value = Encode(rsa, "external-key");
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions { DisableDashboard = true }
-        );
+        var value = TestKeys.Encode(rsa, "external-key");
+        var builder = TestApp.CreateBuilder();
         var client = builder
             .AddIdentityServer("import-idp")
             .AddClientCredentialsClient("worker")
             .WithBase64PrivateKeyJwt(value);
-        Assert.Equal("external-key", client.KeyId);
+        await Assert.That(client.KeyId).IsEqualTo("external-key");
         var matches = string.Equals(
             value,
             await client.PrivateKeyBase64!.Resource.GetValueAsync(default),
             StringComparison.Ordinal
         );
-        Assert.True(matches); // Do not print credentials on failure.
+        await Assert.That(matches).IsTrue(); // Do not print credentials on failure.
         await ValidateAssertion(
             new IdentityClientOptions { ClientId = "worker", PrivateKeyBase64 = value },
             client.PublicJwk!
@@ -118,20 +117,18 @@ public sealed class Base64PrivateKeyJwtTests
             new IdentityClientOptions
             {
                 ClientId = "worker",
-                PrivateKeyBase64 = Encode(withoutMetadata.ToJsonString()),
+                PrivateKeyBase64 = TestKeys.Encode(withoutMetadata.ToJsonString()),
             },
             client.PublicJwk!
         );
     }
 
-    [Fact]
+    [Test]
     public async Task Existing_secret_stays_deferred_and_must_be_marked_secret()
     {
         using var rsa = RSA.Create(2048);
-        var publicJwk = Public(rsa, "external-key");
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions { DisableDashboard = true }
-        );
+        var publicJwk = TestKeys.Public(rsa, "external-key");
+        var builder = TestApp.CreateBuilder();
         var server = builder.AddIdentityServer("deferred-idp");
         var secret = builder.AddParameter(
             "external-key",
@@ -144,48 +141,58 @@ public sealed class Base64PrivateKeyJwtTests
         var consumer = builder
             .AddExecutable("consumer", "dotnet", ".")
             .WithIdentityClient(client, "OAuth");
-        Assert.Same(
-            secret.Resource,
-            (await ProjectionTests.Evaluate(consumer))["OAuth__PrivateKeyBase64"]
-        );
-        Assert.Throws<ArgumentException>(() =>
-            server
-                .AddClientCredentialsClient("nonsecret")
-                .WithBase64PrivateKeyJwt(builder.AddParameter("plain", () => "unused"), publicJwk)
-        );
-        Assert.Throws<ArgumentException>(() =>
-            server
-                .AddClientCredentialsClient("private-public-jwk")
-                .WithBase64PrivateKeyJwt(
-                    secret,
-                    Encoding.UTF8.GetString(Convert.FromBase64String(Encode(rsa, "external-key")))
-                )
-        );
+        await Assert
+            .That((await ProjectionTests.Evaluate(consumer))["OAuth__PrivateKeyBase64"])
+            .IsSameReferenceAs(secret.Resource);
+        await Assert
+            .That(() =>
+                server
+                    .AddClientCredentialsClient("nonsecret")
+                    .WithBase64PrivateKeyJwt(
+                        builder.AddParameter("plain", () => "unused"),
+                        publicJwk
+                    )
+            )
+            .ThrowsExactly<ArgumentException>();
+        await Assert
+            .That(() =>
+                server
+                    .AddClientCredentialsClient("private-public-jwk")
+                    .WithBase64PrivateKeyJwt(
+                        secret,
+                        Encoding.UTF8.GetString(
+                            Convert.FromBase64String(TestKeys.Encode(rsa, "external-key"))
+                        )
+                    )
+            )
+            .ThrowsExactly<ArgumentException>();
     }
 
-    [Theory]
-    [InlineData("base64")]
-    [InlineData("json")]
-    [InlineData("utf8")]
-    [InlineData("array")]
-    [InlineData("public-only")]
-    [InlineData("missing-kid")]
-    [InlineData("missing-crt")]
-    [InlineData("component")]
-    [InlineData("weak")]
-    [InlineData("wrong-kty")]
-    [InlineData("wrong-alg")]
-    [InlineData("wrong-use")]
-    [InlineData("inconsistent")]
-    [InlineData("duplicate")]
-    public void Invalid_private_keys_are_rejected_without_disclosing_input_or_inner_exceptions(
+    [Test]
+    [Arguments("base64")]
+    [Arguments("json")]
+    [Arguments("utf8")]
+    [Arguments("array")]
+    [Arguments("public-only")]
+    [Arguments("missing-kid")]
+    [Arguments("missing-crt")]
+    [Arguments("component")]
+    [Arguments("weak")]
+    [Arguments("wrong-kty")]
+    [Arguments("wrong-alg")]
+    [Arguments("wrong-use")]
+    [Arguments("inconsistent")]
+    [Arguments("duplicate")]
+    public async Task Invalid_private_keys_are_rejected_without_disclosing_input_or_inner_exceptions(
         string change
     )
     {
         using var rsa = RSA.Create(
             string.Equals(change, "weak", StringComparison.Ordinal) ? 1024 : 2048
         );
-        var json = JsonNode.Parse(Convert.FromBase64String(Encode(rsa, "test-key")))!.AsObject();
+        var json = JsonNode
+            .Parse(Convert.FromBase64String(TestKeys.Encode(rsa, "test-key")))!
+            .AsObject();
         switch (change)
         {
             case "public-only":
@@ -212,50 +219,48 @@ public sealed class Base64PrivateKeyJwtTests
                 break;
             case "inconsistent":
                 using (var other = RSA.Create(2048))
-                    json["n"] = JsonNode.Parse(Convert.FromBase64String(Encode(other, "other")))![
-                        "n"
-                    ]!.GetValue<string>();
+                    json["n"] = JsonNode.Parse(
+                        Convert.FromBase64String(TestKeys.Encode(other, "other"))
+                    )!["n"]!.GetValue<string>();
                 break;
         }
         var raw = json.ToJsonString();
         var value = change switch
         {
             "base64" => "invalid-private-base64!",
-            "json" => Encode(raw + "private-json-tail"),
+            "json" => TestKeys.Encode(raw + "private-json-tail"),
             "utf8" => Convert.ToBase64String(new byte[] { 0xff, 0xfe }),
-            "array" => Encode("[\"private-array\"]"),
-            "duplicate" => Encode(raw[..^1] + ",\"kid\":\"duplicate\"}"),
-            _ => Encode(raw),
+            "array" => TestKeys.Encode("[\"private-array\"]"),
+            "duplicate" => TestKeys.Encode(raw[..^1] + ",\"kid\":\"duplicate\"}"),
+            _ => TestKeys.Encode(raw),
         };
         var options = new IdentityClientOptions { ClientId = "worker", PrivateKeyBase64 = value };
-        var error = Assert.Throws<ArgumentException>(() =>
+        var error = Assert.ThrowsExactly<ArgumentException>(() =>
             PrivateKeyJwt.CreateAssertion(options, "https://localhost/connect/token")
         );
-        AssertSafe(error, value, raw);
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions { DisableDashboard = true }
-        );
+        await AssertSafe(error, value, raw);
+        var builder = TestApp.CreateBuilder();
         var client = builder.AddIdentityServer("invalid-idp").AddClientCredentialsClient("worker");
-        AssertSafe(
-            Assert.Throws<ArgumentException>(() => client.WithBase64PrivateKeyJwt(value)),
+        await AssertSafe(
+            Assert.ThrowsExactly<ArgumentException>(() => client.WithBase64PrivateKeyJwt(value)),
             value,
             raw
         );
     }
 
-    [Fact]
-    public void Pem_and_Base64_are_mutually_exclusive_and_kid_must_match_exactly()
+    [Test]
+    public async Task Pem_and_Base64_are_mutually_exclusive_and_kid_must_match_exactly()
     {
         using var rsa = RSA.Create(2048);
-        var value = Encode(rsa, "test-key");
+        var value = TestKeys.Encode(rsa, "test-key");
         var options = new IdentityClientOptions
         {
             ClientId = "worker",
             PrivateKeyBase64 = value,
             PrivateKeyPem = rsa.ExportPkcs8PrivateKeyPem(),
         };
-        AssertSafe(
-            Assert.Throws<ArgumentException>(() =>
+        await AssertSafe(
+            Assert.ThrowsExactly<ArgumentException>(() =>
                 PrivateKeyJwt.CreateAssertion(options, "https://localhost/connect/token")
             ),
             value,
@@ -263,86 +268,52 @@ public sealed class Base64PrivateKeyJwtTests
         );
         options.PrivateKeyPem = null;
         options.KeyId = "TEST-KEY";
-        AssertSafe(
-            Assert.Throws<ArgumentException>(() =>
+        await AssertSafe(
+            Assert.ThrowsExactly<ArgumentException>(() =>
                 PrivateKeyJwt.CreateAssertion(options, "https://localhost/connect/token")
             ),
             value,
             "TEST-KEY"
         );
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions { DisableDashboard = true }
-        );
+        var builder = TestApp.CreateBuilder();
         var server = builder.AddIdentityServer("conflict-idp");
         var base64 = server.AddClientCredentialsClient("base64").WithBase64PrivateKeyJwt(value);
-        Assert.Throws<InvalidOperationException>(() =>
-            base64.WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem())
-        );
+        await Assert
+            .That(() => base64.WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem()))
+            .ThrowsExactly<InvalidOperationException>();
         var pem = server
             .AddClientCredentialsClient("pem")
             .WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem());
-        Assert.Throws<InvalidOperationException>(() => pem.WithBase64PrivateKeyJwt(value));
+        await Assert
+            .That(() => pem.WithBase64PrivateKeyJwt(value))
+            .ThrowsExactly<InvalidOperationException>();
         var secret = server.AddClientCredentialsClient("secret").WithGeneratedClientSecret();
-        Assert.Throws<InvalidOperationException>(() => secret.WithBase64PrivateKeyJwt(value));
+        await Assert
+            .That(() => secret.WithBase64PrivateKeyJwt(value))
+            .ThrowsExactly<InvalidOperationException>();
     }
 
-    private static void AssertSafe(Exception error, params string[] privateValues)
+    private static async Task AssertSafe(Exception error, params string[] privateValues)
     {
-        Assert.Null(error.InnerException);
+        await Assert.That(error.InnerException).IsNull();
         var leaked = privateValues.Any(v => error.ToString().Contains(v, StringComparison.Ordinal));
-        Assert.False(leaked);
+        await Assert.That(leaked).IsFalse();
     }
-
-    internal static string Encode(RSA rsa, string kid)
-    {
-        var parameters = rsa.ExportParameters(true);
-        var key = JsonNode.Parse(Public(rsa, kid))!.AsObject();
-        key["d"] = Base64UrlEncoder.Encode(parameters.D!);
-        key["p"] = Base64UrlEncoder.Encode(parameters.P!);
-        key["q"] = Base64UrlEncoder.Encode(parameters.Q!);
-        key["dp"] = Base64UrlEncoder.Encode(parameters.DP!);
-        key["dq"] = Base64UrlEncoder.Encode(parameters.DQ!);
-        key["qi"] = Base64UrlEncoder.Encode(parameters.InverseQ!);
-        return Encode(key.ToJsonString());
-    }
-
-    internal static string Public(RSA rsa, string kid)
-    {
-        var parameters = rsa.ExportParameters(false);
-        return JsonSerializer.Serialize(
-            new
-            {
-                kty = "RSA",
-                kid,
-                alg = "RS256",
-                use = "sig",
-                n = Base64UrlEncoder.Encode(parameters.Modulus!),
-                e = Base64UrlEncoder.Encode(parameters.Exponent!),
-            }
-        );
-    }
-
-    private static string Encode(string json) =>
-        Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
 
     private static async Task ValidateAssertion(IdentityClientOptions options, string publicJwk)
     {
         const string audience = "https://localhost/connect/token";
         var assertion = PrivateKeyJwt.CreateAssertion(options, audience);
         var jwt = new JsonWebToken(assertion);
-        Assert.Equal("RS256", jwt.Alg);
-        Assert.Equal(new JsonWebKey(publicJwk).Kid, jwt.Kid);
-        Assert.Equal(options.ClientId, jwt.Subject);
-        Assert.InRange(
-            jwt.ValidTo - jwt.IssuedAt,
-            TimeSpan.FromSeconds(59),
-            TimeSpan.FromSeconds(61)
-        );
-        Assert.NotEqual(
-            jwt.Id,
-            new JsonWebToken(PrivateKeyJwt.CreateAssertion(options, audience)).Id,
-            StringComparer.Ordinal
-        );
+        await Assert.That(jwt.Alg).IsEqualTo("RS256");
+        await Assert.That(jwt.Kid).IsEqualTo(new JsonWebKey(publicJwk).Kid);
+        await Assert.That(jwt.Subject).IsEqualTo(options.ClientId);
+        await Assert
+            .That(jwt.ValidTo - jwt.IssuedAt)
+            .IsBetween(TimeSpan.FromSeconds(59), TimeSpan.FromSeconds(61));
+        await Assert
+            .That(new JsonWebToken(PrivateKeyJwt.CreateAssertion(options, audience)).Id)
+            .IsNotEqualTo(jwt.Id);
         var result = await new JsonWebTokenHandler().ValidateTokenAsync(
             assertion,
             new TokenValidationParameters
@@ -356,6 +327,6 @@ public sealed class Base64PrivateKeyJwtTests
                 ClockSkew = TimeSpan.Zero,
             }
         );
-        Assert.True(result.IsValid);
+        await Assert.That(result.IsValid).IsTrue();
     }
 }

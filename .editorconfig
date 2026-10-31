@@ -39,5 +39,5 @@ dotnet_diagnostic.MA0054.severity = none
 dotnet_diagnostic.MA0004.severity = none
 
 [tests/**/*.cs]
-# Preserve xUnit's synchronization context in tests and shared fixtures.
+# Tests and shared fixtures do not need the library ConfigureAwait convention.
 dotnet_diagnostic.MA0004.severity = none

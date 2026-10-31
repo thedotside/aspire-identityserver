@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- TST-01: no network, no started AppHost. Application models are built in memory only. -->
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" LinkBase="Shared" />
+    <PackageReference Include="TUnit" />
+    <ProjectReference Include="../../src/Aspire.IdentityServer.Hosting/Aspire.IdentityServer.Hosting.csproj" />
+    <ProjectReference Include="../../src/Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
+  </ItemGroup>
+  <Import Project="../../src/Aspire.IdentityServer.Hosting/buildTransitive/Aspire.IdentityServer.Hosting.targets" />
+</Project>
