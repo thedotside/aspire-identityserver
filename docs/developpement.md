@@ -79,6 +79,14 @@ Les deux projets suivent la séparation des tests unitaires et distribués (TST-
 
 TUnit exécute les tests en parallèle. Un test qui modifie un état global du processus, comme les diagnostics IdentityModel, porte `[NotInParallel]`.
 
+Chaque contexte navigateur valide TLS ; `IgnoreHTTPSErrors` n'est jamais utilisé. Les attentes Playwright partagent un délai de 30 secondes. Chaque contexte enregistre aussi une trace Playwright, conservée seulement si le test échoue : elle est écrite sous `playwright/` dans le dossier de résultats et jointe au rapport. Pour l'ouvrir :
+
+```powershell
+pwsh tests/Aspire.IdentityServer.DistributedTests/bin/Debug/net10.0/playwright.ps1 show-trace <fichier.zip>
+```
+
+La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vidage mémoire au lieu d'occuper le runner jusqu'à son délai maximal.
+
 | Couverture | Source |
 | --- | --- |
 | Issuers et clés de signature différents entre IDP | [ProtocolTests](../tests/Aspire.IdentityServer.DistributedTests/ProtocolTests.cs). |

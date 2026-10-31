@@ -347,9 +347,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     )
     {
         var client = await fixture.Client($"idp-{provider}", clientId);
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var callback = string.Equals(clientId, "public-web", StringComparison.Ordinal)
             ? "public"

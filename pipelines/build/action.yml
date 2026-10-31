@@ -57,7 +57,7 @@ runs:
       run: pwsh tests/Aspire.IdentityServer.DistributedTests/bin/Debug/net10.0/playwright.ps1 install chromium
     - name: Test
       shell: pwsh
-      run: dotnet test --no-build --report-trx --results-directory artifacts/test-results
+      run: dotnet test --no-build --report-trx --results-directory artifacts/test-results --hangdump --hangdump-timeout 5m
     - name: Pack
       shell: pwsh
       run: pwsh eng/pack.ps1 -Version $env:PACKAGE_VERSION
@@ -70,4 +70,4 @@ runs:
         name: packages-and-test-results
         path: |
           artifacts/packages/*
-          artifacts/test-results/*
+          artifacts/test-results/

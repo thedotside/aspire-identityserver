@@ -22,14 +22,13 @@ public sealed class BrowserTests(AppFixture fixture)
         string? name
     )
     {
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         await page.GotoAsync(origin + "/login/a");
         await Login(page);
-        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         var payload = await DelegatedOrders(context, origin, method);
         await Assert.That(payload.GetProperty("subject").GetString()).IsEqualTo("idp-a:alice");
         await Assert.That(payload.GetProperty("client").GetString()).IsEqualTo(machineClient);
@@ -39,19 +38,17 @@ public sealed class BrowserTests(AppFixture fixture)
     [Test]
     public async Task A_pooled_named_client_handler_keeps_concurrent_browser_users_isolated()
     {
-        await using var alice = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
-        await using var bob = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var aliceSession = await fixture.NewBrowserSessionAsync();
+        var alice = aliceSession.Context;
+        await using var bobSession = await fixture.NewBrowserSessionAsync();
+        var bob = bobSession.Context;
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         foreach (var (context, username) in new[] { (alice, "alice"), (bob, "bob") })
         {
             var page = await context.NewPageAsync();
             await page.GotoAsync(origin + "/login/a");
             await Login(page, username);
-            await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+            await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         }
         for (var attempt = 0; attempt < 2; attempt++)
         {
@@ -93,21 +90,20 @@ public sealed class BrowserTests(AppFixture fixture)
     [Arguments("public", "Alice A")]
     public async Task Browser_can_sign_in_with_pkce_and_sign_out(string provider, string name)
     {
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         await page.GotoAsync($"{origin}/login/{provider}");
         await Login(page);
-        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert.That(await page.Locator($"#user-{provider}").InnerTextAsync()).IsEqualTo(name);
         await page.GetByRole(AriaRole.Button, new() { Name = $"Sign out {provider}", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
-        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert
             .That(await page.Locator($"#user-{provider}").InnerTextAsync())
             .IsEqualTo("Signed out");
@@ -118,16 +114,15 @@ public sealed class BrowserTests(AppFixture fixture)
     [Test]
     public async Task Two_provider_sessions_coexist_and_sign_out_independently()
     {
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
         foreach (var provider in new[] { "a", "b" })
         {
             await page.GotoAsync($"{origin}/login/{provider}");
             await Login(page);
-            await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+            await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         }
         await Assert.That(await page.Locator("#user-a").InnerTextAsync()).IsEqualTo("Alice A");
         await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
@@ -136,7 +131,7 @@ public sealed class BrowserTests(AppFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
             .ClickAsync();
         await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
-        await Assertions.Expect(page).ToHaveURLAsync(origin + "/", new() { Timeout = 30_000 });
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert.That(await page.Locator("#user-a").InnerTextAsync()).IsEqualTo("Signed out");
         await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
     }
@@ -146,9 +141,8 @@ public sealed class BrowserTests(AppFixture fixture)
     [Arguments(true)]
     public async Task Missing_or_wrong_pkce_verifier_is_rejected(bool includeWrongVerifier)
     {
-        await using var context = await fixture.Browser.NewContextAsync(
-            new() { IgnoreHTTPSErrors = true }
-        );
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var context = session.Context;
         var page = await context.NewPageAsync();
         var redirect =
             fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/') + "/signin-public";
@@ -186,8 +180,7 @@ public sealed class BrowserTests(AppFixture fixture)
                     Regex.Escape(redirect) + "\\?",
                     RegexOptions.None,
                     TimeSpan.FromSeconds(1)
-                ),
-                new() { Timeout = 30_000 }
+                )
             );
         var code = QueryHelpers.ParseQuery(new Uri(page.Url).Query)["code"].ToString();
         await Assert.That(code).IsNotEmpty();

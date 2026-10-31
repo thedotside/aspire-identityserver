@@ -64,6 +64,18 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
         await App.StartAsync(timeout.Token);
         await WaitUntilHealthyAsync(timeout.Token);
         StartupTime = watch.Elapsed;
+        // One budget for every browser expectation, including the shared user-token helper.
+        Assertions.SetDefaultExpectTimeout(30_000);
+        // API requests run in Playwright's Node.js driver, which ignores the operating system's
+        // certificate store, where the development certificate is trusted, unless asked to.
+        var nodeOptions = Environment.GetEnvironmentVariable("NODE_OPTIONS");
+        if (nodeOptions?.Contains("--use-system-ca", StringComparison.Ordinal) != true)
+            Environment.SetEnvironmentVariable(
+                "NODE_OPTIONS",
+                string.IsNullOrWhiteSpace(nodeOptions)
+                    ? "--use-system-ca"
+                    : nodeOptions + " --use-system-ca"
+            );
         playwright = await Playwright.CreateAsync();
         Browser = await playwright.Chromium.LaunchAsync(new() { Headless = true });
     }
@@ -174,6 +186,9 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
 
     private static string FirstLine(string value) =>
         value.Split('\n', 2, StringSplitOptions.TrimEntries)[0];
+
+    /// <summary>A new isolated browser context; TLS errors are never ignored.</summary>
+    public Task<BrowserSession> NewBrowserSessionAsync() => BrowserSession.StartAsync(Browser);
 
     public async Task<IdentityClientOptions> Client(string server, string clientId)
     {
