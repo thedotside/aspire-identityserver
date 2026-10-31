@@ -35,7 +35,12 @@ runs:
         } else {
           if ($changelog -notmatch $heading) { throw "Add a CHANGELOG entry for $version." }
           # Branch artifacts must never carry a version already published on nuget.org.
-          $index = Invoke-RestMethod -Uri 'https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.hosting/index.json' -SkipHttpErrorCheck -StatusCodeVariable status
+          try {
+            $index = Invoke-RestMethod -Uri 'https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.hosting/index.json' -SkipHttpErrorCheck -StatusCodeVariable status
+          } catch {
+            Write-Warning "Could not check published versions on nuget.org: $($_.Exception.Message)"
+            $status = 0
+          }
           if ($status -eq 200 -and $index.versions -contains $version.ToLowerInvariant()) { throw "$version is already published: bump Version in Directory.Build.props." }
         }
         Add-Content -LiteralPath $env:GITHUB_ENV -Value "PACKAGE_VERSION=$version"
