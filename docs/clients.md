@@ -66,7 +66,7 @@ var worker = idp.AddClientCredentialsClient("worker-secret")
     .WithScopes("orders.read");
 ```
 
-Le secret contient 32 octets aléatoires encodés en Base64, générés une fois à l'enregistrement. Il est représenté par un paramètre secret Aspire. Le serveur reçoit le secret puis enregistre sa valeur hachée SHA-256 dans la configuration Duende en mémoire.
+Le secret contient 32 octets aléatoires encodés en Base64, générés une fois à l'enregistrement. Il est représenté par un paramètre secret Aspire. Le fournisseur ne reçoit que son empreinte, `Base64(SHA-256(secret))`, calculée par l'AppHost au lancement : c'est la seule valeur que Duende conserve, et le secret n'entre ni dans l'environnement ni dans la mémoire du fournisseur. Les consommateurs projetés reçoivent, eux, la référence au paramètre secret.
 
 La projection indique `AuthenticationMethod = "client_secret_post"`. Le consommateur transmet `client_secret` dans le formulaire de demande de token. L'API fluide n'offre pas de sélection `client_secret_basic`.
 

@@ -191,6 +191,41 @@ public sealed class ProjectionTests
     }
 
     [Test]
+    public async Task The_provider_receives_only_the_hash_of_a_client_secret()
+    {
+        var builder = TestApp.CreateBuilder();
+        var server = builder.AddIdentityServer("hash-idp");
+        server.AddApiResource("orders").WithScopes("read");
+        var client = server
+            .AddClientCredentialsClient("worker")
+            .WithGeneratedClientSecret()
+            .WithScopes("read");
+        var consumer = builder
+            .AddExecutable("consumer", "dotnet", ".")
+            .WithIdentityClient(client, "OAuth");
+        var provider = await Evaluate(server);
+        var secret = client.ClientSecret!.Resource;
+        await Assert.That(provider).DoesNotContainKey("IdentityServer__Clients__0__ClientSecret");
+        await Assert.That(provider.Values).DoesNotContain(value => ReferenceEquals(value, secret));
+        var hash = await Assert
+            .That(provider["IdentityServer__Clients__0__ClientSecretHash"])
+            .IsAssignableTo<IValueProvider>();
+        var value = (await secret.GetValueAsync(default))!;
+        var expected = Convert.ToBase64String(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value))
+        );
+        var matches = string.Equals(
+            await hash!.GetValueAsync(default),
+            expected,
+            StringComparison.Ordinal
+        );
+        await Assert.That(matches).IsTrue(); // Never print a secret or its hash on failure.
+        await Assert
+            .That((await Evaluate(consumer))["OAuth__ClientSecret"])
+            .IsSameReferenceAs(secret);
+    }
+
+    [Test]
     public async Task Undeclared_scopes_fail_before_starting_the_provider()
     {
         var builder = TestApp.CreateBuilder();

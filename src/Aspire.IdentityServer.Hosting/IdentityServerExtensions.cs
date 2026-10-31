@@ -196,7 +196,7 @@ public static class IdentityServerExtensions
             environment[$"{prefix}__AuthenticationMethod"] = client.AuthenticationMethod;
             environment[$"{prefix}__RequirePkce"] = client.UsePkce.ToString();
             if (client.ClientSecret is { } secret)
-                environment[$"{prefix}__ClientSecret"] = secret.Resource;
+                environment[$"{prefix}__ClientSecretHash"] = new ClientSecretHash(secret.Resource);
             if (client.PublicJwk is { } jwk)
                 environment[$"{prefix}__PublicJwk"] = jwk;
             AddList(environment, $"{prefix}__Scopes", client.Scopes);

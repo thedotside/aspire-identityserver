@@ -123,7 +123,7 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Clients__{i}__GrantType` | `authorization_code` ou `client_credentials`. |
 | `IdentityServer__Clients__{i}__AuthenticationMethod` | `none`, `client_secret_post` ou `private_key_jwt`. |
 | `IdentityServer__Clients__{i}__RequirePkce` | Booléen de l'enregistrement. |
-| `IdentityServer__Clients__{i}__ClientSecret` | Paramètre secret pour un client avec secret. |
+| `IdentityServer__Clients__{i}__ClientSecretHash` | Empreinte `Base64(SHA-256(secret))` d'un client avec secret, calculée au lancement ; jamais le secret lui-même. |
 | `IdentityServer__Clients__{i}__PublicJwk` | Clé publique du client JWT ; aucune clé privée client. |
 | `IdentityServer__Clients__{i}__Scopes__{j}` | Scope autorisé au client. |
 | `IdentityServer__Clients__{i}__RedirectUris__{j}` | Redirection de connexion résolue. |

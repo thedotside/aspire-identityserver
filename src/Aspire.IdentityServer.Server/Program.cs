@@ -110,7 +110,10 @@ internal static class ServerProgram
                                 Value = c.PublicJwk!,
                             },
                         ],
-                        "client_secret_post" => [new Secret(c.ClientSecret!.Sha256())],
+                        "client_secret_post" when c.ClientSecretHash is { Length: > 0 } hash =>
+                        [
+                            new Secret(hash),
+                        ],
                         "none"
                             when string.Equals(
                                 c.GrantType,
