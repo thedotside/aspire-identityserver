@@ -43,9 +43,9 @@
       },
       "Meziantou.Analyzer": {
         "type": "Direct",
-        "requested": "[3.0.317, )",
-        "resolved": "3.0.317",
-        "contentHash": "IC9fCjxniZol2dcdj+hiXjK01a8gBWQproGL/qWjBI7CgB5GeEOD5oGV0PwpQaSr7Aa/RPaM8Ddho3Y1OAZe1Q=="
+        "requested": "[3.0.318, )",
+        "resolved": "3.0.318",
+        "contentHash": "H3nJiK34glwVICWp6EnhQLgftwXvIIMwVFbafG5CXVlnFqXfNN5PToDdNmw7bFzEXfMHE6zwAT8Am89c9W8ThQ=="
       },
       "AspNetCore.HealthChecks.Uris": {
         "type": "Transitive",
@@ -736,7 +736,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting": "[13.6.4, )",
-          "TheDotSide.Aspire.IdentityServer.Runtime": "[0.1.0-alpha.2, )"
+          "TheDotSide.Aspire.IdentityServer.Runtime": "[0.1.0-alpha.3, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Runtime": {

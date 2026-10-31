@@ -27,6 +27,6 @@
     <PackageVersion Include="TUnit" Version="1.76.45" />
   </ItemGroup>
   <ItemGroup>
-    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.317" PrivateAssets="all" />
+    <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.318" PrivateAssets="all" />
   </ItemGroup>
 </Project>
