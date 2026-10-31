@@ -213,6 +213,10 @@ public sealed class RegistrationRuleTests
             .WithTokenExchangeFrom(web, orders, "name");
         var values = await ProjectionTests.Evaluate(idp);
         var snapshot = values
+            .Where(p =>
+                p.Key.StartsWith("IdentityServer__", StringComparison.Ordinal)
+                || p.Key.StartsWith("ASPNETCORE_", StringComparison.Ordinal)
+            )
             .OrderBy(p => p.Key, StringComparer.Ordinal)
             .Select(p =>
                 $"{p.Key}={p.Value switch

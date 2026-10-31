@@ -6,6 +6,10 @@ using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using OpenTelemetry;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Secret = Duende.IdentityServer.Models.Secret;
 
 namespace Aspire.IdentityServer.Server;
@@ -42,6 +46,30 @@ internal static class ServerProgram
                 "The development issuer must use a loopback HTTPS address."
             );
 
+        // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
+        if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
+            builder
+                .Services.AddOpenTelemetry()
+                .WithTracing(tracing =>
+                    tracing
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddSource(
+                            Tracing.TraceNames.Basic,
+                            Tracing.TraceNames.Cache,
+                            Tracing.TraceNames.Services,
+                            Tracing.TraceNames.Store,
+                            Tracing.TraceNames.Validation
+                        )
+                )
+                .WithMetrics(metrics =>
+                    metrics
+                        .AddAspNetCoreInstrumentation()
+                        .AddHttpClientInstrumentation()
+                        .AddMeter(Telemetry.ServiceName)
+                )
+                .WithLogging(logging => { }, options => options.IncludeFormattedMessage = true)
+                .UseOtlpExporter();
         builder
             .Services.AddDataProtection()
             .UseEphemeralDataProtectionProvider()

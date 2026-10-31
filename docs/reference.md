@@ -164,6 +164,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | Protection des données | Fournisseur éphémère, application `AspireIdentityServer:{name}`. |
 | Stockages | En mémoire. |
 | Health check | `/health`. |
+| Télémétrie | `AddIdentityServer()` appelle `WithOtlpExporter()`. Quand l'AppHost fournit un point OTLP, comme avec le tableau de bord Aspire, le fournisseur exporte ses traces (ASP.NET Core, HttpClient et sources Duende), ses métriques et ses journaux. Sans point OTLP, rien n'est configuré. Les valeurs de chaîne de requête restent masquées par l'instrumentation. |
 | Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. |
 | Cookies | Session `aspire-idp-{name}` et `aspire-idp-{name}.session` : `Secure`, `SameSite=Lax`. Antiforgery `aspire-idp-{name}.csrf` : `Secure`. Les cookies ne sont pas isolés par port : ils partent vers les autres applications `https://localhost` du poste. |
 | En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |

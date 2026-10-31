@@ -63,7 +63,8 @@ public static class IdentityServerExtensions
                 "IdentityServer__AcceptTokenEndpointAudience",
                 options.AcceptTokenEndpointAudience ? "true" : "false"
             )
-            .WithHttpHealthCheck("/health", endpointName: "https");
+            .WithHttpHealthCheck("/health", endpointName: "https")
+            .WithOtlpExporter();
 #pragma warning restore ASPIRECERTIFICATES001
         server.WithEnvironment("IdentityServer__Issuer", server.GetEndpoint("https"));
         server.WithEnvironment(context =>

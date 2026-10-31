@@ -9,6 +9,10 @@
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
     <Compile Include="../Shared/RuntimeContract.cs" Link="RuntimeContract.cs" />
     <PackageReference Include="Duende.IdentityServer" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
   </ItemGroup>

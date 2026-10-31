@@ -6,4 +6,4 @@ The `TheDotSide.Aspire.IdentityServer.Runtime` package depends on **Duende Ident
 
 Duende IdentityServer, IdentityServer.Storage and Private.Licensing retain the [Duende Software license](https://duendesoftware.com/license). Duende documents IdentityServer as free for [development and testing](https://docs.duendesoftware.com/general/licensing/). This integration supports only those local scenarios. Distribution of an application containing Duende binaries is a separate matter governed by their redistribution terms; our MIT license does not grant those rights.
 
-Microsoft .NET, ASP.NET Core, IdentityModel, Aspire, MessagePack and testing dependencies retain the licenses published with their original NuGet packages. Dependency versions are declared in `Directory.Packages.props` and resolved in `obj/project.assets.json`.
+Microsoft .NET, ASP.NET Core, IdentityModel, OpenTelemetry, Aspire, MessagePack and testing dependencies retain the licenses published with their original NuGet packages. Dependency versions are declared in `Directory.Packages.props` and resolved in `obj/project.assets.json`.

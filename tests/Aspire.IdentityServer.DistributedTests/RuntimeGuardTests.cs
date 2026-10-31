@@ -5,6 +5,10 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace Aspire.IdentityServer.Tests;
 
@@ -111,6 +115,79 @@ public sealed class RuntimeGuardTests
         }
     }
 
+    [Test]
+    public async Task The_runtime_exports_traces_and_logs_to_the_apphost_otlp_endpoint()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        var received = new System.Collections.Concurrent.ConcurrentQueue<string>();
+        var receiverBuilder = WebApplication.CreateSlimBuilder();
+        receiverBuilder.WebHost.UseUrls("http://127.0.0.1:0");
+        receiverBuilder.Logging.ClearProviders();
+        await using var receiver = receiverBuilder.Build();
+        receiver.MapPost(
+            "/v1/{signal}",
+            (string signal) =>
+            {
+                received.Enqueue(signal);
+                return Results.Ok();
+            }
+        );
+        await receiver.StartAsync(timeout.Token);
+        using var certificate = TemporaryCertificate.Create();
+        var port = FreePort();
+        var environment = Environment(port, certificate);
+        environment["OTEL_EXPORTER_OTLP_ENDPOINT"] = receiver.Urls.Single();
+        environment["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf";
+        environment["OTEL_SERVICE_NAME"] = "guard";
+        environment["OTEL_BSP_SCHEDULE_DELAY"] = "200";
+        environment["OTEL_BLRP_SCHEDULE_DELAY"] = "200";
+        using var process = Start(environment);
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data?.Contains("Application started", StringComparison.Ordinal) == true)
+                started.TrySetResult();
+        };
+        process.BeginOutputReadLine();
+        try
+        {
+            await started.Task.WaitAsync(timeout.Token);
+            // Chain validation against exactly the temporary certificate of this runtime.
+            using var trusted = X509CertificateLoader.LoadPkcs12FromFile(
+                certificate.Path,
+                certificate.Password
+            );
+            using var handler = new SocketsHttpHandler();
+            handler.SslOptions.CertificateChainPolicy = new X509ChainPolicy
+            {
+                TrustMode = X509ChainTrustMode.CustomRootTrust,
+                RevocationMode = X509RevocationMode.NoCheck,
+            };
+            handler.SslOptions.CertificateChainPolicy.CustomTrustStore.Add(trusted);
+            using var http = new HttpClient(handler);
+            using var discovery = await http.GetAsync(
+                $"https://localhost:{port}/.well-known/openid-configuration",
+                timeout.Token
+            );
+            discovery.EnsureSuccessStatusCode();
+            while (
+                !(
+                    received.Contains("traces", StringComparer.Ordinal)
+                    && received.Contains("logs", StringComparer.Ordinal)
+                ) && !timeout.IsCancellationRequested
+            )
+                await Task.Delay(100, CancellationToken.None);
+            await Assert.That(received).Contains("traces");
+            await Assert.That(received).Contains("logs");
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+            await process.WaitForExitAsync(CancellationToken.None);
+            await receiver.StopAsync(CancellationToken.None);
+        }
+    }
+
     private static Dictionary<string, string?> Environment(int port, TemporaryCertificate cert) =>
         new(StringComparer.Ordinal)
         {
@@ -171,14 +248,16 @@ public sealed class RuntimeGuardTests
 
     private sealed class TemporaryCertificate : IDisposable
     {
-        private TemporaryCertificate(string path, string password)
+        private TemporaryCertificate(string path, string password, string thumbprint)
         {
             Path = path;
             Password = password;
+            Thumbprint = thumbprint;
         }
 
         public string Path { get; }
         public string Password { get; }
+        public string Thumbprint { get; }
 
         public static TemporaryCertificate Create()
         {
@@ -202,7 +281,7 @@ public sealed class RuntimeGuardTests
                 $"aspire-idp-guard-{Guid.NewGuid():N}.pfx"
             );
             File.WriteAllBytes(path, certificate.Export(X509ContentType.Pfx, password));
-            return new TemporaryCertificate(path, password);
+            return new TemporaryCertificate(path, password, certificate.Thumbprint);
         }
 
         public void Dispose() => File.Delete(Path);

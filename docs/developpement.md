@@ -12,6 +12,7 @@
 | `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, deux clients machine. |
 | `samples/Sample.Web` | Connexion et déconnexion OIDC avec les trois clients. |
 | `samples/Sample.Api` | Validation de tokens de deux IDP et deux composants OAuth sortants. |
+| `samples/Sample.ServiceDefaults` | Socle technique des exemples : découverte de services, résilience HTTP, health checks et OpenTelemetry. |
 | `tests/Aspire.IdentityServer.UnitTests` | Tests unitaires : projections, règles de l'API, clés et helpers client, sans réseau ni AppHost démarré. |
 | `tests/Aspire.IdentityServer.DistributedTests` | Tests distribués : protocoles, Token Exchange et navigateur contre un vrai AppHost d'exemple. |
 | `eng` | Construction des packages et vérification d'un consommateur indépendant. |

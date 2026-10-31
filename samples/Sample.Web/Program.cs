@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 var authentication = builder.Services.AddAuthentication();
 foreach (var (provider, section) in new[] { ("a", "IdpA"), ("b", "IdpB"), ("public", "Public") })
 {
@@ -91,7 +92,7 @@ foreach (var (name, section) in new[] { ("private-key", "PrivateKey"), ("secret"
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/health", () => Results.Ok());
+app.MapDefaultEndpoints();
 app.MapGet(
         "/delegated-orders/{method}",
         async (string method, IHttpClientFactory clients, CancellationToken cancellationToken) =>

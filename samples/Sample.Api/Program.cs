@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
 var auth = builder.Services.AddAuthentication();
 foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
 {
@@ -22,7 +23,7 @@ builder.Services.AddHttpClient();
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/health", () => Results.Ok());
+app.MapDefaultEndpoints();
 foreach (var scheme in new[] { "a", "b" })
 {
     app.MapGet(
