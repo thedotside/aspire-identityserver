@@ -28,6 +28,11 @@ internal static class ServerProgram
         var config =
             builder.Configuration.GetSection("IdentityServer").Get<ServerConfiguration>()
             ?? throw new InvalidOperationException("Missing IdentityServer configuration.");
+        if (config.ContractVersion != RuntimeContract.Version)
+            throw new InvalidOperationException(
+                $"This runtime reads configuration contract {RuntimeContract.Version}, but the AppHost wrote {config.ContractVersion}. "
+                    + "Use the same version of TheDotSide.Aspire.IdentityServer.Hosting and TheDotSide.Aspire.IdentityServer.Runtime."
+            );
         if (
             !Uri.TryCreate(config.Issuer, UriKind.Absolute, out var issuer)
             || !string.Equals(issuer.Scheme, "https", StringComparison.Ordinal)

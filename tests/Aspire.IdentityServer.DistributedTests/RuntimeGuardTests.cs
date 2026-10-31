@@ -23,6 +23,7 @@ public sealed class RuntimeGuardTests
     [Arguments("ports", "Set ASPNETCORE_HTTPS_PORTS to a single port")]
     [Arguments("endpoints", "Kestrel endpoints cannot be configured")]
     [Arguments("issuer", "loopback HTTPS address")]
+    [Arguments("contract", "configuration contract")]
     public async Task The_runtime_refuses_to_start_outside_its_development_boundary(
         string change,
         string expected
@@ -46,6 +47,9 @@ public sealed class RuntimeGuardTests
                 break;
             case "issuer":
                 environment["IdentityServer__Issuer"] = "https://idp.example";
+                break;
+            case "contract":
+                environment.Remove("IdentityServer__ContractVersion");
                 break;
         }
         using var process = Start(environment);
@@ -114,6 +118,7 @@ public sealed class RuntimeGuardTests
             ["ASPNETCORE_HTTPS_PORTS"] = port.ToString(CultureInfo.InvariantCulture),
             ["Kestrel__Certificates__Default__Path"] = cert.Path,
             ["Kestrel__Certificates__Default__Password"] = cert.Password,
+            ["IdentityServer__ContractVersion"] = "2",
             ["IdentityServer__Name"] = "guard",
             ["IdentityServer__Issuer"] = $"https://localhost:{port}",
         };

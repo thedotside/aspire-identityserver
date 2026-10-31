@@ -2,6 +2,7 @@ namespace Aspire.IdentityServer.Server;
 
 internal sealed class ServerConfiguration
 {
+    public int ContractVersion { get; set; }
     public string Name { get; set; } = "identityserver";
     public string Issuer { get; set; } = "";
     public bool AcceptTokenEndpointAudience { get; set; }

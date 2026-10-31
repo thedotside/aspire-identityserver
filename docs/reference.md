@@ -148,6 +148,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `2`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |

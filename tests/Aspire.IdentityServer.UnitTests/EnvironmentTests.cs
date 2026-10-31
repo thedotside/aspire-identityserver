@@ -16,6 +16,11 @@ public sealed class EnvironmentTests
         var server = TestApp.CreateBuilder(environment).AddIdentityServer("idp");
         var values = await ProjectionTests.Evaluate(server);
         await Assert.That(values["ASPNETCORE_ENVIRONMENT"]).IsEqualTo(environment);
+        await Assert
+            .That(values[RuntimeContract.EnvironmentVariable])
+            .IsEqualTo(
+                RuntimeContract.Version.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            );
     }
 
     [Test]

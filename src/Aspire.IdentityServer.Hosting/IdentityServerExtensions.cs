@@ -1,3 +1,4 @@
+using System.Globalization;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.Hosting;
@@ -51,6 +52,10 @@ public static class IdentityServerExtensions
                 return Task.CompletedTask;
             })
             .WithEnvironment("ASPNETCORE_ENVIRONMENT", environment)
+            .WithEnvironment(
+                RuntimeContract.EnvironmentVariable,
+                RuntimeContract.Version.ToString(CultureInfo.InvariantCulture)
+            )
             .WithEnvironment("IdentityServer__Name", name)
             .WithEnvironment(
                 "IdentityServer__AcceptTokenEndpointAudience",
