@@ -88,6 +88,10 @@ public static class PrivateKeyJwt
         return imported;
     }
 
+    /// <summary>The imported key cached for these options; tests use it to prove reuse.</summary>
+    internal static object? CachedKey(IdentityClientOptions client) =>
+        Imported.TryGetValue(client, out var key) ? key : null;
+
     private static ImportedKey Import(IdentityClientOptions client)
     {
         if (client.PrivateKeyBase64 is { } value)

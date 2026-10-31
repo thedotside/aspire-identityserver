@@ -249,14 +249,7 @@ public sealed class BrowserTests(AppFixture fixture)
             new FormUrlEncodedContent(fields)
         );
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
-        await Assert
-            .That(
-                (await response.Content.ReadFromJsonAsync<JsonElement>()).TryGetProperty(
-                    "error",
-                    out _
-                )
-            )
-            .IsTrue();
+        await Assert.That(await ProtocolTests.Error(response)).IsEqualTo("invalid_grant");
     }
 
     private static async Task Login(IPage page, string username = "alice")

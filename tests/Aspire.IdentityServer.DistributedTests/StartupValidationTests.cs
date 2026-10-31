@@ -31,5 +31,21 @@ public sealed class StartupValidationTests
         await Assert
             .That(error!.Flatten().InnerExceptions.OfType<InvalidOperationException>())
             .Contains(e => e.Message.Contains("declared API scopes", StringComparison.Ordinal));
+        // The rules ran before orchestration: no resource was ever starting or running.
+        var states = new List<string>();
+        using var watch = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        try
+        {
+            await foreach (var change in app.ResourceNotifications.WatchAsync(watch.Token))
+                if (change.Snapshot.State?.Text is { } state)
+                    states.Add($"{change.Resource.Name}:{state}");
+        }
+        catch (OperationCanceledException) when (watch.IsCancellationRequested) { }
+        await Assert
+            .That(states)
+            .DoesNotContain(s =>
+                s.EndsWith(":" + KnownResourceStates.Starting, StringComparison.Ordinal)
+                || s.EndsWith(":" + KnownResourceStates.Running, StringComparison.Ordinal)
+            );
     }
 }

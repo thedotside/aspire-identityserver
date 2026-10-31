@@ -312,9 +312,14 @@ public sealed class Base64PrivateKeyJwtTests
         foreach (var assertion in assertions)
             await Assert.That(await IsSignedBy(assertion, first, "first-key")).IsTrue();
         await Assert.That(assertions.Distinct(StringComparer.Ordinal).Count()).IsEqualTo(32);
+        var imported = PrivateKeyJwt.CachedKey(options);
+        await Assert.That(imported).IsNotNull();
+        _ = PrivateKeyJwt.CreateAssertion(options, "https://idp.test");
+        await Assert.That(PrivateKeyJwt.CachedKey(options)).IsSameReferenceAs(imported);
 
         options.PrivateKeyBase64 = TestKeys.Encode(second, "second-key");
         var rotated = PrivateKeyJwt.CreateAssertion(options, "https://idp.test");
+        await Assert.That(PrivateKeyJwt.CachedKey(options)).IsNotSameReferenceAs(imported);
         await Assert.That(await IsSignedBy(rotated, second, "second-key")).IsTrue();
         await Assert.That(await IsSignedBy(rotated, first, "second-key")).IsFalse();
 

@@ -118,7 +118,7 @@ public sealed class RegistrationRuleTests
     [Arguments("interactive-without-redirect", "needs an openid scope and a redirect URI")]
     [Arguments("interactive-without-openid", "needs an openid scope and a redirect URI")]
     [Arguments("public-without-pkce", "'public' must use PKCE")]
-    public async Task Inconsistent_registrations_fail_before_any_resource_starts(
+    public async Task Inconsistent_registrations_are_refused_by_the_startup_validation(
         string rule,
         string message
     )
