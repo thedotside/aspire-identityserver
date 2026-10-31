@@ -293,6 +293,80 @@ public sealed class Base64PrivateKeyJwtTests
             .ThrowsExactly<InvalidOperationException>();
     }
 
+    [Test]
+    public async Task An_imported_key_is_reused_until_its_credential_or_KeyId_changes()
+    {
+        using var first = RSA.Create(2048);
+        using var second = RSA.Create(2048);
+        var options = new IdentityClientOptions
+        {
+            ClientId = "worker",
+            PrivateKeyBase64 = TestKeys.Encode(first, "first-key"),
+        };
+        var assertions = await Task.WhenAll(
+            Enumerable
+                .Range(0, 32)
+                .Select(_ =>
+                    Task.Run(() => PrivateKeyJwt.CreateAssertion(options, "https://idp.test"))
+                )
+        );
+        foreach (var assertion in assertions)
+            await Assert.That(await IsSignedBy(assertion, first, "first-key")).IsTrue();
+        await Assert.That(assertions.Distinct(StringComparer.Ordinal).Count()).IsEqualTo(32);
+
+        options.PrivateKeyBase64 = TestKeys.Encode(second, "second-key");
+        var rotated = PrivateKeyJwt.CreateAssertion(options, "https://idp.test");
+        await Assert.That(await IsSignedBy(rotated, second, "second-key")).IsTrue();
+        await Assert.That(await IsSignedBy(rotated, first, "second-key")).IsFalse();
+
+        options.KeyId = "another-kid";
+        await Assert
+            .That(() => PrivateKeyJwt.CreateAssertion(options, "https://idp.test"))
+            .ThrowsExactly<ArgumentException>();
+
+        var pem = new IdentityClientOptions
+        {
+            ClientId = "worker",
+            PrivateKeyPem = first.ExportPkcs8PrivateKeyPem(),
+            KeyId = "pem-key",
+        };
+        await Assert
+            .That(
+                await IsSignedBy(
+                    PrivateKeyJwt.CreateAssertion(pem, "https://idp.test"),
+                    first,
+                    "pem-key"
+                )
+            )
+            .IsTrue();
+        pem.PrivateKeyPem = second.ExportPkcs8PrivateKeyPem();
+        await Assert
+            .That(
+                await IsSignedBy(
+                    PrivateKeyJwt.CreateAssertion(pem, "https://idp.test"),
+                    second,
+                    "pem-key"
+                )
+            )
+            .IsTrue();
+    }
+
+    private static async Task<bool> IsSignedBy(string assertion, RSA rsa, string kid)
+    {
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(
+            assertion,
+            new TokenValidationParameters
+            {
+                ValidIssuer = "worker",
+                ValidAudience = "https://idp.test",
+                IssuerSigningKey = new JsonWebKey(TestKeys.Public(rsa, kid)),
+                ValidAlgorithms = ["RS256"],
+                ValidTypes = [PrivateKeyJwt.ClientAuthenticationType],
+            }
+        );
+        return result.IsValid;
+    }
+
     private static async Task AssertSafe(Exception error, params string[] privateValues)
     {
         await Assert.That(error.InnerException).IsNull();

@@ -61,9 +61,20 @@ internal static class RsaJwk
                 InverseQ = privateKey ? Component(key, "qi") : null,
             };
             using var rsa = RSA.Create();
-            rsa.ImportParameters(parameters);
+            try
+            {
+                rsa.ImportParameters(parameters);
+            }
+            catch
+            {
+                Clear(parameters);
+                throw;
+            }
             if (rsa.KeySize < 2048)
+            {
+                Clear(parameters);
                 throw new FormatException();
+            }
             if (privateKey)
             {
                 using var publicKey = RSA.Create();
@@ -82,7 +93,10 @@ internal static class RsaJwk
                         RSASignaturePadding.Pkcs1
                     )
                 )
+                {
+                    Clear(parameters);
                     throw new FormatException();
+                }
             }
             return (parameters, Text(key, "kid"));
         }
@@ -124,6 +138,24 @@ internal static class RsaJwk
         if (!string.Equals(Encode(bytes), value, StringComparison.Ordinal))
             throw new FormatException();
         return bytes;
+    }
+
+    /// <summary>Wipes the private components of exported or parsed RSA parameters.</summary>
+    internal static void Clear(RSAParameters parameters)
+    {
+        foreach (
+            var component in new[]
+            {
+                parameters.D,
+                parameters.P,
+                parameters.Q,
+                parameters.DP,
+                parameters.DQ,
+                parameters.InverseQ,
+            }
+        )
+            if (component is not null)
+                CryptographicOperations.ZeroMemory(component);
     }
 
     internal static string Encode(byte[] value) =>

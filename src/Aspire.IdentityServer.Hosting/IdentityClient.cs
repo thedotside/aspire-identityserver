@@ -162,11 +162,17 @@ public sealed class IdentityClient
         var keyId = Convert
             .ToHexString(SHA256.HashData(rsa.ExportSubjectPublicKeyInfo()))
             .ToLowerInvariant();
-        return WithBase64PrivateKeyJwt(
-            Convert.ToBase64String(
-                Encoding.UTF8.GetBytes(RsaJwk.Serialize(rsa.ExportParameters(true), keyId))
-            )
-        );
+        var parameters = rsa.ExportParameters(true);
+        try
+        {
+            return WithBase64PrivateKeyJwt(
+                Convert.ToBase64String(Encoding.UTF8.GetBytes(RsaJwk.Serialize(parameters, keyId)))
+            );
+        }
+        finally
+        {
+            RsaJwk.Clear(parameters);
+        }
     }
 
     /// <summary>Imports Base64(UTF8(private RSA JWK JSON)); registers only the public key.</summary>
@@ -174,6 +180,8 @@ public sealed class IdentityClient
     {
         EnsureAuthenticationUnset();
         var (parameters, keyId) = RsaJwk.ReadPrivateBase64(privateKeyBase64);
+        // Only the public half is registered; the private components are not kept.
+        RsaJwk.Clear(parameters);
         var publicParameters = new RSAParameters
         {
             Modulus = parameters.Modulus,

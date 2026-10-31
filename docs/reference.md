@@ -120,7 +120,9 @@ Le binding ne valide pas automatiquement les champs et ne configure aucun handle
 
 Le JWT dure une minute, avec un nouveau `jti` à chaque appel. Le helper d'assertion n'envoie pas de requête HTTP. Voir [clients](clients.md) et [intégration](integration.md).
 
-Avec `PrivateKeyBase64`, le helper signe directement avec les primitives JWK IdentityModel. Il utilise le `kid` de la JWK et refuse un `KeyId` configuré différent. Les erreurs d'import sont fixes et sans exception interne conservée. Voir le [contrat complet et la migration du template](jwk-base64.md).
+Le helper importe la clé une fois par instance d'`IdentityClientOptions`, puis la réutilise ; il la réimporte et la revalide si la clé ou le `KeyId` changent, par exemple au rechargement d'`IOptionsMonitor`. Les composants privés décodés sont effacés de la mémoire après import, et les signatures concurrentes sur une même clé sont sérialisées.
+
+Avec `PrivateKeyBase64`, le helper importe directement les composants validés dans une clé RSA, sans passer le JSON privé à IdentityModel. Il utilise le `kid` de la JWK et refuse un `KeyId` configuré différent. Les erreurs d'import sont fixes et sans exception interne conservée. Voir le [contrat complet et la migration du template](jwk-base64.md).
 
 La version `0.1.0-alpha.2` ajoute `TokenExchange.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string subjectToken, string? audience = null, string? scope = null)`. Il retourne un `HttpRequestMessage` contenant un formulaire RFC 8693 et des credentials neufs. L'appelant possède la requête et l'envoie lui-même. Les constantes `TokenExchange.GrantType` et `TokenExchange.AccessTokenType` exposent les identifiants standard. Aucun cache de tokens ou mécanisme de renouvellement n'est fourni. Voir le [guide](token-exchange.md).
 
