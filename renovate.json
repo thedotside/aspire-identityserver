@@ -2,7 +2,7 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
   "timezone": "Europe/Paris",
-  "enabledManagers": ["nuget", "github-actions", "custom.regex"],
+  "enabledManagers": ["nuget", "github-actions", "npm", "custom.regex"],
   "ignorePaths": ["**/bin/**", "**/obj/**", "artifacts/**", "work/**"],
   "automerge": false,
   "prConcurrentLimit": 3,
@@ -26,6 +26,10 @@
     {
       "matchDepTypes": ["dotnet-sdk"],
       "allowedVersions": "/^10\\./"
+    },
+    {
+      "matchPackageNames": ["/^@commitlint\\//"],
+      "groupName": "commitlint"
     },
     {
       "matchUpdateTypes": ["major"],

@@ -139,6 +139,19 @@ Le workflow de CI ne publie pas sur NuGet. Un [workflow distinct](../.github/wor
 
 La présence d'une archive GitHub Actions ne signifie pas que le package existe sur nuget.org. Vérifie séparément le résultat du run et celui d'une publication.
 
+### Messages de commit
+
+Le job `commits` de la CI vérifie, sur chaque PR, les messages de ses commits et son titre avec [commitlint](https://commitlint.js.org) et `@commitlint/config-conventional` (OUT-08, TST-11). Les versions exactes sont dans [package.json](../package.json) et `package-lock.json`. Le titre de PR devenant le message d'une fusion en squash, autoriser seulement ce mode de fusion dans les paramètres du dépôt garantit un historique conforme. En local :
+
+```powershell
+npm ci --ignore-scripts
+npx commitlint --from origin/main --to HEAD
+```
+
+### Version et CHANGELOG
+
+`Version` dans [Directory.Build.props](../Directory.Build.props) désigne toujours la **prochaine** version, et le [CHANGELOG](../CHANGELOG.md) a une entrée `## <version> - Unreleased`. La CI refuse une branche dont la version est déjà publiée sur nuget.org, et un tag dont l'entrée n'est pas datée (`## <version> - AAAA-MM-JJ`). Voir [la publication](publication.md).
+
 ### Mises à jour avec Renovate
 
 Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`.

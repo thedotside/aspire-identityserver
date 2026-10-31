@@ -2,24 +2,24 @@
 
 [Documentation](README.md) · [Développement](developpement.md) · [Installation](demarrage.md)
 
-Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `0.1.0-alpha.2` publie la version NuGet `0.1.0-alpha.2`, et `0.1.0` publie `0.1.0`.
+Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `0.1.0-alpha.3` publie la version NuGet `0.1.0-alpha.3`, et `0.1.0` publie `0.1.0`.
 
 ## Publier depuis main
 
-Après fusion des changements dans `main` et réussite de la CI :
+Après fusion des changements dans `main` et réussite de la CI, date l'entrée de la version dans le [CHANGELOG](../CHANGELOG.md) (`## 0.1.0-alpha.3 - 2026-11-05`) : le workflow refuse un tag sans entrée datée. Puis :
 
 ```powershell
 git switch main
 git pull --ff-only
-git tag -a 0.1.0-alpha.2 -m "Release 0.1.0-alpha.2"
-git push origin 0.1.0-alpha.2
+git tag -a 0.1.0-alpha.3 -m "Release 0.1.0-alpha.3"
+git push origin 0.1.0-alpha.3
 ```
+
+Juste après la publication, passe `Version` de [Directory.Build.props](../Directory.Build.props) à la version suivante, avec une entrée `Unreleased` dans le CHANGELOG. La CI des branches refuse une version déjà présente sur nuget.org : les archives d'une branche ne peuvent donc pas porter une version publiée.
 
 Choisis un nouveau numéro à chaque publication. Les tags acceptent `X.Y.Z` et `X.Y.Z-prerelease`, sans `v`, sans zéros de tête dans les nombres et sans métadonnées `+build`. Les préversions peuvent contenir plusieurs identifiants, comme `0.2.0-rc.1`.
 
 Le tag doit pointer vers un commit appartenant à l'historique de `main`. Le pipeline contrôle cette condition avant le build. La version du tag est injectée dans le build, dans les trois packages et dans les tests de consommation ; elle remplace la version locale de `Directory.Build.props` pour cette exécution. Il n'est donc pas nécessaire de modifier les versions des scripts avant chaque tag.
-
-Le tag préparatoire `v0.1.0-alpha.1`, antérieur au pipeline de publication, ne correspond pas au format de déclenchement.
 
 ## Chaîne de validation et de publication
 

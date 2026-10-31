@@ -10,3 +10,4 @@ TestResults/
 *.pfx
 *.pem
 .aspire/
+node_modules/

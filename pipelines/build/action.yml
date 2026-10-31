@@ -25,10 +25,18 @@ runs:
         $identifier = '(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
         $pattern = "^${number}\.${number}\.${number}(?:-${identifier}(?:\.${identifier})*)?$"
         if ($version -notmatch $pattern) { throw 'Use a SemVer tag such as 0.1.0 or 0.1.0-alpha.1, without v or build metadata.' }
+        $changelog = Get-Content CHANGELOG.md -Raw
+        $heading = "(?m)^## $([regex]::Escape($version)) - "
         if ($env:RELEASE_VERSION) {
           if ($env:GITHUB_REF_TYPE -ne 'tag' -or $version -ne $env:GITHUB_REF_NAME) { throw 'The release version must match the Git tag.' }
           git merge-base --is-ancestor HEAD refs/remotes/origin/main
           if ($LASTEXITCODE -ne 0) { throw 'Release tags must point to a commit on main.' }
+          if ($changelog -notmatch "$heading\d{4}-\d{2}-\d{2}\s*$") { throw "Date the CHANGELOG entry '## $version - YYYY-MM-DD' before tagging." }
+        } else {
+          if ($changelog -notmatch $heading) { throw "Add a CHANGELOG entry for $version." }
+          # Branch artifacts must never carry a version already published on nuget.org.
+          $index = Invoke-RestMethod -Uri 'https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.hosting/index.json' -SkipHttpErrorCheck -StatusCodeVariable status
+          if ($status -eq 200 -and $index.versions -contains $version.ToLowerInvariant()) { throw "$version is already published: bump Version in Directory.Build.props." }
         }
         Add-Content -LiteralPath $env:GITHUB_ENV -Value "PACKAGE_VERSION=$version"
     - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
