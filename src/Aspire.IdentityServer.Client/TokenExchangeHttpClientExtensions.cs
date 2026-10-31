@@ -20,7 +20,10 @@ public sealed class TokenExchangeHandlerOptions
         ValueTask<string?>
     >? SubjectTokenProvider { get; set; }
 
+    /// <summary>The requested audience; defaults to <see cref="IdentityClientOptions.TokenExchangeAudience" />.</summary>
     public string? Audience { get; set; }
+
+    /// <summary>The requested scopes; defaults to <see cref="IdentityClientOptions.Scopes" />.</summary>
     public string? Scope { get; set; }
 
     /// <summary>
@@ -33,6 +36,7 @@ public sealed class TokenExchangeHandlerOptions
     public TimeSpan BackchannelTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
+/// <summary>Adds token exchange to named <see cref="HttpClient" /> instances.</summary>
 public static class TokenExchangeHttpClientExtensions
 {
     /// <summary>The independent client used for discovery and token requests, without this handler.</summary>

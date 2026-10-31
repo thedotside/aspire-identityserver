@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <!-- API compatibility against the last published version; intended breaks are suppressed. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>TheDotSide.Aspire.IdentityServer.Hosting</PackageId>
     <Description>Local development and testing identity providers for Aspire, with fluent OAuth/OIDC clients and configuration projections.</Description>
     <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>

@@ -62,7 +62,8 @@ runs:
       run: |
         foreach ($name in @('Runtime', 'Client', 'Hosting')) {
           $package = "artifacts/release/packages/TheDotSide.Aspire.IdentityServer.$name.$env:RELEASE_VERSION.nupkg"
-          dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols
+          # The .snupkg next to each archive is pushed with it, to the NuGet symbol server.
+          dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
           if ($LASTEXITCODE -ne 0) { throw "Publishing $name failed." }
         }
     - name: Wait for NuGet indexing

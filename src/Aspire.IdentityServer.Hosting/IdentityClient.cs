@@ -21,16 +21,37 @@ public sealed class IdentityClient
         ParameterPrefix = $"{server.Resource.Name}-client-{index}";
     }
 
+    /// <summary>The provider of this client.</summary>
     public IResourceBuilder<IdentityServerResource> Server { get; }
+
+    /// <summary>The client identifier, unique within its provider.</summary>
     public string ClientId { get; }
+
+    /// <summary>The deferred HTTPS address of the provider, its issuer.</summary>
     public EndpointReference Authority => Server.GetEndpoint("https");
+
+    /// <summary><c>none</c>, <c>client_secret_post</c> or <c>private_key_jwt</c>, set by the credential methods.</summary>
     public string AuthenticationMethod { get; private set; } = "none";
+
+    /// <summary>The secret parameter of a <c>client_secret_post</c> client; the provider only receives its hash.</summary>
     public IResourceBuilder<ParameterResource>? ClientSecret { get; private set; }
+
+    /// <summary>The secret parameter holding a PEM private key, never sent to the provider.</summary>
     public IResourceBuilder<ParameterResource>? PrivateKeyPem { get; private set; }
+
+    /// <summary>The secret parameter holding Base64(UTF8(private RSA JWK)), never sent to the provider.</summary>
     public IResourceBuilder<ParameterResource>? PrivateKeyBase64 { get; private set; }
+
+    /// <summary>The <c>kid</c> of the registered public key.</summary>
     public string? KeyId { get; private set; }
+
+    /// <summary>The public RSA JWK registered with the provider.</summary>
     public string? PublicJwk { get; private set; }
+
+    /// <summary>Whether the authorization code flow requires PKCE; always true for public clients.</summary>
     public bool UsePkce { get; private set; } = true;
+
+    /// <summary>The scopes this client may request.</summary>
     public IReadOnlyCollection<string> Scopes => ScopeNames;
 
     /// <summary>The exchange audience when all configured policies select the same API.</summary>
@@ -102,6 +123,7 @@ public sealed class IdentityClient
         return this;
     }
 
+    /// <summary>Adds scopes: declared API scopes, or <c>openid</c>, <c>profile</c> and <c>email</c> for interactive clients.</summary>
     public IdentityClient WithScopes(params string[] scopes)
     {
         foreach (var scope in scopes)
@@ -121,6 +143,7 @@ public sealed class IdentityClient
         return this;
     }
 
+    /// <summary>Authenticates with <c>client_secret_post</c>, using an existing Aspire secret parameter.</summary>
     public IdentityClient WithClientSecret(IResourceBuilder<ParameterResource> secret)
     {
         EnsureAuthenticationUnset();
@@ -134,6 +157,7 @@ public sealed class IdentityClient
         return this;
     }
 
+    /// <summary>Authenticates with <c>client_secret_post</c>, using a random 32-byte secret generated at registration.</summary>
     public IdentityClient WithGeneratedClientSecret()
     {
         EnsureAuthenticationUnset();
@@ -141,6 +165,7 @@ public sealed class IdentityClient
         return WithClientSecret(GeneratedParameter("secret", () => value));
     }
 
+    /// <summary>Authenticates with <c>private_key_jwt</c>, using an RSA 2048 PEM key generated at registration.</summary>
     public IdentityClient WithGeneratedPrivateKeyJwt()
     {
         using var rsa = RSA.Create(2048);
@@ -273,6 +298,7 @@ public sealed class IdentityClient
         AuthenticationMethod = "private_key_jwt";
     }
 
+    /// <summary>Adds a sign-in callback: the deferred <paramref name="endpoint" /> address followed by <paramref name="path" />.</summary>
     public IdentityClient WithRedirectUri(EndpointReference endpoint, string path)
     {
         ValidateCallback(path);
@@ -280,6 +306,7 @@ public sealed class IdentityClient
         return this;
     }
 
+    /// <summary>Adds a sign-out callback: the deferred <paramref name="endpoint" /> address followed by <paramref name="path" />.</summary>
     public IdentityClient WithPostLogoutRedirectUri(EndpointReference endpoint, string path)
     {
         ValidateCallback(path);

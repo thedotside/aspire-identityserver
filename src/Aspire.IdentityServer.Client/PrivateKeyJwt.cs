@@ -8,6 +8,7 @@ namespace Aspire.IdentityServer.Client;
 /// <summary>Creates a fresh short-lived assertion for each token request.</summary>
 public static class PrivateKeyJwt
 {
+    /// <summary>The <c>client_assertion_type</c> of JWT client assertions (RFC 7523).</summary>
     public const string AssertionType = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer";
 
     /// <summary>The explicit JWT type of draft-ietf-oauth-rfc7523bis client assertions.</summary>
@@ -18,6 +19,7 @@ public static class PrivateKeyJwt
     /// injection: the audience is the provider's issuer identifier alone, and the JWT is typed
     /// <c>client-authentication+jwt</c>.
     /// </summary>
+    /// <param name="client">The client identifier and its private key.</param>
     /// <param name="issuer">The <c>issuer</c> value of the provider's discovery document.</param>
     public static string CreateAssertion(IdentityClientOptions client, string issuer) =>
         Create(client, issuer, ClientAuthenticationType);
@@ -26,6 +28,7 @@ public static class PrivateKeyJwt
     /// Creates an assertion with the original RFC 7523 profile: the audience is the token endpoint
     /// and the JWT is typed <c>JWT</c>. Use it only for providers that refuse the issuer audience.
     /// </summary>
+    /// <param name="client">The client identifier and its private key.</param>
     /// <param name="tokenEndpoint">The <c>token_endpoint</c> of the provider's discovery document.</param>
     public static string CreateTokenEndpointAssertion(
         IdentityClientOptions client,

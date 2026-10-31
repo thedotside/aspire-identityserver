@@ -13,6 +13,8 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
     internal List<IdentityClient> Clients { get; } = [];
     internal List<IdentityApiResource> Apis { get; } = [];
     internal List<TestUser> Users { get; } = [];
+
+    /// <summary>The clients registered with this provider, in declaration order.</summary>
     public IReadOnlyList<IdentityClient> RegisteredClients => Clients.AsReadOnly();
 }
 
@@ -48,12 +50,20 @@ public sealed class IdentityApiResource
         Audience = audience;
     }
 
+    /// <summary>The provider that issues tokens for this API.</summary>
     public IResourceBuilder<IdentityServerResource> Server { get; }
+
+    /// <summary>The audience (<c>aud</c>) of access tokens issued for this API.</summary>
     public string Audience { get; }
+
+    /// <summary>The deferred HTTPS address of the provider, its issuer.</summary>
     public EndpointReference Authority => Server.GetEndpoint("https");
     internal HashSet<string> ScopeNames { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The scopes that issue tokens for this API.</summary>
     public IReadOnlyCollection<string> Scopes => ScopeNames;
 
+    /// <summary>Adds API scopes; identity scopes and <c>offline_access</c> are reserved.</summary>
     public IdentityApiResource WithScopes(params string[] scopes)
     {
         foreach (var scope in scopes)

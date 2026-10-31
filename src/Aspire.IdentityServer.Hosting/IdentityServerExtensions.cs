@@ -93,6 +93,7 @@ public static class IdentityServerExtensions
         return server;
     }
 
+    /// <summary>Adds a test user; its password becomes an Aspire secret parameter.</summary>
     public static IResourceBuilder<IdentityServerResource> WithTestUser(
         this IResourceBuilder<IdentityServerResource> server,
         string username,
@@ -132,6 +133,7 @@ public static class IdentityServerExtensions
         return server;
     }
 
+    /// <summary>Declares an API audience; add its scopes with <see cref="IdentityApiResource.WithScopes" />.</summary>
     public static IdentityApiResource AddApiResource(
         this IResourceBuilder<IdentityServerResource> server,
         string audience
@@ -149,11 +151,13 @@ public static class IdentityServerExtensions
         return api;
     }
 
+    /// <summary>Registers an interactive authorization code client, public with PKCE until given credentials.</summary>
     public static IdentityClient AddAuthorizationCodeClient(
         this IResourceBuilder<IdentityServerResource> server,
         string clientId
     ) => AddClient(server, clientId, "authorization_code");
 
+    /// <summary>Registers a machine client; give it credentials and API scopes.</summary>
     public static IdentityClient AddClientCredentialsClient(
         this IResourceBuilder<IdentityServerResource> server,
         string clientId

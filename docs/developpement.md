@@ -110,7 +110,9 @@ pwsh eng/pack.ps1
 pwsh eng/package-smoke.ps1
 ```
 
-`pack.ps1` construit en Release les trois archives dans `artifacts/packages` et vérifie qu'elles ne contiennent pas d'assemblies tierces. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
+`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la dernière version publiée, `0.1.0-alpha.2` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack, et les ruptures assumées figurent dans les fichiers `CompatibilitySuppressions.xml`, à régénérer avec `-p:GenerateCompatibilitySuppressionFile=true`. Après chaque publication, la version de référence passe à la version publiée.
+
+Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel outil à inscrire d'abord dans les ADR selon OUT-26) et une attestation de provenance, que GitHub n'émet pas pour un dépôt privé du plan gratuit. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 
 `package-smoke.ps1` crée un AppHost temporaire et un cache NuGet isolé. Il consomme les vrais packages avec la version plancher d'Aspire, vérifie le dossier du fournisseur, refuse un AppHost en `Production`, démarre un fournisseur et obtient des tokens avec des assertions JWT. Un second projet, de test, référence cet AppHost et démarre le fournisseur par `DistributedApplicationTestingBuilder`. Le succès contient :
 

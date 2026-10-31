@@ -28,7 +28,7 @@ Le déclencheur GitHub est dans [.github/workflows/publish.yml](../.github/workf
 1. Le job `verify` vérifie le tag et son rattachement à `main`, restaure .NET et les dépendances, contrôle CSharpier, compile et exécute les tests de protocoles et navigateur.
 2. Il construit les trois archives et les consomme dans un AppHost temporaire avec un cache NuGet isolé. Les archives vérifiées sont conservées dans l'artefact `packages-and-test-results`.
 3. Le job `publish` démarre uniquement si `verify` réussit. Il récupère ces mêmes archives, vérifie leurs identifiants, versions et révision source, puis demande un jeton NuGet temporaire via OIDC.
-4. Il publie `Runtime`, `Client`, puis `Hosting`. Seules les trois archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
+4. Il publie `Runtime`, `Client`, puis `Hosting`, chacun avec son paquet de symboles `.snupkg`. Seules les trois archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
 5. Il attend leur indexation pendant au plus dix minutes, puis restaure les packages uniquement depuis nuget.org dans un nouveau consommateur. Celui-ci démarre le fournisseur et obtient un token réel avec `private_key_jwt`.
 
 Une publication réussie atteste donc la validation des packages et leur consommation depuis le registre. La validation s'exécute sur Windows ; elle ne constitue pas une validation des autres systèmes.

@@ -2,6 +2,11 @@
   <PropertyGroup>
     <UseAppHost>false</UseAppHost>
     <IsPackable>true</IsPackable>
+    <!-- API compatibility against the last published version; intended breaks are suppressed. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageId>TheDotSide.Aspire.IdentityServer.Runtime</PackageId>
     <Description>Development identity provider runtime for TheDotSide.Aspire.IdentityServer.Hosting. Duende is restored as a NuGet dependency, not bundled.</Description>
   </PropertyGroup>

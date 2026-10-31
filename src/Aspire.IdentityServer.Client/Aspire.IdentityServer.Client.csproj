@@ -1,6 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <!-- API compatibility against the last published version; intended breaks are suppressed. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>TheDotSide.Aspire.IdentityServer.Client</PackageId>
     <Description>Optional, engine-independent OAuth client helpers: configuration binding, RS256 private_key_jwt assertions and an RFC 8693 token-exchange handler for named HTTP clients.</Description>
     <PackageTags>openid-connect;oauth;private-key-jwt;testing</PackageTags>
