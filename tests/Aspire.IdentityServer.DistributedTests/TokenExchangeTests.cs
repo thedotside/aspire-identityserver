@@ -131,6 +131,9 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await Assert
             .That(jwt.GetClaim("auth_time").Value)
             .IsEqualTo(source.GetClaim("auth_time").Value);
+        await Assert.That(Values(jwt, "amr")).IsEquivalentTo(Values(source, "amr"));
+        await Assert.That(Values(jwt, "amr")).IsNotEmpty();
+        await Assert.That(jwt.GetClaim("idp").Value).IsEqualTo(source.GetClaim("idp").Value);
         await Assert.That(jwt.ValidTo).IsLessThanOrEqualTo(source.ValidTo);
         using var actor = JsonDocument.Parse(jwt.GetClaim("act").Value);
         await Assert.That(actor.RootElement.GetProperty("sub").GetString()).IsEqualTo(clientId);
@@ -154,7 +157,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     [Arguments("actor-token", "invalid_request")]
     [Arguments("resource", "invalid_target")]
     [Arguments("missing-audience", "invalid_request")]
-    [Arguments("wrong-audience", "invalid_grant")]
+    [Arguments("wrong-audience", "invalid_target")]
     [Arguments("malformed", "invalid_grant")]
     [Arguments("tampered", "invalid_grant")]
     [Arguments("id-token", "invalid_grant")]
@@ -322,6 +325,12 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         }
         await AssertRejected(first, "invalid_client");
     }
+
+    private static string[] Values(JsonWebToken token, string type) =>
+        token
+            .Claims.Where(c => string.Equals(c.Type, type, StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToArray();
 
     private static Dictionary<string, string> ExchangeFields(
         IdentityClientOptions client,

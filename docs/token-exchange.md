@@ -198,10 +198,14 @@ Le jeton signé porte notamment :
 | `scope` | `orders.read`. |
 | `name` | `Alice`, uniquement si sélectionné. |
 | `auth_time` | Heure d'authentification du jeton source. |
+| `amr` | Méthodes d'authentification du jeton source, par exemple `pwd`. L'échange ne les remplace pas. |
+| `idp` | Fournisseur d'identité du jeton source, `local` pour les utilisateurs de test. |
 
 Les scopes demandés doivent appartenir au client machine, à l'API et au jeton utilisateur. Le jeton échangé ne peut pas prolonger la validité du jeton source. Une marge d'une seconde évite de prolonger sa validité pendant l'émission ; un jeton trop proche de son expiration est refusé.
 
 Si un scope demandé désigne plusieurs ressources API du même fournisseur, l'échange est refusé plutôt que d'émettre des audiences supplémentaires. Utilise des scopes distincts pour les API cibles dans cette V1.
+
+Une audience qu'aucune politique du client machine n'autorise renvoie `invalid_target`, comme le recommande la RFC 8693. Une audience autorisée avec un jeton source inattendu renvoie `invalid_grant`.
 
 Le fournisseur refuse les jetons mal signés, expirés, provenant d'un autre issuer, sans utilisateur actif, issus d'un client source non autorisé, ainsi que les ID tokens et les jetons purement machine. Il refuse aussi, en `invalid_grant`, un jeton lié à une clé par DPoP ou mTLS (claim `cnf`) : l'échange émettrait un jeton porteur sans preuve de possession. Les échanges en chaîne, `actor_token`, `resource`, plusieurs audiences et les types de jeton autres que l'access token sont exclus de cette V1. `subject_token` et `actor_token` sont masqués dans les journaux de requête Duende.
 
