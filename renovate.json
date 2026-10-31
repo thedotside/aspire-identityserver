@@ -4,7 +4,10 @@
   "timezone": "Europe/Paris",
   "enabledManagers": ["nuget", "github-actions", "npm", "custom.regex"],
   "ignorePaths": ["**/bin/**", "**/obj/**", "artifacts/**", "work/**"],
-  "automerge": false,
+  "automerge": true,
+  "automergeType": "pr",
+  "platformAutomerge": false,
+  "ignoreTests": false,
   "prConcurrentLimit": 3,
   "prHourlyLimit": 2,
   "packageRules": [
