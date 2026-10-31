@@ -41,10 +41,10 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Pour installer une version publiée sur nuget.org :
+Pour installer la dernière version publiée (`0.1.0-alpha.3`) sur nuget.org :
 
 ```powershell
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.4 --source https://api.nuget.org/v3/index.json
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.3 --source https://api.nuget.org/v3/index.json
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice. Les préversions sont visibles en activant « Inclure les versions préliminaires » dans Visual Studio. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
