@@ -143,6 +143,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | --- | --- |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
+| Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |
 | Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
 | Consentement | `RequireConsent = false`. |
 | Claims utilisateur dans l'ID token | `AlwaysIncludeUserClaimsInIdToken = true`, sous réserve des claims effectivement disponibles et scopes demandés. |

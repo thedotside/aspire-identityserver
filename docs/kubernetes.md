@@ -115,7 +115,7 @@ Dans un Pod, `localhost` désigne le réseau de ce Pod. Une URL locale allouée 
 
 Pour un déploiement OIDC, l'issuer et les métadonnées doivent être cohérents pour le navigateur et les services, avec une URL stable et un certificat approuvé. Les callbacks doivent aussi utiliser l'URL déployée de l'application.
 
-Le runtime de ce projet vérifie explicitement que l'issuer est loopback et utilise HTTPS. Cette alpha n'offre pas de réécriture d'issuer réseau, de terminaison TLS/Ingress ou de persistance de clés pour ce scénario. Modifier seulement les variables d'environnement ne suffit pas à fournir ce support.
+Le runtime de ce projet vérifie explicitement que l'issuer est loopback et utilise HTTPS. Il écoute en code sur la seule interface loopback : `ASPNETCORE_URLS` et les variables `*_PORTS` ne peuvent pas l'exposer, une section `Kestrel:Endpoints` est refusée, et il s'arrête si une adresse effective n'est pas locale. Cette alpha n'offre pas de réécriture d'issuer réseau, de terminaison TLS/Ingress ou de persistance de clés pour ce scénario. Modifier seulement les variables d'environnement ne suffit pas à fournir ce support.
 
 ## Sources
 

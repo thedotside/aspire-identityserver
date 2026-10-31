@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Aspire.IdentityServer.Server;
 using Duende.IdentityServer;
@@ -11,18 +12,15 @@ namespace Aspire.IdentityServer.Server;
 
 internal static class ServerProgram
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-        // Bind the development provider to loopback, including behind the Aspire proxy.
-        if (
-            int.TryParse(
-                builder.Configuration["HTTPS_PORTS"],
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var port
-            )
-        )
-            builder.WebHost.UseUrls($"https://localhost:{port}");
+        // Bind the development provider to loopback in code, including behind the Aspire proxy.
+        // Endpoints declared in code replace URLS and *_PORTS; extra configured endpoints are refused.
+        var port = LoopbackPort(builder.Configuration);
+        builder.WebHost.ConfigureKestrel(kestrel =>
+            kestrel.ListenLocalhost(port, listen => listen.UseHttps())
+        );
         if (!builder.Environment.IsDevelopment() && !builder.Environment.IsEnvironment("Testing"))
             throw new InvalidOperationException(
                 "This identity server only runs in Development or Testing."
@@ -156,6 +154,34 @@ internal static class ServerProgram
         app.MapRazorPages();
         app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         app.MapGet("/", () => Results.Redirect("/.well-known/openid-configuration"));
-        app.Run();
+        await app.StartAsync(CancellationToken.None);
+        if (app.Urls.Count == 0 || app.Urls.Any(url => !new Uri(url).IsLoopback))
+        {
+            await app.StopAsync(CancellationToken.None);
+            throw new InvalidOperationException(
+                $"The development identity provider must listen on loopback only, not {string.Join(", ", app.Urls)}."
+            );
+        }
+        await app.WaitForShutdownAsync(CancellationToken.None);
+    }
+
+    private static int LoopbackPort(IConfiguration configuration)
+    {
+        if (configuration.GetSection("Kestrel:Endpoints").GetChildren().Any())
+            throw new InvalidOperationException(
+                "Kestrel endpoints cannot be configured: this identity provider listens on HTTPS loopback only."
+            );
+        if (
+            !int.TryParse(
+                configuration["HTTPS_PORTS"],
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var port
+            ) || port is < 1 or > 65535
+        )
+            throw new InvalidOperationException(
+                "Set ASPNETCORE_HTTPS_PORTS to a single port: this identity provider listens on HTTPS loopback only."
+            );
+        return port;
     }
 }
