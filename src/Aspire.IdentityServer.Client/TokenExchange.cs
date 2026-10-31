@@ -6,6 +6,11 @@ public static class TokenExchange
     public const string GrantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     public const string AccessTokenType = "urn:ietf:params:oauth:token-type:access_token";
 
+    /// <summary>Rebuilds a token request with a newly signed assertion for a retried attempt.</summary>
+    internal static readonly HttpRequestOptionsKey<Func<HttpContent>> FreshContentKey = new(
+        "TheDotSide.IdentityServer.FreshClientAssertion"
+    );
+
     /// <summary>An optional per-request subject token for a configured named HttpClient.</summary>
     public static readonly HttpRequestOptionsKey<string> SubjectTokenKey = new(
         "TheDotSide.IdentityServer.SubjectToken"
@@ -49,13 +54,22 @@ public static class TokenExchange
             ["audience"] = audience,
             ["scope"] = scope ?? client.Scopes,
         };
+        Func<HttpContent>? fresh = null;
         if (string.Equals(client.AuthenticationMethod, "private_key_jwt", StringComparison.Ordinal))
         {
+            var assertionIssuer = issuer ?? client.Authority;
             fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(
-                client,
-                issuer ?? client.Authority
-            );
+            fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, assertionIssuer);
+            fresh = () =>
+                new FormUrlEncodedContent(
+                    new Dictionary<string, string>(fields, StringComparer.Ordinal)
+                    {
+                        ["client_assertion"] = PrivateKeyJwt.CreateAssertion(
+                            client,
+                            assertionIssuer
+                        ),
+                    }
+                );
         }
         else if (
             string.Equals(
@@ -73,9 +87,13 @@ public static class TokenExchange
                 "Token exchange requires a confidential client.",
                 nameof(client)
             );
-        return new HttpRequestMessage(HttpMethod.Post, endpoint)
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
         {
             Content = new FormUrlEncodedContent(fields),
         };
+        // A retried attempt must not replay the assertion; the token backchannel re-signs it.
+        if (fresh is not null)
+            request.Options.Set(FreshContentKey, fresh);
+        return request;
     }
 }

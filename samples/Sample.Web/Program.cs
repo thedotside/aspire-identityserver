@@ -76,6 +76,7 @@ foreach (var (name, section) in new[] { ("private-key", "PrivateKey"), ("secret"
             options =>
             {
                 options.Scope = "orders.read";
+                options.AllowedOrigins.Add(new Uri(builder.Configuration["services:api:https:0"]!));
                 options.SubjectTokenProvider = async (services, _, cancellationToken) =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();

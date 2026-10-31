@@ -118,7 +118,14 @@ using var response = await http.GetAsync("/orders/a", cancellationToken);
 response.EnsureSuccessStatusCode();
 ```
 
-À chaque requête, le handler lit le jeton utilisateur, découvre le token endpoint, effectue l'échange et place le nouveau Bearer sur l'appel API. Le backchannel nommé `TokenExchangeHttpClientExtensions.BackchannelClientName` n'utilise pas ce handler : ni récursion ni propagation des credentials machine à l'API. Configure une adresse de ressource HTTPS ; ne fixe pas de header `Authorization` sur ce client, car le handler refuse de remplacer une authentification existante.
+À chaque requête, le handler lit le jeton utilisateur, effectue l'échange et place le nouveau Bearer sur l'appel API. Le document de découverte est mis en cache 15 minutes par authority, partagé par tous les handlers. Découverte et échange ont un budget commun de 30 secondes (`BackchannelTimeout`), nouvelles tentatives comprises ; au-delà, l'appel échoue avec `TimeoutException`. Si une couche de résilience, comme celle des ServiceDefaults, relance la demande de jeton, chaque tentative porte une assertion `private_key_jwt` neuve : rejouer la première serait refusé.
+
+Déclare les origines de l'API dans `AllowedOrigins` : le jeton échangé ne part alors que vers elles, et une autre adresse HTTPS est refusée avant tout échange.
+
+```csharp
+options.AllowedOrigins.Add(new Uri(builder.Configuration["services:api:https:0"]!));
+```
+ Le backchannel nommé `TokenExchangeHttpClientExtensions.BackchannelClientName` n'utilise pas ce handler : ni récursion ni propagation des credentials machine à l'API. Configure une adresse de ressource HTTPS ; ne fixe pas de header `Authorization` sur ce client, car le handler refuse de remplacer une authentification existante.
 
 Les options facultatives `Audience` et `Scope` permettent de choisir un sous-ensemble explicite. Par défaut, elles utilisent `IdentityClientOptions.TokenExchangeAudience` et `Scopes` projetés depuis l'AppHost. Le sample utilise `options.Scope = "orders.read"` sur ses deux clients nommés.
 

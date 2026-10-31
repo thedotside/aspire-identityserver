@@ -22,6 +22,15 @@ public sealed class TokenExchangeHandlerOptions
 
     public string? Audience { get; set; }
     public string? Scope { get; set; }
+
+    /// <summary>
+    /// The API origins (scheme, host and port) that may receive the exchanged token. When empty,
+    /// any HTTPS address of this named client may; declare the API base address to bound it.
+    /// </summary>
+    public ICollection<Uri> AllowedOrigins { get; } = [];
+
+    /// <summary>The time budget of discovery plus exchange, retries included. 30 s by default.</summary>
+    public TimeSpan BackchannelTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 public static class TokenExchangeHttpClientExtensions
@@ -46,11 +55,26 @@ public static class TokenExchangeHttpClientExtensions
             );
         var settings = new TokenExchangeHandlerOptions();
         configure?.Invoke(settings);
+        if (settings.BackchannelTimeout <= TimeSpan.Zero)
+            throw new ArgumentOutOfRangeException(
+                nameof(configure),
+                "BackchannelTimeout must be positive."
+            );
         builder.Services.AddOptions<IdentityClientOptions>(builder.Name).Bind(clientConfiguration);
-        builder.Services.AddHttpClient(BackchannelClientName);
+        // The shared backchannel is configured once, whatever the number of exchange handlers.
+        if (!builder.Services.Any(d => d.ServiceType == typeof(TokenExchangeMetadata)))
+        {
+            builder.Services.AddSingleton(services => new TokenExchangeMetadata(
+                services.GetService<TimeProvider>() ?? TimeProvider.System
+            ));
+            builder
+                .Services.AddHttpClient(BackchannelClientName)
+                .AddHttpMessageHandler(() => new FreshClientAssertionHandler());
+        }
         return builder.AddHttpMessageHandler(services => new TokenExchangeHandler(
             services.GetRequiredService<IHttpClientFactory>(),
             services.GetRequiredService<IOptionsMonitor<IdentityClientOptions>>(),
+            services.GetRequiredService<TokenExchangeMetadata>(),
             builder.Name,
             settings,
             services

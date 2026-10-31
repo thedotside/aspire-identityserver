@@ -124,7 +124,7 @@ Le helper importe la clé une fois par instance d'`IdentityClientOptions`, puis 
 
 Avec `PrivateKeyBase64`, le helper importe directement les composants validés dans une clé RSA, sans passer le JSON privé à IdentityModel. Il utilise le `kid` de la JWK et refuse un `KeyId` configuré différent. Les erreurs d'import sont fixes et sans exception interne conservée. Voir le [contrat complet et la migration du template](jwk-base64.md).
 
-La version `0.1.0-alpha.2` ajoute `TokenExchange.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string subjectToken, string? audience = null, string? scope = null)`. Il retourne un `HttpRequestMessage` contenant un formulaire RFC 8693 et des credentials neufs. L'appelant possède la requête et l'envoie lui-même. Les constantes `TokenExchange.GrantType` et `TokenExchange.AccessTokenType` exposent les identifiants standard. Aucun cache de tokens ou mécanisme de renouvellement n'est fourni. Voir le [guide](token-exchange.md).
+`TokenExchange.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string subjectToken, string? audience = null, string? scope = null, string? issuer = null)` crée la requête ; `issuer`, l'audience de l'assertion, vaut par défaut l'authority configurée. Il retourne un `HttpRequestMessage` contenant un formulaire RFC 8693 et des credentials neufs. L'appelant possède la requête et l'envoie lui-même. Les constantes `TokenExchange.GrantType` et `TokenExchange.AccessTokenType` exposent les identifiants standard. Aucun cache de tokens ou mécanisme de renouvellement n'est fourni. Voir le [guide](token-exchange.md).
 
 ### HttpClient nommé et handler d'échange
 
@@ -135,6 +135,8 @@ La version `0.1.0-alpha.2` ajoute `TokenExchange.CreateRequest(IdentityClientOpt
 | `TokenExchangeHandlerOptions.SubjectTokenProvider` | Callback `Func<IServiceProvider, HttpRequestMessage, CancellationToken, ValueTask<string?>>`, appelé pour chaque requête. Sans callback, le jeton vient de `request.Options`. |
 | `TokenExchange.SubjectTokenKey` | Clé `HttpRequestOptionsKey<string>` permettant de fournir le jeton utilisateur à une requête. |
 | `TokenExchangeHandlerOptions.Audience` | Audience explicite ; sinon audience projetée. |
+| `TokenExchangeHandlerOptions.AllowedOrigins` | Origines (schéma, hôte, port) autorisées à recevoir le jeton échangé. Vide par défaut : toute adresse HTTPS du client nommé. |
+| `TokenExchangeHandlerOptions.BackchannelTimeout` | Budget de la découverte et de l'échange, tentatives comprises ; 30 s par défaut. Dépassé : `TimeoutException`. |
 | `TokenExchangeHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. |
 | `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
 
