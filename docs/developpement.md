@@ -21,7 +21,7 @@
 | `pipelines/publish` | Publication des archives vérifiées avec NuGet OIDC et consommation depuis le registre. |
 | `docs` | Guides et exemples de configuration. |
 
-Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
+Les versions sont centralisées dans [Directory.Packages.props](../Directory.Packages.props). La version d'`Aspire.Hosting` y est le **plancher** du package Hosting publié : les consommateurs ont besoin de cette version d'Aspire au minimum, et le smoke test construit ses consommateurs avec elle. Renovate ne la relève qu'après approbation dans le Dependency Dashboard ; l'AppHost du dépôt, les packages de test et le SDK Aspire suivent les correctifs. Les paramètres communs et la version du package figurent dans [Directory.Build.props](../Directory.Build.props).
 
 ## Installer les outils et le hook de commit
 

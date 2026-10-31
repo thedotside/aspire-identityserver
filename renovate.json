@@ -13,6 +13,12 @@
       "groupName": "Aspire"
     },
     {
+      "description": "Aspire.Hosting is the floor of the published Hosting package: raise it deliberately. AppHost, testing packages and SDK follow patches.",
+      "matchPackageNames": ["Aspire.Hosting"],
+      "groupName": "Aspire floor",
+      "dependencyDashboardApproval": true
+    },
+    {
       "matchPackageNames": ["/^Microsoft\\.AspNetCore\\./"],
       "groupName": "ASP.NET Core",
       "allowedVersions": "/^10\\./"
