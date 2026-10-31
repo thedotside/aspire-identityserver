@@ -87,6 +87,13 @@ try {
     }
     dotnet build --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'Package consumer build failed.' }
+    # The provider folder holds only the Runtime closure, without the consumer's deps.json.
+    $runtime = Join-Path $consumer 'bin/Debug/net10.0/identityserver'
+    if (Get-ChildItem -Path $runtime -Filter '*.deps.json' -Recurse) { throw 'The provider folder must not contain a deps.json.' }
+    foreach ($foreign in @('Consumer.dll', 'Aspire.Hosting.dll', 'Aspire.IdentityServer.Client.dll')) {
+        if (Test-Path (Join-Path $runtime $foreign)) { throw "The provider folder contains a consumer assembly: $foreign" }
+    }
+    if (!(Test-Path (Join-Path $runtime 'Duende.IdentityServer.dll'))) { throw 'The provider folder misses Duende.IdentityServer.dll.' }
     # Direct execution keeps the finite smoke check independent of the interactive Aspire CLI.
     # Without a launch profile, the AppHost environment must be set explicitly.
     $consumerAssembly = Join-Path $consumer 'bin/Debug/net10.0/Consumer.dll'

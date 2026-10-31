@@ -119,7 +119,7 @@ PACKAGE_SMOKE_OK: packaged provider started and authenticated the packaged clien
 
 Les scripts acceptent le même paramètre `-Version`. Pour vérifier une version différente, utilise la même valeur dans les deux commandes. Ne remplace pas une version déjà publiée : une version NuGet publiée est destinée à rester immuable.
 
-Le build local du consommateur copie les dépendances restaurées dans son dossier runtime. Ce dossier contient des bibliothèques tierces et ne doit pas être redistribué comme si elles relevaient de la licence MIT du projet.
+Le build local du consommateur copie dans son dossier runtime la seule fermeture du paquet Runtime, restaurée depuis NuGet, sans `deps.json` ; le smoke test le vérifie. Ce dossier contient des bibliothèques tierces et ne doit pas être redistribué comme si elles relevaient de la licence MIT du projet.
 
 Le README est embarqué dans les packages ; les pages `docs/` restent dans le dépôt. Le README fournit un lien en ligne pour les lecteurs qui n'ont pas le checkout.
 
