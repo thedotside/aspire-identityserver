@@ -112,13 +112,14 @@ pwsh eng/package-smoke.ps1
 
 `pack.ps1` construit en Release les trois archives dans `artifacts/packages` et vérifie qu'elles ne contiennent pas d'assemblies tierces. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 
-`package-smoke.ps1` crée un AppHost temporaire et un cache NuGet isolé. Il consomme les vrais packages, démarre un fournisseur et obtient un token avec une assertion JWT. Le succès contient :
+`package-smoke.ps1` crée un AppHost temporaire et un cache NuGet isolé. Il consomme les vrais packages avec la version plancher d'Aspire, vérifie le dossier du fournisseur, refuse un AppHost en `Production`, démarre un fournisseur et obtient des tokens avec des assertions JWT. Un second projet, de test, référence cet AppHost et démarre le fournisseur par `DistributedApplicationTestingBuilder`. Le succès contient :
 
 ```text
-PACKAGE_SMOKE_OK: packaged provider started and authenticated the packaged client helper.
+PACKAGE_SMOKE_OK: packaged provider authenticated generated, imported and deferred Base64 JWK clients plus legacy PEM.
+PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder.
 ```
 
-Les scripts acceptent le même paramètre `-Version`. Pour vérifier une version différente, utilise la même valeur dans les deux commandes. Ne remplace pas une version déjà publiée : une version NuGet publiée est destinée à rester immuable.
+Sans `-Version`, les deux scripts prennent la version de `Directory.Build.props`. Ils acceptent le même paramètre `-Version`. Pour vérifier une version différente, utilise la même valeur dans les deux commandes. Ne remplace pas une version déjà publiée : une version NuGet publiée est destinée à rester immuable.
 
 Le build local du consommateur copie dans son dossier runtime la seule fermeture du paquet Runtime, restaurée depuis NuGet, sans `deps.json` ; le smoke test le vérifie. Ce dossier contient des bibliothèques tierces et ne doit pas être redistribué comme si elles relevaient de la licence MIT du projet.
 
@@ -130,9 +131,9 @@ Le [workflow GitHub Actions](../.github/workflows/ci.yml) déclenche la validati
 
 Les étapes du pipeline sont centralisées dans [pipelines/build/action.yml](../pipelines/build/action.yml). GitHub impose de conserver le fichier de déclenchement dans `.github/workflows` ; celui-ci ne contient que les événements, les permissions, le choix du runner et l'appel de l'action locale `./pipelines/build` après le checkout.
 
-Le pipeline tourne sur `windows-latest` avec un délai maximal de 20 minutes. Il prépare le SDK et le certificat HTTPS, restaure les dépendances et outils, vérifie le formatage CSharpier, compile avec les analyseurs, installe Chromium, exécute les tests, construit les packages et les vérifie dans un consommateur indépendant. Il archive les résultats de tests et les packages disponibles sous `packages-and-test-results`, même si une étape précédente a échoué. Le token du workflow dispose uniquement du droit de lecture du contenu du dépôt.
+La CI tourne sur `windows-latest` et `ubuntu-latest`, avec un délai maximal de 25 minutes ; macOS n'en fait pas partie, ses minutes comptant dix fois sur un dépôt privé. Le pipeline prend le SDK de [global.json](../global.json), prépare et approuve le certificat HTTPS, restaure les dépendances en mode verrouillé (`--locked-mode`, fichiers `packages.lock.json` versionnés selon OUT-25), restaure les outils, vérifie le formatage CSharpier, compile avec les analyseurs, installe le seul shell headless de Chromium, exécute les tests, construit les packages et les vérifie dans deux consommateurs indépendants : un AppHost et un projet de test qui le démarre par `DistributedApplicationTestingBuilder`. Les paquets NuGet et Chromium sont mis en cache entre deux exécutions. Il archive les résultats de tests et les packages disponibles sous `packages-and-test-results`, même si une étape précédente a échoué. Le token du workflow dispose uniquement du droit de lecture du contenu du dépôt.
 
-Pour le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`. La confiance est vérifiée sans fenêtre interactive. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
+Sur le runner Windows temporaire, le certificat public est exporté puis approuvé dans `LocalMachine/Root`, et la confiance est vérifiée sans fenêtre interactive. Sur Linux, il rejoint le magasin système d'OpenSSL et la base NSS lue par Chromium. Ce traitement CI ne doit pas être nécessaire pour lancer les exemples sur un poste où le certificat a déjà été approuvé.
 
 Le workflow de CI ne publie pas sur NuGet. Un [workflow distinct](../.github/workflows/publish.yml) publie à partir d'un tag SemVer, après sa propre validation complète. Il reprend les étapes de `pipelines/build`, récupère leurs archives dans `pipelines/publish`, puis vérifie leur installation depuis nuget.org. Consulte [le guide de publication](publication.md) pour la configuration OIDC et la procédure par tag.
 
@@ -142,7 +143,7 @@ La présence d'une archive GitHub Actions ne signifie pas que le package existe 
 
 Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`.
 
-La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub, y compris celles de `pipelines/`. Les versions Aspire inscrites dans le consommateur de test `eng/package-smoke.ps1` sont également détectées et regroupées avec les packages et le SDK Aspire dans une même PR. Le SDK .NET et les packages ASP.NET Core restent sur la version majeure 10.
+La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés et leurs fichiers de verrouillage, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub épinglées, y compris celles de `pipelines/`. Les scripts `eng/` ne contiennent plus de version : ils lisent [Directory.Build.props](../Directory.Build.props) et [Directory.Packages.props](../Directory.Packages.props). Le SDK .NET et les packages ASP.NET Core restent sur la version majeure 10.
 
 Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures nécessitent une approbation dans son issue « Dependency Dashboard ». Les PR ne sont jamais fusionnées automatiquement ; elles déclenchent la CI de build et de tests habituelle.
 

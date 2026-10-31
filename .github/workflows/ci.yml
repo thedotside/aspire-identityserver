@@ -12,8 +12,13 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
-    runs-on: windows-latest
-    timeout-minutes: 20
+    # macOS is not in the matrix: its minutes count ten times on a private repository.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -21,3 +26,5 @@ jobs:
       # GitHub requires the trigger here; the build pipeline lives in /pipelines.
       - name: Build, test and pack
         uses: ./pipelines/build
+        with:
+          artifact-name: packages-and-test-results-${{ matrix.os }}

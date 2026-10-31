@@ -29,14 +29,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["/^eng\\/package-smoke\\.ps1$/"],
-      "matchStrings": [
-        "<(?:Sdk Name|PackageReference Include)=\"(?<depName>Aspire\\.(?:AppHost\\.Sdk|Hosting\\.AppHost))\" Version=\"(?<currentValue>[^\"]+)\""
-      ],
-      "datasourceTemplate": "nuget"
-    },
-    {
-      "customType": "regex",
       "managerFilePatterns": ["/^pipelines\\/renovate\\/action\\.yml$/"],
       "matchStrings": ["--package=renovate@(?<currentValue>[0-9.]+)"],
       "depNameTemplate": "renovate",

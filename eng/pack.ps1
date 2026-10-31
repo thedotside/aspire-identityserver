@@ -1,6 +1,7 @@
-param([string]$Version = '0.1.0-alpha.2')
+param([string]$Version)
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path $PSScriptRoot -Parent
+if (!$Version) { $Version = ([xml](Get-Content (Join-Path $repo 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version }
 Push-Location $repo
 try {
     foreach ($project in @('Aspire.IdentityServer.Server', 'Aspire.IdentityServer.Hosting', 'Aspire.IdentityServer.Client')) {
