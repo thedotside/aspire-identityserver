@@ -27,4 +27,4 @@ runs:
           echo '::error::Add the RENOVATE_TOKEN repository secret before running Renovate.'
           exit 1
         fi
-        npx --yes --package=renovate@44.179.1 -- renovate
+        npx --yes --package=renovate@44.198.3 -- renovate
