@@ -59,7 +59,9 @@ Pour appliquer des corrections proposées par l'analyseur, `dotnet format analyz
 
 ## Exécuter les tests
 
-Depuis la racine, après préparation du certificat de développement :
+Les tests distribués exigent un certificat HTTPS de développement **existant et approuvé** : les contrôles de santé des ressources passent en HTTPS. Sur un poste neuf, exécute une fois `dotnet dev-certs https --trust`, ou lance une première fois l'AppHost d'exemple avec `aspire run`, qui prépare ce certificat. Sans lui, le fixture partagé s'arrête dès qu'un contrôle de santé refuse le certificat, avec l'état et les dernières lignes de journal de chaque ressource, au lieu d'attendre la fin du délai de démarrage.
+
+Depuis la racine :
 
 ```powershell
 dotnet restore
@@ -157,7 +159,9 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | Symptôme | Cause probable / vérification |
 | --- | --- |
 | `The bundled identity server is missing` | Construire l'AppHost ; vérifier `bin/.../identityserver/Aspire.IdentityServer.Server.dll`. En référence projet, vérifier l'import du `.targets`. Si `RuntimeDirectory` est fourni, vérifier son chemin et ses dépendances. |
-| Certificat HTTPS non approuvé | Exécuter `dotnet dev-certs https --trust`, accepter la demande Windows, puis relancer les processus concernés. Ne désactive pas la validation TLS pour faire passer les tests. |
+| Certificat HTTPS non approuvé | Exécuter `dotnet dev-certs https --trust`, accepter la demande du système, puis relancer les processus concernés. Ne désactive pas la validation TLS pour faire passer les tests. |
+| `The HTTPS health check of '…' rejects the development certificate` | Même cause, détectée au démarrage des tests distribués ; approuver le certificat puis relancer. |
+| `The sample AppHost did not become healthy before the startup timeout` | Lire l'état, les contrôles de santé et les journaux de chaque ressource joints au message. |
 | Confirmation de certificat bloquée dans la CI | Vérifier l'étape `Prepare HTTPS` du workflow et utiliser son traitement non interactif sur le runner Windows temporaire. |
 | `Executable doesn't exist` pour Chromium | Exécuter le script Playwright généré après `dotnet build`, avec `install chromium`. |
 | `must use declared API scopes` | Déclarer les scopes sur une ressource du même IDP ; vérifier leur casse. |
