@@ -126,6 +126,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await Assert.That(jwt.Subject).IsEqualTo("idp-a:alice");
         await Assert.That(jwt.Issuer).IsEqualTo(client.Authority);
         await Assert.That(jwt.Audiences.ToArray()).IsEquivalentTo(["orders-api-a"]);
+        await Assert.That(ProtocolTests.ScopeClaim(jwt)).IsEqualTo("orders.read");
         await Assert.That(jwt.GetClaim("client_id").Value).IsEqualTo(clientId);
         await Assert
             .That(jwt.GetClaim("auth_time").Value)

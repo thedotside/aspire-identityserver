@@ -6,6 +6,7 @@ using System.Text.Json;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 
 namespace Aspire.IdentityServer.Tests;
 
@@ -79,6 +80,7 @@ public sealed class ProtocolTests(AppFixture fixture)
         var jwt = new JsonWebToken(token);
         await Assert.That(jwt.Audiences).Contains($"orders-api-{provider}");
         await Assert.That(jwt.Issuer).IsEqualTo(client.Authority);
+        await Assert.That(ScopeClaim(jwt)).IsEqualTo("orders.read");
         await Assert.That(payload.GetProperty("scope").GetString()).IsEqualTo("orders.read");
         using var api = fixture.App.CreateHttpClient("api", "https");
         api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -177,6 +179,14 @@ public sealed class ProtocolTests(AppFixture fixture)
         else
             fields["client_secret"] = client.ClientSecret!;
         return fields;
+    }
+
+    /// <summary>The raw scope claim, which must be a JSON string and never an array.</summary>
+    internal static string? ScopeClaim(JsonWebToken jwt)
+    {
+        using var payload = JsonDocument.Parse(Base64UrlEncoder.Decode(jwt.EncodedPayload));
+        var scope = payload.RootElement.GetProperty("scope");
+        return scope.ValueKind == JsonValueKind.String ? scope.GetString() : scope.GetRawText();
     }
 
     internal static async Task<string?> Error(HttpResponseMessage response) =>

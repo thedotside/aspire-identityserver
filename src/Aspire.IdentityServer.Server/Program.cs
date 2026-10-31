@@ -50,6 +50,8 @@ internal static class ServerProgram
             {
                 options.IssuerUri = config.Issuer;
                 options.KeyManagement.Enabled = false;
+                // RFC 9068 and RFC 8693: scope is one space-delimited string, as real providers emit.
+                options.EmitScopesAsSpaceDelimitedStringInJwt = true;
                 options.UserInteraction.LoginUrl = "/Account/Login";
                 options.UserInteraction.LogoutUrl = "/Account/Logout";
                 options.UserInteraction.ErrorUrl = "/Error";

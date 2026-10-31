@@ -145,6 +145,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |
 | Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
+| Claim `scope` des JWT | Une chaîne séparée par des espaces (RFC 9068, RFC 8693), comme chez Keycloak ; jamais un tableau JSON. |
 | Consentement | `RequireConsent = false`. |
 | Claims utilisateur dans l'ID token | `AlwaysIncludeUserClaimsInIdToken = true`, sous réserve des claims effectivement disponibles et scopes demandés. |
 | Gestion automatique des clés Duende | Désactivée ; clé de développement en mémoire, `persistKey: false`. |
