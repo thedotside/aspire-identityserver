@@ -19,7 +19,6 @@ Le `kid` généré est le SHA-256 hexadécimal de la clé publique SubjectPublic
 Ces extraits supposent des ressources consommatrices Aspire `bff`, `xp`, `capa` déjà déclarées avec leur endpoint HTTPS. Les chemins de configuration sont des exemples ; utilise ceux que lisent tes applications.
 
 ```csharp
-using Aspire.IdentityServer.Hosting;
 
 var idp = builder.AddIdentityServer("idp");
 var xpApi = idp.AddApiResource("xp-api").WithScopes("xp.read");
@@ -41,13 +40,13 @@ var ccCapa = idp.AddClientCredentialsClient("cc-capa")
 bff.WithIdentityClient(bffClient, "Authentication:Bff")
     .WithIdentityClient(ccXp, "Integrations:Xp:OAuth");
 xp.WithIdentityClient(ccCapa, "Integrations:Capa:OAuth");
-xp.WithIdentityResource(xpApi, "Authentication:Inbound");
-capa.WithIdentityResource(capaApi, "Authentication:Inbound");
+xp.WithIdentityApiResource(xpApi, "Authentication:Inbound");
+capa.WithIdentityApiResource(capaApi, "Authentication:Inbound");
 ```
 
 La projection standard injecte `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `PrivateKeyBase64`, `KeyId` et, si applicable, `TokenExchangeAudience`. L'autorité reste une référence d'endpoint différée, la clé reste un paramètre secret Aspire et le consommateur attend l'IdP. Seuls `kty`, `kid`, `alg`, `use`, `n`, `e` sont enregistrés dans la configuration de l'IdP.
 
-Pour valider les tokens entrants, conserve séparément les `IdentityApiResource` retournées par `AddApiResource` et projette-les avec `WithIdentityResource`. Une API entrante reçoit uniquement l'autorité et l'audience, sans clé privée client.
+Pour valider les tokens entrants, conserve séparément les `IdentityApiResource` retournées par `AddApiResource` et projette-les avec `WithIdentityApiResource`. Une API entrante reçoit uniquement l'autorité et l'audience, sans clé privée client.
 
 ## Importer la valeur applicative
 

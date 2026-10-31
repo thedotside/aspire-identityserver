@@ -31,7 +31,6 @@ $localSource = if ($FromNuGet) { '' } else { "<add key=`"local`" value=`"$escape
 @'
 using System.Net.Http.Json;
 using System.Text.Json;
-using Aspire.IdentityServer.Hosting;
 using Aspire.IdentityServer.Client;
 var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { Args = args, DisableDashboard = true });
 var idp = builder.AddIdentityServer("package-idp");

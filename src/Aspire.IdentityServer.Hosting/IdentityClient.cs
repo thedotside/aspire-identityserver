@@ -1,10 +1,9 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting.ApplicationModel;
 
 /// <summary>A client registration and its deferred configuration values.</summary>
 public sealed class IdentityClient

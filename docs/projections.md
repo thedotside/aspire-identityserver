@@ -40,7 +40,7 @@ web.WithIdentityClient(browserA, "Authentication:IdpA");
 
 `Scopes` est une chaîne, pas un tableau JSON. L'ordre des scopes ne constitue pas un contrat ; leur ensemble est significatif.
 
-La projection ne contient pas `Audience`, `RequirePkce`, les redirect URIs, le token endpoint, le JWK public ni la clé de signature du fournisseur. Le consommateur configure ses callbacks et PKCE, et découvre les endpoints via OIDC. Pour la validation entrante d'une API, utilise `WithIdentityResource`.
+La projection ne contient pas `Audience`, `RequirePkce`, les redirect URIs, le token endpoint, le JWK public ni la clé de signature du fournisseur. Le consommateur configure ses callbacks et PKCE, et découvre les endpoints via OIDC. Pour la validation entrante d'une API, utilise `WithIdentityApiResource`.
 
 ## Exemple complet des trois clients du sample
 
@@ -166,11 +166,11 @@ Chaque destination doit avoir un chemin propre. Deux projections qui écrivent u
 Une API qui reçoit des tokens n'a pas besoin de la clé privée d'un client. Pour `ordersA` déclaré sur l'IDP :
 
 ```csharp
-api.WithIdentityResource(ordersA, "Authentication:Inbound")
+api.WithIdentityApiResource(ordersA, "Authentication:Inbound")
    .WithIdentityClient(workerA, "Integrations:Accounting:OAuth");
 ```
 
-`WithIdentityResource` produit uniquement :
+`WithIdentityApiResource` produit uniquement :
 
 ```json
 {
@@ -185,7 +185,7 @@ api.WithIdentityResource(ordersA, "Authentication:Inbound")
 
 L'API utilise cette section pour valider les tokens entrants. La seconde section configure son rôle de client OAuth lorsqu'elle appelle une autre API.
 
-`WithIdentityResource` écrit les valeurs avec `WithEnvironment` ; contrairement à `WithIdentityClient`, cette méthode ne comporte pas le contrôle explicite `TryAdd` de collision. Utilise toujours des sections distinctes, y compris pour les deux sens d'authentification.
+`WithIdentityApiResource` écrit les valeurs avec `WithEnvironment` ; contrairement à `WithIdentityClient`, cette méthode ne comporte pas le contrôle explicite `TryAdd` de collision. Utilise toujours des sections distinctes, y compris pour les deux sens d'authentification.
 
 ## Ordre de déclaration et erreurs
 

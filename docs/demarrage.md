@@ -99,7 +99,6 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
 Ce `Program.cs` démarre un fournisseur avec une ressource API et un client machine :
 
 ```csharp
-using Aspire.IdentityServer.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var idp = builder.AddIdentityServer("idp");

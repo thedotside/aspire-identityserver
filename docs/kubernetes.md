@@ -109,7 +109,7 @@ L'IDP doit avoir un client enregistré avec ce secret, et le consommateur doit u
 
 Pour un client public, conserve `AuthenticationMethod: "none"` et aucun credential. PKCE et les callbacks restent à configurer dans la bibliothèque OIDC. Une SPA React ne lit pas automatiquement les variables d'environnement du serveur à l'exécution : son mécanisme de configuration doit être traité dans son propre projet.
 
-Pour une API qui valide seulement les tokens, la configuration correspondant à `WithIdentityResource` se limite à l'authority et l'audience :
+Pour une API qui valide seulement les tokens, la configuration correspondant à `WithIdentityApiResource` se limite à l'authority et l'audience :
 
 ```yaml
 env:

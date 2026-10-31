@@ -2,13 +2,16 @@
 
 [Documentation](README.md) · [Exemples clients](clients.md) · [Projections](projections.md)
 
-Les packages NuGet se nomment `TheDotSide.Aspire.IdentityServer.Hosting`, `TheDotSide.Aspire.IdentityServer.Runtime` et `TheDotSide.Aspire.IdentityServer.Client`. Le préfixe `TheDotSide.` concerne les identifiants NuGet ; les namespaces C# restent `Aspire.IdentityServer.Hosting` pour l'hébergement et `Aspire.IdentityServer.Client` pour les options de consommation et le helper d'assertion.
+Les packages NuGet se nomment `TheDotSide.Aspire.IdentityServer.Hosting`, `TheDotSide.Aspire.IdentityServer.Runtime` et `TheDotSide.Aspire.IdentityServer.Client`. Le préfixe `TheDotSide.` concerne les identifiants NuGet. Comme les intégrations Aspire officielles, l'hébergement place ses extensions dans le namespace `Aspire.Hosting` et ses types de ressource dans `Aspire.Hosting.ApplicationModel` : un AppHost les importe déjà, sans `using` supplémentaire. Les options de consommation et les helpers restent dans `Aspire.IdentityServer.Client`.
+
+Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PKCE, redirections, scopes partagés du Token Exchange) sont vérifiées avant le démarrage de toute ressource : une erreur arrête l'AppHost au lieu d'un seul processus fournisseur.
 
 ## Fournisseur et utilisateurs
 
 | Méthode | Retour | Paramètres et défauts |
 | --- | --- | --- |
 | `builder.AddIdentityServer(string name, Action<IdentityServerOptions>? configure = null)` | `IResourceBuilder<IdentityServerResource>` | Nom de ressource Aspire unique. Callback facultatif pour le dossier runtime. |
+| `consumer.WithReference(idp)` | Builder du consommateur. | `IdentityServerResource` est une ressource de découverte de services : le consommateur reçoit `services__{name}__https__0`. |
 | `idp.WithTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | Builder du fournisseur. | Username/password requis ; display name = username si null ; subject = `{resource-name}:{username}` si null. |
 | `idp.AddApiResource(string audience)` | `IdentityApiResource` | Audience non vide, unique dans le fournisseur. |
 | `apiResource.WithScopes(params string[] scopes)` | Même ressource API. | Ajout cumulatif ; au moins un scope au démarrage. Scopes d'identité et `offline_access` réservés. |
@@ -85,7 +88,7 @@ Les extensions retournent le builder du consommateur et permettent le chaînage.
 | --- | --- |
 | `consumer.WithIdentityClient(client, string section)` | Authority, ID, méthode, scopes et credentials applicables sous la section. |
 | `consumer.WithIdentityClient(client, Action<IdentityClientProjection> configure)` | Seulement les champs explicitement sélectionnés. |
-| `consumer.WithIdentityResource(apiResource, string section)` | Authority et audience de validation entrante. |
+| `consumer.WithIdentityApiResource(apiResource, string section)` | Authority et audience de validation entrante. `WithIdentityResource`, l'ancien nom, reste disponible et obsolète : chez Duende, une « identity resource » désigne `openid` ou `profile`. |
 
 `IdentityClientProjection` expose les méthodes suivantes, prenant chacune une clé `string` et retournant la projection : `Authority`, `ClientId`, `AuthenticationMethod`, `Scopes`, `ClientSecret`, `PrivateKeyPem`, `KeyId` ainsi que `PrivateKeyBase64` et `TokenExchangeAudience`.
 

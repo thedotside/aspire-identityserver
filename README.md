@@ -27,7 +27,6 @@ The documentation lives in the repository's root `docs/` directory. From a NuGet
 In an AppHost referencing the `TheDotSide.Aspire.IdentityServer.Hosting` package:
 
 ```csharp
-using Aspire.IdentityServer.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 var idp = builder.AddIdentityServer("idp");

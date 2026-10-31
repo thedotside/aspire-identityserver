@@ -1,11 +1,14 @@
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer.Hosting;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting.ApplicationModel;
 
-/// <summary>A local, ephemeral OAuth/OIDC server process managed by Aspire.</summary>
+/// <summary>
+/// A local, ephemeral OAuth/OIDC server process managed by Aspire. As a service-discovery
+/// resource, <c>WithReference(provider)</c> gives a consumer its HTTPS address.
+/// </summary>
 public sealed class IdentityServerResource(string name, string runtimeDirectory)
-    : ExecutableResource(name, DotnetHost.Path, runtimeDirectory)
+    : ExecutableResource(name, DotnetHost.Path, runtimeDirectory),
+        IResourceWithServiceDiscovery
 {
     internal List<IdentityClient> Clients { get; } = [];
     internal List<IdentityApiResource> Apis { get; } = [];

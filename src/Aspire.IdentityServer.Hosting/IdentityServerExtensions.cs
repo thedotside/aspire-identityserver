@@ -1,10 +1,12 @@
 using System.Globalization;
-using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer;
+using Aspire.IdentityServer.Hosting;
 using Microsoft.Extensions.Hosting;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting;
 
+/// <summary>Adds local development identity providers to an Aspire AppHost.</summary>
 public static class IdentityServerExtensions
 {
     /// <summary>Adds the bundled local development identity server, with an isolated issuer and signing key.</summary>
@@ -66,6 +68,13 @@ public static class IdentityServerExtensions
         server.WithEnvironment("IdentityServer__Issuer", server.GetEndpoint("https"));
         server.WithEnvironment(context =>
             WriteConfiguration(server.Resource, context.EnvironmentVariables)
+        );
+        builder.Eventing.Subscribe<BeforeStartEvent>(
+            (_, _) =>
+            {
+                Validate(server.Resource);
+                return Task.CompletedTask;
+            }
         );
         return server;
     }
@@ -147,28 +156,23 @@ public static class IdentityServerExtensions
         return client;
     }
 
-    private static void WriteConfiguration(
-        IdentityServerResource server,
-        IDictionary<string, object> environment
-    )
+    /// <summary>
+    /// Checks every registration rule of a provider. It runs before the AppHost starts any
+    /// resource, so a misconfiguration fails the AppHost instead of one provider process.
+    /// </summary>
+    internal static void Validate(IdentityServerResource server)
     {
         var scopes = server.Apis.SelectMany(a => a.Scopes).ToHashSet(StringComparer.Ordinal);
         var knownScopes = scopes
             .Concat(["openid", "profile", "email"])
             .ToHashSet(StringComparer.Ordinal);
-        for (var i = 0; i < server.Apis.Count; i++)
-        {
-            var api = server.Apis[i];
+        foreach (var api in server.Apis)
             if (api.Scopes.Count == 0)
                 throw new InvalidOperationException(
                     $"Audience '{api.Audience}' needs at least one scope."
                 );
-            environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
-            AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
-        }
-        for (var i = 0; i < server.Clients.Count; i++)
+        foreach (var client in server.Clients)
         {
-            var client = server.Clients[i];
             if (client.Scopes.Count == 0 || client.Scopes.Any(s => !knownScopes.Contains(s)))
                 throw new InvalidOperationException(
                     $"Client '{client.ClientId}' must use declared API scopes or openid/profile/email."
@@ -198,7 +202,37 @@ public static class IdentityServerExtensions
                 && string.Equals(client.AuthenticationMethod, "none", StringComparison.Ordinal)
                 && !client.UsePkce
             )
-                throw new InvalidOperationException("Public clients must use PKCE.");
+                throw new InvalidOperationException(
+                    $"Public client '{client.ClientId}' must use PKCE."
+                );
+            foreach (var policy in client.TokenExchanges)
+                if (
+                    !policy
+                        .Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal)
+                        .Intersect(policy.SubjectClient.Scopes, StringComparer.Ordinal)
+                        .Any()
+                )
+                    throw new InvalidOperationException(
+                        $"Token exchange for '{client.ClientId}' requires an API scope shared with '{policy.SubjectClient.ClientId}'."
+                    );
+        }
+    }
+
+    private static void WriteConfiguration(
+        IdentityServerResource server,
+        IDictionary<string, object> environment
+    )
+    {
+        Validate(server);
+        for (var i = 0; i < server.Apis.Count; i++)
+        {
+            var api = server.Apis[i];
+            environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
+            AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
+        }
+        for (var i = 0; i < server.Clients.Count; i++)
+        {
+            var client = server.Clients[i];
             var prefix = $"IdentityServer__Clients__{i}";
             environment[$"{prefix}__ClientId"] = client.ClientId;
             environment[$"{prefix}__GrantType"] = client.GrantType;
@@ -212,15 +246,6 @@ public static class IdentityServerExtensions
             for (var policyIndex = 0; policyIndex < client.TokenExchanges.Count; policyIndex++)
             {
                 var policy = client.TokenExchanges[policyIndex];
-                if (
-                    !policy
-                        .Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal)
-                        .Intersect(policy.SubjectClient.Scopes, StringComparer.Ordinal)
-                        .Any()
-                )
-                    throw new InvalidOperationException(
-                        $"Token exchange for '{client.ClientId}' requires an API scope shared with '{policy.SubjectClient.ClientId}'."
-                    );
                 var policyPrefix = $"{prefix}__TokenExchanges__{policyIndex}";
                 environment[$"{policyPrefix}__SubjectClientId"] = policy.SubjectClient.ClientId;
                 environment[$"{policyPrefix}__Audience"] = policy.Api.Audience;

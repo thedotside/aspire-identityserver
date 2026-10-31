@@ -1,7 +1,6 @@
-using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-namespace Aspire.IdentityServer.Hosting;
+namespace Aspire.Hosting;
 
 /// <summary>Maps client fields to arbitrary .NET configuration paths or environment variable names.</summary>
 public sealed class IdentityClientProjection
@@ -110,8 +109,11 @@ public static class IdentityProjectionExtensions
         return consumer.WaitFor(client.Server);
     }
 
-    /// <summary>Configures inbound token validation without disclosing any client credentials.</summary>
-    public static IResourceBuilder<T> WithIdentityResource<T>(
+    /// <summary>
+    /// Configures inbound token validation of an API audience: <c>{section}:Authority</c> and
+    /// <c>{section}:Audience</c>, without disclosing any client credentials.
+    /// </summary>
+    public static IResourceBuilder<T> WithIdentityApiResource<T>(
         this IResourceBuilder<T> consumer,
         IdentityApiResource api,
         string section
@@ -130,4 +132,16 @@ public static class IdentityProjectionExtensions
             )
             .WaitFor(api.Server);
     }
+
+    /// <summary>Renamed <see cref="WithIdentityApiResource" />: Duende identity resources are openid or profile.</summary>
+    [Obsolete(
+        "Use WithIdentityApiResource: it projects an API audience, not an identity resource."
+    )]
+    public static IResourceBuilder<T> WithIdentityResource<T>(
+        this IResourceBuilder<T> consumer,
+        IdentityApiResource api,
+        string section
+    )
+        where T : IResourceWithEnvironment, IResourceWithWaitSupport =>
+        consumer.WithIdentityApiResource(api, section);
 }

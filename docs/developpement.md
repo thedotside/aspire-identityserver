@@ -175,7 +175,7 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | `must use declared API scopes` | Déclarer les scopes sur une ressource du même IDP ; vérifier leur casse. |
 | `Machine client ... requires authentication and API scopes only` | Ajouter une méthode de credentials ; retirer les scopes d'identité du client machine. |
 | `needs an openid scope and a redirect URI` | Compléter le client interactif et vérifier le callback de son handler. |
-| `Public clients must use PKCE` | Garder PKCE activé côté enregistrement et côté consommateur. |
+| `Public client '…' must use PKCE` | Garder PKCE activé côté enregistrement et côté consommateur. |
 | `Client authentication is already configured` | Choisir une seule méthode de credentials par client, ou créer un autre client. |
 | `has no PrivateKeyPem to project` | La projection demande une clé absente ; vérifier la méthode et l'ordre de déclaration. |
 | `Configuration key ... is already assigned` | Donner des sections distinctes aux projections de clients ; voir [les collisions](projections.md). |

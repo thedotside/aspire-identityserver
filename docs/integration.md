@@ -9,7 +9,7 @@ La projection fournit des valeurs. Le consommateur configure sa bibliothèque OA
 Dans l'AppHost, pour une ressource `orders` et un projet `api` existants :
 
 ```csharp
-api.WithIdentityResource(orders, "Authentication:Inbound");
+api.WithIdentityApiResource(orders, "Authentication:Inbound");
 ```
 
 Dans l'API référençant `Microsoft.AspNetCore.Authentication.JwtBearer`, ce `Program.cs` illustre le comportement du sample avec un fournisseur :
