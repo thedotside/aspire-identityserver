@@ -24,7 +24,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />
     <PackageVersion Include="Microsoft.Testing.Extensions.HangDump" Version="2.5.2" />
-    <PackageVersion Include="TUnit" Version="1.76.45" />
+    <PackageVersion Include="TUnit" Version="1.78.0" />
   </ItemGroup>
   <ItemGroup>
     <GlobalPackageReference Include="Meziantou.Analyzer" Version="3.0.318" PrivateAssets="all" />
