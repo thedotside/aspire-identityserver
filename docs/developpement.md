@@ -156,11 +156,11 @@ npx commitlint --from origin/main --to HEAD
 
 ### Mises à jour avec Renovate
 
-Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`.
+Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`. Il reprend également après la réussite du workflow `build-test-pack` d'une PR issue d'une branche `renovate/` du même dépôt. Il exécute toujours le code de `main`.
 
 La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés et leurs fichiers de verrouillage, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub épinglées, y compris celles de `pipelines/`. Les scripts `eng/` ne contiennent plus de version : ils lisent [Directory.Build.props](../Directory.Build.props) et [Directory.Packages.props](../Directory.Packages.props). Le SDK .NET et les packages ASP.NET Core restent sur la version majeure 10.
 
-Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures nécessitent une approbation dans son issue « Dependency Dashboard ». Les PR ne sont jamais fusionnées automatiquement ; elles déclenchent la CI de build et de tests habituelle.
+Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures et les mises à jour du plancher `Aspire.Hosting` nécessitent une approbation dans son issue « Dependency Dashboard ». Les PR déclenchent la CI habituelle et sont fusionnées automatiquement par Renovate une fois leur branche à jour et tous les contrôles réussis (`automerge: true`, `platformAutomerge: false`, `ignoreTests: false`). Sans résultat de CI, ou si des contrôles sont en attente ou en échec, Renovate attend. La fusion automatique native de GitHub reste désactivée : sur ce dépôt privé GitHub Free, c'est Renovate qui vérifie les contrôles. Chaque passage fusionne au plus une PR ; les autres sont rebasées et retestées avant le passage suivant.
 
 L'exécution utilise Node.js 24 et .NET 10 sur le runner GitHub Ubuntu, sans Docker. La version de Renovate est fixée dans l'action et est elle-même suivie pour les mises à jour.
 
