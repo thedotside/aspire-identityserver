@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.5 - Unreleased
+
+- Start the next development iteration after 0.1.0-alpha.4.
+
 ## 0.1.0-alpha.4 - 2026-11-04
 
 ### Features
