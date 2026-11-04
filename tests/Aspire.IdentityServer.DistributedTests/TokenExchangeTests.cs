@@ -289,6 +289,131 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task Requested_identity_scopes_issue_profile_claims_and_offline_access_a_refresh_token()
+    {
+        var tokens = await UserTokens();
+        var identity = new JsonWebToken(tokens.GetProperty("id_token").GetString()!);
+        await Assert.That(identity.GetClaim("email").Value).IsEqualTo("alice@example.test");
+        await Assert.That(identity.GetClaim("given_name").Value).IsEqualTo("Alice");
+        await Assert.That(identity.GetClaim("family_name").Value).IsEqualTo("Anderson");
+        // Several values of one claim type are a JSON array.
+        await Assert.That(Values(identity, "team")).IsEquivalentTo(["sales", "support"]);
+        await Assert.That(tokens.TryGetProperty("refresh_token", out _)).IsTrue();
+    }
+
+    [Test]
+    public async Task Profile_claims_and_refresh_tokens_are_only_issued_for_their_scopes()
+    {
+        var tokens = await UserTokens(scope: "openid orders.read");
+        var identity = new JsonWebToken(tokens.GetProperty("id_token").GetString()!);
+        foreach (var type in new[] { "email", "given_name", "family_name", "team" })
+            await Assert.That(identity.TryGetClaim(type, out _)).IsFalse();
+        await Assert.That(tokens.TryGetProperty("refresh_token", out _)).IsFalse();
+    }
+
+    [Test]
+    public async Task A_refresh_token_renews_a_user_token_that_can_still_be_exchanged()
+    {
+        var tokens = await UserTokens();
+        var original = new JsonWebToken(tokens.GetProperty("access_token").GetString()!);
+        var browser = await fixture.Client("idp-a", "web");
+        var fields = ProtocolTests.Fields(browser);
+        fields.Remove("scope");
+        fields["grant_type"] = "refresh_token";
+        fields["refresh_token"] = tokens.GetProperty("refresh_token").GetString()!;
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        response.EnsureSuccessStatusCode();
+        var renewed = new JsonWebToken(
+            (await response.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("access_token")
+                .GetString()!
+        );
+        await Assert.That(renewed.Id).IsNotEqualTo(original.Id);
+        await Assert.That(renewed.Subject).IsEqualTo("idp-a:alice");
+        await Assert
+            .That(renewed.GetClaim("auth_time").Value)
+            .IsEqualTo(original.GetClaim("auth_time").Value);
+        // A renewed token keeps the facts of the original sign-in, so it can still be exchanged.
+        var exchange = ExchangeFields(
+            await fixture.Client("idp-a", "delegate"),
+            renewed.EncodedToken
+        );
+        using var exchanged = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(exchange)
+        );
+        exchanged.EnsureSuccessStatusCode();
+    }
+
+    [Test]
+    [Arguments("orders.read", HttpStatusCode.OK)]
+    [Arguments("orders.write", HttpStatusCode.Forbidden)]
+    public async Task Delegated_exchange_grants_machine_client_scopes_absent_from_the_user_token(
+        string scope,
+        HttpStatusCode expectedByApi
+    )
+    {
+        // A session token without any API scope, hence without the orders audience.
+        var source = new JsonWebToken(
+            (await UserTokens(scope: "openid profile email teams"))
+                .GetProperty("access_token")
+                .GetString()!
+        );
+        await Assert.That(source.Audiences.ToArray()).DoesNotContain("orders-api-a");
+        var fields = ExchangeFields(await fixture.Client("idp-a", "delegate"), source.EncodedToken);
+        fields["scope"] = scope;
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        response.EnsureSuccessStatusCode();
+        var token = new JsonWebToken(
+            (await response.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("access_token")
+                .GetString()!
+        );
+        await Assert.That(token.Subject).IsEqualTo("idp-a:alice");
+        await Assert.That(token.Audiences.ToArray()).IsEquivalentTo(["orders-api-a"]);
+        await Assert.That(ProtocolTests.ScopeClaim(token)).IsEqualTo(scope);
+        await Assert.That(token.GetClaim("email").Value).IsEqualTo("alice@example.test");
+        await Assert.That(Values(token, "team")).IsEquivalentTo(["sales", "support"]);
+        await Assert.That(token.TryGetClaim("given_name", out _)).IsFalse();
+        using var actor = JsonDocument.Parse(token.GetClaim("act").Value);
+        await Assert.That(actor.RootElement.GetProperty("sub").GetString()).IsEqualTo("delegate");
+        // The API still enforces its own scope: /orders/a requires orders.read.
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            token.EncodedToken
+        );
+        using var result = await api.GetAsync("/orders/a");
+        await Assert.That(result.StatusCode).IsEqualTo(expectedByApi);
+    }
+
+    [Test]
+    [Arguments("missing-scope")]
+    [Arguments("scope-of-another-provider")]
+    public async Task Delegated_exchange_needs_an_explicit_scope_of_the_machine_client(
+        string change
+    )
+    {
+        var source = (await UserTokens(scope: "openid profile"))
+            .GetProperty("access_token")
+            .GetString()!;
+        var fields = ExchangeFields(await fixture.Client("idp-a", "delegate"), source);
+        if (string.Equals(change, "missing-scope", StringComparison.Ordinal))
+            fields.Remove("scope");
+        else
+            fields["scope"] = "legacy.read";
+        await AssertRejected(fields, "invalid_scope");
+    }
+
+    [Test]
     public async Task Private_key_helper_uses_a_fresh_assertion_and_the_server_rejects_replay()
     {
         var source = (await UserTokens()).GetProperty("access_token").GetString()!;

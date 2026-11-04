@@ -12,7 +12,7 @@ Les extraits de cette page supposent `builder` et un fournisseur `idp` déjà d�
 | Client navigateur public | `AddAuthorizationCodeClient` | Aucune : ne configure pas de credentials. | Obligatoire. |
 | Worker/API sortante | `AddClientCredentialsClient` | Secret ou `private_key_jwt`, obligatoire. | Sans objet. |
 
-`WithScopes()` enregistre une liste autorisée. Le consommateur doit encore demander ces scopes lors du parcours OAuth. Les scopes API doivent exister sur une ressource du même fournisseur.
+`WithScopes()` enregistre une liste autorisée. Le consommateur doit encore demander ces scopes lors du parcours OAuth. Les scopes API doivent exister sur une ressource du même fournisseur. Un client interactif peut aussi déclarer `openid`, `profile`, `email`, des [scopes d'identité personnalisés](fournisseurs.md#scopes-didentité-personnalisés) et `offline_access`, qui lui donne des [refresh tokens](fournisseurs.md#refresh-tokens).
 
 ## Client machine
 
@@ -23,7 +23,7 @@ var worker = idp.AddClientCredentialsClient("worker")
     .WithScopes("orders.read");
 ```
 
-Ce client demande des tokens avec `grant_type=client_credentials`, sans utilisateur ni redirection. Il doit avoir des credentials et uniquement des scopes API. Il ne reçoit pas de refresh token.
+Ce client demande des tokens avec `grant_type=client_credentials`, sans utilisateur ni redirection. Il doit avoir des credentials et uniquement des scopes API : ni scope d'identité ni `offline_access`. Il ne reçoit pas de refresh token.
 
 ## Client web confidentiel
 

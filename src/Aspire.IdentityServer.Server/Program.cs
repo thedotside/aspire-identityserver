@@ -45,6 +45,14 @@ internal static class ServerProgram
             throw new InvalidOperationException(
                 "The development issuer must use a loopback HTTPS address."
             );
+        if (
+            config
+                .Clients.SelectMany(c => c.TokenExchanges)
+                .Any(p => p.Scopes is not ("FromSubjectToken" or "FromMachineClient"))
+        )
+            throw new InvalidOperationException(
+                "Each token exchange policy needs FromSubjectToken or FromMachineClient scopes."
+            );
 
         // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
@@ -114,6 +122,7 @@ internal static class ServerProgram
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(),
                 new IdentityResources.Email(),
+                .. config.IdentityScopes.Select(s => new IdentityResource(s.Name, s.UserClaims)),
             ])
             .AddInMemoryApiScopes(
                 config
@@ -163,7 +172,16 @@ internal static class ServerProgram
                     },
                     RequirePkce = c.RequirePkce,
                     RequireConsent = false,
-                    AllowedScopes = c.Scopes,
+                    // Duende grants offline_access through this flag, not as an allowed scope.
+                    AllowOfflineAccess = c.Scopes.Contains(
+                        "offline_access",
+                        StringComparer.Ordinal
+                    ),
+                    AllowedScopes = c
+                        .Scopes.Where(s =>
+                            !string.Equals(s, "offline_access", StringComparison.Ordinal)
+                        )
+                        .ToList(),
                     RedirectUris = c.RedirectUris,
                     PostLogoutRedirectUris = c.PostLogoutRedirectUris,
                     AccessTokenLifetime = 300,
@@ -177,7 +195,11 @@ internal static class ServerProgram
                         Username = u.Username,
                         Password = u.Password,
                         SubjectId = u.SubjectId,
-                        Claims = [new Claim("name", u.DisplayName)],
+                        Claims =
+                        [
+                            new Claim("name", u.DisplayName),
+                            .. u.Claims.Select(c => new Claim(c.Type, c.Value)),
+                        ],
                     })
                     .ToList()
             )

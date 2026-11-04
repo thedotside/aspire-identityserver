@@ -80,11 +80,26 @@ public sealed class IdentityClient
         IdentityClient subjectClient,
         IdentityApiResource api,
         params string[] userClaims
+    ) =>
+        WithTokenExchangeFrom(subjectClient, api, TokenExchangeScopes.FromSubjectToken, userClaims);
+
+    /// <summary>
+    /// Allows this machine client to exchange a same-provider authorization-code access token
+    /// for this API, with the scope rule chosen by <paramref name="scopes" />.
+    /// The subject is preserved; only the named user claims are included.
+    /// </summary>
+    public IdentityClient WithTokenExchangeFrom(
+        IdentityClient subjectClient,
+        IdentityApiResource api,
+        TokenExchangeScopes scopes,
+        params string[] userClaims
     )
     {
         ArgumentNullException.ThrowIfNull(subjectClient);
         ArgumentNullException.ThrowIfNull(api);
         ArgumentNullException.ThrowIfNull(userClaims);
+        if (!Enum.IsDefined(scopes))
+            throw new ArgumentOutOfRangeException(nameof(scopes));
         if (!string.Equals(GrantType, "client_credentials", StringComparison.Ordinal))
             throw new InvalidOperationException("Only machine clients can enable token exchange.");
         if (!string.Equals(subjectClient.GrantType, "authorization_code", StringComparison.Ordinal))
@@ -117,13 +132,17 @@ public sealed class IdentityClient
             new TokenExchangePolicy(
                 subjectClient,
                 api,
+                scopes,
                 userClaims.Distinct(StringComparer.Ordinal).ToArray()
             )
         );
         return this;
     }
 
-    /// <summary>Adds scopes: declared API scopes, or <c>openid</c>, <c>profile</c> and <c>email</c> for interactive clients.</summary>
+    /// <summary>
+    /// Adds scopes: declared API scopes, or for interactive clients <c>openid</c>, <c>profile</c>,
+    /// <c>email</c>, declared identity scopes and <c>offline_access</c>, which issues refresh tokens.
+    /// </summary>
     public IdentityClient WithScopes(params string[] scopes)
     {
         foreach (var scope in scopes)
@@ -354,5 +373,24 @@ public sealed class IdentityClient
 internal sealed record TokenExchangePolicy(
     IdentityClient SubjectClient,
     IdentityApiResource Api,
+    TokenExchangeScopes Scopes,
     IReadOnlyList<string> UserClaims
 );
+
+/// <summary>Where a token exchange takes the scopes it may grant.</summary>
+public enum TokenExchangeScopes
+{
+    /// <summary>
+    /// The user's token must already target the API and carry each requested scope: the exchange
+    /// only narrows it. This is the default.
+    /// </summary>
+    FromSubjectToken,
+
+    /// <summary>
+    /// The machine client may request any scope of the API it is registered for, even absent
+    /// from the user's token, whose audience is not checked. The user's token still proves who
+    /// signed in, through the authorized interactive client; the machine client is responsible
+    /// for choosing the scopes appropriate to that user.
+    /// </summary>
+    FromMachineClient,
+}

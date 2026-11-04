@@ -5,7 +5,7 @@ This is a local-development OAuth/OIDC integration for Aspire. It must validate 
 - `src/Aspire.IdentityServer.Hosting`: AppHost API and configuration projections. Preserve deferred endpoint references and Aspire secret parameters.
 - `src/Aspire.IdentityServer.Server`: independent Duende process, published as the `TheDotSide.Aspire.IdentityServer.Runtime` NuGet dependency. Local development/testing only.
 - `src/Aspire.IdentityServer.Client`: optional, engine-independent assertion helper. Generate a fresh `jti` for each request.
-- `samples`: two providers, three browser clients and three machine clients; local token exchange with private-key and secret authentication.
+- `samples`: two providers, three browser clients and four machine clients; profile claims, a custom identity scope, refresh tokens, and local token exchange (narrowing and delegation) with private-key and secret authentication.
 - `tests`: TUnit on Microsoft Testing Platform. `UnitTests` builds in-memory application models without network or a started AppHost; `DistributedTests` shares one real AppHost with isolated browser contexts.
 
 Use .NET 10. The `Aspire.Hosting` version in `Directory.Packages.props` is the floor of the published Hosting package: raise it deliberately; the repository AppHost, testing packages and SDK may follow later patches. Run `dotnet build`, `dotnet test`, `pwsh eng/pack.ps1`, then `pwsh eng/package-smoke.ps1` for changes affecting packaging. The smoke script consumes actual packages in an isolated temporary project/cache. No Docker dependency.

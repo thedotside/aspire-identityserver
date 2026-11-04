@@ -29,6 +29,16 @@ public sealed class RegistrationRuleTests
     [Arguments("callback-network", "absolute callback path")]
     [Arguments("callback-fragment", "absolute callback path")]
     [Arguments("callback-backslash", "absolute callback path")]
+    [Arguments("user-claim-protocol", "profile claim")]
+    [Arguments("user-claim-name", "display name")]
+    [Arguments("user-claim-empty", "non-empty claim value")]
+    [Arguments("identity-scope-builtin", "built-in scope")]
+    [Arguments("identity-scope-offline", "built-in scope")]
+    [Arguments("identity-scope-space", "single OAuth scope token")]
+    [Arguments("identity-scope-duplicate", "Duplicate identity scope")]
+    [Arguments("identity-scope-without-claim", "at least one user claim")]
+    [Arguments("identity-scope-protocol-claim", "protocol claims")]
+    [Arguments("exchange-scopes-undefined", "scopes")]
     public async Task Invalid_arguments_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -82,6 +92,23 @@ public sealed class RegistrationRuleTests
             "callback-fragment" => () => web.WithRedirectUri(idp.GetEndpoint("https"), "/cb#x"),
             "callback-backslash" => () =>
                 web.WithPostLogoutRedirectUri(idp.GetEndpoint("https"), "/cb\\x"),
+            "user-claim-protocol" => () => idp.AddTestUser("alice", "a").WithClaim("sub", "x"),
+            "user-claim-name" => () => idp.AddTestUser("alice", "a").WithClaim("name", "Alice"),
+            "user-claim-empty" => () => idp.AddTestUser("alice", "a").WithClaim("email", " "),
+            "identity-scope-builtin" => () => idp.WithIdentityScope("profile", "team"),
+            "identity-scope-offline" => () => idp.WithIdentityScope("offline_access", "team"),
+            "identity-scope-space" => () => idp.WithIdentityScope("my teams", "team"),
+            "identity-scope-duplicate" => () =>
+                idp.WithIdentityScope("teams", "team").WithIdentityScope("teams", "group"),
+            "identity-scope-without-claim" => () => idp.WithIdentityScope("teams"),
+            "identity-scope-protocol-claim" => () => idp.WithIdentityScope("teams", "sub"),
+            "exchange-scopes-undefined" => () =>
+                idp.AddClientCredentialsClient("m")
+                    .WithTokenExchangeFrom(
+                        web,
+                        idp.AddApiResource("orders"),
+                        (TokenExchangeScopes)42
+                    ),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).Throws<ArgumentException>();
@@ -118,6 +145,12 @@ public sealed class RegistrationRuleTests
     [Arguments("interactive-without-redirect", "needs an openid scope and a redirect URI")]
     [Arguments("interactive-without-openid", "needs an openid scope and a redirect URI")]
     [Arguments("public-without-pkce", "'public' must use PKCE")]
+    [Arguments("identity-scope-is-api-scope", "both an identity scope and an API scope")]
+    [Arguments("client-undeclared-identity-scope", "must use declared API scopes")]
+    [Arguments("machine-offline-access", "requires authentication and API scopes only")]
+    [Arguments("machine-custom-identity-scope", "requires authentication and API scopes only")]
+    [Arguments("delegation-without-machine-scope", "allowed to this machine client")]
+    [Arguments("narrowing-without-shared-scope", "shared with 'web'")]
     public async Task Inconsistent_registrations_are_refused_by_the_startup_validation(
         string rule,
         string message
@@ -160,6 +193,47 @@ public sealed class RegistrationRuleTests
                     .WithScopes("openid")
                     .WithRedirectUri(callback, "/cb");
                 break;
+            case "identity-scope-is-api-scope":
+                idp.WithIdentityScope("orders.read", "team");
+                break;
+            case "client-undeclared-identity-scope":
+                idp.AddAuthorizationCodeClient("web")
+                    .WithScopes("openid", "teams")
+                    .WithRedirectUri(callback, "/cb");
+                break;
+            case "machine-offline-access":
+                idp.AddClientCredentialsClient("m")
+                    .WithGeneratedClientSecret()
+                    .WithScopes("orders.read", "offline_access");
+                break;
+            case "machine-custom-identity-scope":
+                idp.WithIdentityScope("teams", "team");
+                idp.AddClientCredentialsClient("m")
+                    .WithGeneratedClientSecret()
+                    .WithScopes("orders.read", "teams");
+                break;
+            case "delegation-without-machine-scope":
+            case "narrowing-without-shared-scope":
+                idp.AddApiResource("other").WithScopes("other.read");
+                var interactive = idp.AddAuthorizationCodeClient("web")
+                    .WithScopes("openid")
+                    .WithRedirectUri(callback, "/cb");
+                var orders = idp.AddApiResource("delegated").WithScopes("delegated.read");
+                idp.AddClientCredentialsClient("m")
+                    .WithGeneratedClientSecret()
+                    .WithScopes("other.read")
+                    .WithTokenExchangeFrom(
+                        interactive,
+                        orders,
+                        string.Equals(
+                            rule,
+                            "delegation-without-machine-scope",
+                            StringComparison.Ordinal
+                        )
+                            ? TokenExchangeScopes.FromMachineClient
+                            : TokenExchangeScopes.FromSubjectToken
+                    );
+                break;
         }
         var error = await Assert
             .That(() => IdentityServerExtensions.Validate(idp.Resource))
@@ -177,6 +251,44 @@ public sealed class RegistrationRuleTests
             .WithScopes("openid")
             .WithRedirectUri(idp.GetEndpoint("https"), "/cb");
         await Assert.That(() => IdentityServerExtensions.Validate(idp.Resource)).ThrowsNothing();
+    }
+
+    [Test]
+    public async Task An_interactive_client_may_renew_its_session_and_request_custom_profile_scopes()
+    {
+        var idp = TestApp
+            .CreateBuilder()
+            .AddIdentityServer("rules")
+            .WithIdentityScope("teams", "team");
+        var orders = idp.AddApiResource("orders").WithScopes("orders.read", "orders.admin");
+        var web = idp.AddAuthorizationCodeClient("web")
+            .WithGeneratedClientSecret()
+            .WithScopes("openid", "profile", "email", "teams", "offline_access")
+            .WithRedirectUri(idp.GetEndpoint("https"), "/cb");
+        // Delegation does not need the user's token to carry any API scope.
+        idp.AddClientCredentialsClient("orders-worker")
+            .WithGeneratedClientSecret()
+            .WithScopes("orders.read", "orders.admin")
+            .WithTokenExchangeFrom(web, orders, TokenExchangeScopes.FromMachineClient, "email");
+        await Assert.That(() => IdentityServerExtensions.Validate(idp.Resource)).ThrowsNothing();
+    }
+
+    [Test]
+    public async Task Test_users_keep_their_claims_in_order_without_duplicates()
+    {
+        var idp = TestApp.CreateBuilder().AddIdentityServer("rules");
+        var alice = idp.AddTestUser("alice", "alice", "Alice")
+            .WithClaim("team", "sales", "support")
+            .WithClaim("email", "alice@example.test")
+            .WithClaim("team", "support");
+        await Assert.That(alice.SubjectId).IsEqualTo("rules:alice");
+        await Assert.That(alice.DisplayName).IsEqualTo("Alice");
+        await Assert
+            .That(alice.Claims.Select(c => $"{c.Key}={c.Value}").ToArray())
+            .IsEquivalentTo(
+                ["team=sales", "team=support", "email=alice@example.test"],
+                CollectionOrdering.Matching
+            );
     }
 
     [Test]
@@ -200,7 +312,8 @@ public sealed class RegistrationRuleTests
     public async Task The_provider_environment_matches_its_configuration_contract()
     {
         var builder = TestApp.CreateBuilder();
-        var idp = builder.AddIdentityServer("contract").WithTestUser("alice", "alice", "Alice");
+        var idp = builder.AddIdentityServer("contract").WithIdentityScope("teams", "team");
+        idp.AddTestUser("alice", "alice", "Alice").WithClaim("team", "sales", "support");
         var orders = idp.AddApiResource("orders").WithScopes("orders.read", "orders.write");
         var web = idp.AddAuthorizationCodeClient("web")
             .WithGeneratedClientSecret()
@@ -256,11 +369,18 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Clients__1__RequirePkce=True",
             "IdentityServer__Clients__1__Scopes__0=orders.read",
             "IdentityServer__Clients__1__TokenExchanges__0__Audience=orders",
+            "IdentityServer__Clients__1__TokenExchanges__0__Scopes=FromSubjectToken",
             "IdentityServer__Clients__1__TokenExchanges__0__SubjectClientId=web",
             "IdentityServer__Clients__1__TokenExchanges__0__UserClaims__0=name",
-            "IdentityServer__ContractVersion=2",
+            "IdentityServer__ContractVersion=3",
+            "IdentityServer__IdentityScopes__0__Name=teams",
+            "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",
             "IdentityServer__Name=contract",
+            "IdentityServer__Users__0__Claims__0__Type=team",
+            "IdentityServer__Users__0__Claims__0__Value=sales",
+            "IdentityServer__Users__0__Claims__1__Type=team",
+            "IdentityServer__Users__0__Claims__1__Value=support",
             "IdentityServer__Users__0__DisplayName=Alice",
             "IdentityServer__Users__0__Password=<secret-parameter>",
             "IdentityServer__Users__0__SubjectId=contract:alice",

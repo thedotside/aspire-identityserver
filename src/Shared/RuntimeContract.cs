@@ -5,6 +5,6 @@ namespace Aspire.IdentityServer;
 // packages then fails at start instead of misreading its configuration.
 internal static class RuntimeContract
 {
-    internal const int Version = 2;
+    internal const int Version = 3;
     internal const string EnvironmentVariable = "IdentityServer__ContractVersion";
 }

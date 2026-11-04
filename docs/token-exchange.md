@@ -57,11 +57,34 @@ Une seule méthode active l'échange. Tu peux remplacer `WithGeneratedPrivateKey
 | `api` / `ordersApi` | Audience obligatoire du jeton source et du jeton demandé. La V1 conserve cette audience. |
 | `userClaims` | Noms des informations utilisateur autorisées en sortie. Vide par défaut. |
 
-`sub` est toujours conservé et ne figure pas dans `userClaims`. Le profil de test local fournit les informations sélectionnées : `WithTestUser` renseigne actuellement `name`. Demander un champ absent du profil ne le crée pas. Les champs de protocole (`iss`, `sub`, `aud`, `scope`, `exp`, `act`, etc.) ne peuvent pas être injectés comme informations utilisateur.
+`sub` est toujours conservé et ne figure pas dans `userClaims`. Le profil de test local fournit les informations sélectionnées : `name` pour chaque utilisateur, et les [claims de profil](fournisseurs.md#claims-de-profil) ajoutés par `AddTestUser(...).WithClaim(...)`, plusieurs valeurs comprises. Demander un champ absent du profil ne le crée pas. Les champs de protocole (`iss`, `sub`, `aud`, `scope`, `exp`, `act`, etc.) ne peuvent pas être injectés comme informations utilisateur.
 
 Chaque association client source / API est explicite. Plusieurs appels permettent d'autoriser plusieurs associations ; un doublon est refusé. Tous les objets doivent appartenir au même IdP. La configuration refuse au démarrage les associations sans scope API partagé entre le navigateur, le client machine et l'API.
 
 Déclare les credentials et toutes les règles d'échange avant d'appeler `WithIdentityClient`, afin que la projection standard sélectionne les champs correspondants.
+
+## Scopes choisis par le client machine
+
+Par défaut (`TokenExchangeScopes.FromSubjectToken`), l'échange **réduit** un jeton : le jeton utilisateur doit déjà viser l'API et porter chaque scope demandé. Depuis `0.1.0-alpha.4`, une règle peut déléguer ce choix au client machine :
+
+```csharp
+var browser = idp.AddAuthorizationCodeClient("web")
+    .WithGeneratedPrivateKeyJwt()
+    .WithScopes("openid", "profile", "email", "teams", "offline_access")
+    .WithRedirectUri(web.GetEndpoint("https"), "/signin-oidc");
+var worker = idp.AddClientCredentialsClient("orders-worker")
+    .WithGeneratedPrivateKeyJwt()
+    .WithScopes("orders.read", "orders.admin")
+    .WithTokenExchangeFrom(
+        browser,
+        ordersApi,
+        TokenExchangeScopes.FromMachineClient,
+        userClaims: ["email", "given_name", "family_name"]);
+```
+
+Avec `FromMachineClient`, le jeton utilisateur, émis par ce fournisseur à `web`, prouve qui s'est connecté ; il n'a besoin ni de l'audience de l'API ni de ses scopes, comme un jeton de session limité à `openid profile`. Le client machine peut demander tout scope de l'API qu'il est autorisé à demander, et doit le faire **explicitement** (`scope` obligatoire) : sans lui, Duende accorderait tous ses scopes. Le choix du scope adapté à l'utilisateur, par exemple selon un claim `team` lu par l'application, relève donc du client machine. Les autres contrôles restent identiques : signature, issuer, expiration, client source autorisé, utilisateur actif, absence d'`act` et de `cnf`, audience unique et validité bornée par celle du jeton source.
+
+La configuration de démarrage exige qu'un scope de l'API soit autorisé au client machine. Le client source doit tout de même demander `openid`, et `offline_access` lui permet de renouveler son jeton avant un échange : un jeton renouvelé reste un jeton source valide.
 
 ## Projections et configuration effective
 
@@ -74,6 +97,7 @@ Le réglage supplémentaire est envoyé uniquement au processus fournisseur, sou
 ```text
 IdentityServer__Clients__<index>__TokenExchanges__0__SubjectClientId=web
 IdentityServer__Clients__<index>__TokenExchanges__0__Audience=orders-api
+IdentityServer__Clients__<index>__TokenExchanges__0__Scopes=FromSubjectToken
 IdentityServer__Clients__<index>__TokenExchanges__0__UserClaims__0=name
 ```
 
@@ -208,7 +232,7 @@ Le jeton signé porte notamment :
 | `amr` | Méthodes d'authentification du jeton source, par exemple `pwd`. L'échange ne les remplace pas. |
 | `idp` | Fournisseur d'identité du jeton source, `local` pour les utilisateurs de test. |
 
-Les scopes demandés doivent appartenir au client machine, à l'API et au jeton utilisateur. Le jeton échangé ne peut pas prolonger la validité du jeton source. Une marge d'une seconde évite de prolonger sa validité pendant l'émission ; un jeton trop proche de son expiration est refusé.
+Les scopes demandés doivent appartenir au client machine et à l'API, et, sauf règle `FromMachineClient`, au jeton utilisateur. Le jeton échangé ne peut pas prolonger la validité du jeton source. Une marge d'une seconde évite de prolonger sa validité pendant l'émission ; un jeton trop proche de son expiration est refusé.
 
 Si un scope demandé désigne plusieurs ressources API du même fournisseur, l'échange est refusé plutôt que d'émettre des audiences supplémentaires. Utilise des scopes distincts pour les API cibles dans cette V1.
 

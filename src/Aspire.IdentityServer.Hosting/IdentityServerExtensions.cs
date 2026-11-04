@@ -102,6 +102,22 @@ public static class IdentityServerExtensions
         string? subjectId = null
     )
     {
+        server.AddTestUser(username, password, displayName, subjectId);
+        return server;
+    }
+
+    /// <summary>
+    /// Adds a test user and returns it, to give it profile claims with
+    /// <see cref="IdentityTestUser.WithClaim" />. Its password becomes an Aspire secret parameter.
+    /// </summary>
+    public static IdentityTestUser AddTestUser(
+        this IResourceBuilder<IdentityServerResource> server,
+        string username,
+        string password,
+        string? displayName = null,
+        string? subjectId = null
+    )
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(username);
         ArgumentException.ThrowIfNullOrWhiteSpace(password);
         subjectId ??= $"{server.Resource.Name}:{username}";
@@ -127,8 +143,44 @@ public static class IdentityServerExtensions
                 secret: true
             )
             .WithParentRelationship(server);
-        server.Resource.Users.Add(
-            new TestUser(username, subjectId, displayName ?? username, secret)
+        var user = new IdentityTestUser(
+            server,
+            username,
+            subjectId,
+            displayName ?? username,
+            secret
+        );
+        server.Resource.Users.Add(user);
+        return user;
+    }
+
+    /// <summary>
+    /// Declares an identity scope beyond <c>openid</c>, <c>profile</c> and <c>email</c>: an
+    /// interactive client that requests it receives these user claims in its ID token.
+    /// </summary>
+    public static IResourceBuilder<IdentityServerResource> WithIdentityScope(
+        this IResourceBuilder<IdentityServerResource> server,
+        string name,
+        params string[] userClaims
+    )
+    {
+        IdentityClient.ValidateScope(name);
+        ArgumentNullException.ThrowIfNull(userClaims);
+        if (name is "openid" or "profile" or "email" or "offline_access")
+            throw new ArgumentException($"'{name}' is a built-in scope.", nameof(name));
+        if (
+            server.Resource.IdentityScopes.Any(s =>
+                string.Equals(s.Name, name, StringComparison.Ordinal)
+            )
+        )
+            throw new ArgumentException($"Duplicate identity scope '{name}'.", nameof(name));
+        if (userClaims.Length == 0 || userClaims.Any(c => !TokenExchangeClaims.IsUserClaim(c)))
+            throw new ArgumentException(
+                "Select at least one user claim, not protocol claims such as sub, scope, aud or act.",
+                nameof(userClaims)
+            );
+        server.Resource.IdentityScopes.Add(
+            new IdentityScope(name, userClaims.Distinct(StringComparer.Ordinal).ToArray())
         );
         return server;
     }
@@ -219,8 +271,15 @@ public static class IdentityServerExtensions
     internal static void Validate(IdentityServerResource server)
     {
         var scopes = server.Apis.SelectMany(a => a.Scopes).ToHashSet(StringComparer.Ordinal);
+        foreach (var identityScope in server.IdentityScopes)
+            if (scopes.Contains(identityScope.Name))
+                throw new InvalidOperationException(
+                    $"Scope '{identityScope.Name}' cannot be both an identity scope and an API scope."
+                );
+        // offline_access asks for a refresh token: only a user session can be renewed that way.
         var knownScopes = scopes
-            .Concat(["openid", "profile", "email"])
+            .Concat(["openid", "profile", "email", "offline_access"])
+            .Concat(server.IdentityScopes.Select(s => s.Name))
             .ToHashSet(StringComparer.Ordinal);
         foreach (var api in server.Apis)
             if (api.Scopes.Count == 0)
@@ -231,7 +290,7 @@ public static class IdentityServerExtensions
         {
             if (client.Scopes.Count == 0 || client.Scopes.Any(s => !knownScopes.Contains(s)))
                 throw new InvalidOperationException(
-                    $"Client '{client.ClientId}' must use declared API scopes or openid/profile/email."
+                    $"Client '{client.ClientId}' must use declared API scopes, identity scopes or offline_access."
                 );
             if (
                 string.Equals(client.GrantType, "client_credentials", StringComparison.Ordinal)
@@ -263,7 +322,15 @@ public static class IdentityServerExtensions
                 );
             foreach (var policy in client.TokenExchanges)
                 if (
-                    !policy
+                    policy.Scopes == TokenExchangeScopes.FromMachineClient
+                    && !policy.Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal).Any()
+                )
+                    throw new InvalidOperationException(
+                        $"Token exchange for '{client.ClientId}' requires a scope of '{policy.Api.Audience}' allowed to this machine client."
+                    );
+                else if (
+                    policy.Scopes == TokenExchangeScopes.FromSubjectToken
+                    && !policy
                         .Api.Scopes.Intersect(client.Scopes, StringComparer.Ordinal)
                         .Intersect(policy.SubjectClient.Scopes, StringComparer.Ordinal)
                         .Any()
@@ -286,6 +353,16 @@ public static class IdentityServerExtensions
             environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
             AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
         }
+        for (var i = 0; i < server.IdentityScopes.Count; i++)
+        {
+            var scope = server.IdentityScopes[i];
+            environment[$"IdentityServer__IdentityScopes__{i}__Name"] = scope.Name;
+            AddList(
+                environment,
+                $"IdentityServer__IdentityScopes__{i}__UserClaims",
+                scope.UserClaims
+            );
+        }
         for (var i = 0; i < server.Clients.Count; i++)
         {
             var client = server.Clients[i];
@@ -305,6 +382,7 @@ public static class IdentityServerExtensions
                 var policyPrefix = $"{prefix}__TokenExchanges__{policyIndex}";
                 environment[$"{policyPrefix}__SubjectClientId"] = policy.SubjectClient.ClientId;
                 environment[$"{policyPrefix}__Audience"] = policy.Api.Audience;
+                environment[$"{policyPrefix}__Scopes"] = policy.Scopes.ToString();
                 AddList(environment, $"{policyPrefix}__UserClaims", policy.UserClaims);
             }
             AddList(environment, $"{prefix}__RedirectUris", client.RedirectUris);
@@ -322,6 +400,12 @@ public static class IdentityServerExtensions
             environment[$"{prefix}__SubjectId"] = user.SubjectId;
             environment[$"{prefix}__DisplayName"] = user.DisplayName;
             environment[$"{prefix}__Password"] = user.Password.Resource;
+            for (var claimIndex = 0; claimIndex < user.Claims.Count; claimIndex++)
+            {
+                var (type, value) = user.Claims[claimIndex];
+                environment[$"{prefix}__Claims__{claimIndex}__Type"] = type;
+                environment[$"{prefix}__Claims__{claimIndex}__Value"] = value;
+            }
         }
     }
 

@@ -9,7 +9,7 @@
 | `src/Aspire.IdentityServer.Hosting` | API AppHost, paramètres secrets et projections. |
 | `src/Aspire.IdentityServer.Server` | Runtime Duende local, package `TheDotSide.Aspire.IdentityServer.Runtime`. |
 | `src/Aspire.IdentityServer.Client` | Options et helper d'assertion indépendant d'Aspire et Duende. |
-| `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, trois clients machine. |
+| `samples/Sample.AppHost` | Deux fournisseurs, trois clients navigateur, quatre clients machine, claims de profil, scope d'identité et refresh tokens. |
 | `samples/Sample.Web` | Connexion et déconnexion OIDC avec les trois clients. |
 | `samples/Sample.Api` | Validation de tokens de deux IDP et deux composants OAuth sortants. |
 | `samples/Sample.ServiceDefaults` | Socle technique des exemples : découverte de services, résilience HTTP, health checks et OpenTelemetry. |
@@ -100,6 +100,8 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
 | Scopes inconnus, champs absents et collisions de projections | ProjectionTests. |
+| Claims de profil, scopes d'identité, `offline_access` et délégation : règles d'enregistrement et contrat | [RegistrationRuleTests](../tests/Aspire.IdentityServer.UnitTests/RegistrationRuleTests.cs). |
+| Claims de profil multi-valeurs, refresh token renouvelant un jeton échangeable, délégation `FromMachineClient` acceptée par l'API et scope explicite exigé | [TokenExchangeTests](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs). |
 
 La validation locale consignée le **31 octobre 2026**, sur macOS arm64, a produit **162 tests réussis, zéro échec** : 96 unitaires et 66 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
 

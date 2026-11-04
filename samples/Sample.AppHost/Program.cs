@@ -1,9 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var idpA = builder
-    .AddIdentityServer("idp-a")
-    .WithTestUser("alice", "alice", "Alice A")
-    .WithTestUser("bob", "bob", "Bob A");
+// The teams identity scope gives clients that request it the team claims of the user.
+var idpA = builder.AddIdentityServer("idp-a").WithIdentityScope("teams", "team");
+idpA.AddTestUser("alice", "alice", "Alice A")
+    .WithClaim("email", "alice@example.test")
+    .WithClaim("given_name", "Alice")
+    .WithClaim("family_name", "Anderson")
+    .WithClaim("team", "sales", "support");
+idpA.WithTestUser("bob", "bob", "Bob A");
 var idpB = builder.AddIdentityServer("idp-b").WithTestUser("alice", "alice", "Alice B");
 
 var ordersA = idpA.AddApiResource("orders-api-a").WithScopes("orders.read", "orders.write");
@@ -23,7 +27,7 @@ var web = builder
 var browserA = idpA.AddAuthorizationCodeClient("web")
     .WithGeneratedBase64PrivateKeyJwt()
     .RequirePkce()
-    .WithScopes("openid", "profile", "orders.read")
+    .WithScopes("openid", "profile", "email", "teams", "offline_access", "orders.read")
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-a")
     .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a");
 var browserB = idpB.AddAuthorizationCodeClient("web")
@@ -44,6 +48,18 @@ var deviceWithSecret = idpA.AddClientCredentialsClient("device-secret")
     .WithGeneratedClientSecret()
     .WithScopes("orders.read", "orders.write")
     .WithTokenExchangeFrom(browserA, ordersA);
+
+// Delegation: this machine client chooses, for each user, API scopes that the user's token
+// does not carry, and forwards the selected profile claims.
+idpA.AddClientCredentialsClient("delegate")
+    .WithGeneratedClientSecret()
+    .WithScopes("orders.read", "orders.write")
+    .WithTokenExchangeFrom(
+        browserA,
+        ordersA,
+        TokenExchangeScopes.FromMachineClient,
+        userClaims: ["email", "team"]
+    );
 
 web.WithIdentityClient(workerA, "TokenExchange:PrivateKey")
     .WithIdentityClient(deviceWithSecret, "TokenExchange:Secret");

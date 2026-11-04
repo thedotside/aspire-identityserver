@@ -13,6 +13,9 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `builder.AddIdentityServer(string name, Action<IdentityServerOptions>? configure = null)` | `IResourceBuilder<IdentityServerResource>` | Nom de ressource Aspire unique. Callback facultatif pour le dossier runtime. |
 | `consumer.WithReference(idp)` | Builder du consommateur. | `IdentityServerResource` est une ressource de découverte de services : le consommateur reçoit `services__{name}__https__0`. |
 | `idp.WithTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | Builder du fournisseur. | Username/password requis ; display name = username si null ; subject = `{resource-name}:{username}` si null. |
+| `idp.AddTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | `IdentityTestUser` | Depuis `0.1.0-alpha.4` : mêmes règles que `WithTestUser` ; retourne l'utilisateur pour ajouter des claims. |
+| `testUser.WithClaim(string type, params string[] values)` | Même utilisateur. | Depuis `0.1.0-alpha.4` : claims de profil, plusieurs valeurs par type, doublons exacts ignorés. Claims de protocole et `name` refusés. |
+| `idp.WithIdentityScope(string name, params string[] userClaims)` | Builder du fournisseur. | Depuis `0.1.0-alpha.4` : scope d'identité personnalisé, nom unique, hors `openid`/`profile`/`email`/`offline_access` et scopes d'API ; au moins un claim utilisateur. |
 | `idp.AddApiResource(string audience)` | `IdentityApiResource` | Audience non vide, unique dans le fournisseur. |
 | `apiResource.WithScopes(params string[] scopes)` | Même ressource API. | Ajout cumulatif ; au moins un scope au démarrage. Scopes d'identité et `offline_access` réservés. |
 
@@ -27,6 +30,9 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
 | `IdentityApiResource.Scopes` | `IReadOnlyCollection<string>` | Ensemble des scopes de la ressource. |
+| `IdentityTestUser.Username`, `SubjectId`, `DisplayName` | `string` | Identité de l'utilisateur de test. |
+| `IdentityTestUser.Password` | `IResourceBuilder<ParameterResource>` | Paramètre secret du mot de passe. |
+| `IdentityTestUser.Claims` | `IReadOnlyList<KeyValuePair<string, string>>` | Claims de profil, dans l'ordre de déclaration. |
 
 `IdentityServerResource` dérive d'`ExecutableResource` et démarre `dotnet`. Les options Aspire héritées restent utilisables, sous réserve des contraintes locales du runtime. Il n'existe pas d'option de conteneur ou de déploiement dans cette intégration.
 
@@ -45,8 +51,9 @@ Chaque méthode retourne le même `IdentityClient`.
 
 | Méthode | Effet / défaut |
 | --- | --- |
-| `WithScopes(params string[] scopes)` | Ajoute les scopes autorisés, cumul et déduplication exacte. Aucune valeur par défaut. |
+| `WithScopes(params string[] scopes)` | Ajoute les scopes autorisés, cumul et déduplication exacte. Aucune valeur par défaut. Un client interactif peut aussi déclarer les scopes d'identité et `offline_access`. |
 | `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, params string[] userClaims)` | Depuis `0.1.0-alpha.2` : active l'échange pour un client machine, une source Authorization Code et une API du même IdP. `sub` conservé ; autres claims explicitement sélectionnés. Voir [Token Exchange](token-exchange.md). |
+| `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, TokenExchangeScopes scopes, params string[] userClaims)` | Depuis `0.1.0-alpha.4` : choisit la règle de scopes. `FromSubjectToken`, par défaut, réduit le jeton utilisateur ; `FromMachineClient` accorde les scopes de l'API autorisés au client machine, demandés explicitement. Voir [la délégation](token-exchange.md#scopes-choisis-par-le-client-machine). |
 | `RequirePkce(bool required = true)` | Clients authorization code uniquement. `UsePkce` vaut déjà `true` par défaut. |
 | `WithGeneratedClientSecret()` | Secret aléatoire de 32 octets en Base64, une fois à l'enregistrement. |
 | `WithClientSecret(IResourceBuilder<ParameterResource> secret)` | Référence de paramètre obligatoirement secret. |
@@ -151,11 +158,12 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Contrat de configuration | `IdentityServer__ContractVersion`, version `2`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `3`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |
 | Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
+| Refresh tokens | Émis aux clients interactifs qui déclarent et demandent `offline_access` ; réglages par défaut de Duende (réutilisation du handle, expiration absolue), en mémoire. |
 | Assertions `private_key_jwt` | Seul `RS256` est annoncé (`token_endpoint_auth_signing_alg_values_supported`) et accepté. |
 | Claim `scope` des JWT | Une chaîne séparée par des espaces (RFC 9068, RFC 8693), comme chez Keycloak ; jamais un tableau JSON. |
 | Consentement | `RequireConsent = false`. |
@@ -171,7 +179,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |
 | Racine `/` | Redirection vers `/.well-known/openid-configuration`. |
 
-Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour refresh tokens, fédération, CORS, claims personnalisés, persistance ou rotation durable de clés.
+Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour la durée des refresh tokens, la fédération, CORS, la persistance ou la rotation durable de clés.
 
 ## Sources de référence
 

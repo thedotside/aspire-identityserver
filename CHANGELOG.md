@@ -2,7 +2,16 @@
 
 ## 0.1.0-alpha.4 - Unreleased
 
-- Start the next development iteration after 0.1.0-alpha.3.
+### Features
+
+- `AddTestUser` returns an `IdentityTestUser` whose `WithClaim(type, values...)` adds profile claims, such as `email`, `given_name` or a multi-valued `team`. A claim reaches a client through a requested identity scope that lists it, or a token exchange that selects it.
+- `WithIdentityScope(name, userClaims...)` declares an identity scope beyond `openid`, `profile` and `email`, for example `teams` issuing `team`.
+- Interactive clients can request `offline_access`: the provider issues refresh tokens, and a renewed access token can still be exchanged.
+- `WithTokenExchangeFrom(subjectClient, api, TokenExchangeScopes.FromMachineClient, userClaims...)` lets the machine client choose, for each user, API scopes the user's token does not carry, without requiring the API audience in that token. The scope must be requested explicitly. `FromSubjectToken` remains the default narrowing rule.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 3: use the same package versions.
 
 ## 0.1.0-alpha.3 - 2026-10-31
 

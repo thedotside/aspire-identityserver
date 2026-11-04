@@ -8,6 +8,7 @@ internal sealed class ServerConfiguration
     public bool AcceptTokenEndpointAudience { get; set; }
     public List<ClientConfiguration> Clients { get; set; } = [];
     public List<ApiConfiguration> Apis { get; set; } = [];
+    public List<IdentityScopeConfiguration> IdentityScopes { get; set; } = [];
     public List<UserConfiguration> Users { get; set; } = [];
 }
 
@@ -31,7 +32,13 @@ internal sealed class TokenExchangeConfiguration
 {
     public string SubjectClientId { get; set; } = "";
     public string Audience { get; set; } = "";
+
+    /// <summary><c>FromSubjectToken</c> or <c>FromMachineClient</c>.</summary>
+    public string Scopes { get; set; } = "";
     public List<string> UserClaims { get; set; } = [];
+
+    public bool ScopesFromMachineClient =>
+        string.Equals(Scopes, "FromMachineClient", StringComparison.Ordinal);
 }
 
 internal sealed class ApiConfiguration
@@ -40,10 +47,23 @@ internal sealed class ApiConfiguration
     public List<string> Scopes { get; set; } = [];
 }
 
+internal sealed class IdentityScopeConfiguration
+{
+    public string Name { get; set; } = "";
+    public List<string> UserClaims { get; set; } = [];
+}
+
 internal sealed class UserConfiguration
 {
     public string Username { get; set; } = "";
     public string Password { get; set; } = "";
     public string SubjectId { get; set; } = "";
     public string DisplayName { get; set; } = "";
+    public List<UserClaimConfiguration> Claims { get; set; } = [];
+}
+
+internal sealed class UserClaimConfiguration
+{
+    public string Type { get; set; } = "";
+    public string Value { get; set; } = "";
 }

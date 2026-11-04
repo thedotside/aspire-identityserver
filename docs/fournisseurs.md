@@ -55,7 +55,36 @@ Nom d'utilisateur et subject ID doivent être uniques dans un fournisseur. Deux 
 
 Le mot de passe est un paramètre secret Aspire. Le serveur emploie les utilisateurs de test Duende, sans gestion de comptes persistants.
 
-`openid`, `profile` et `email` sont enregistrés comme ressources d'identité. Les utilisateurs de cette version possèdent un claim `name`. Demander `email` ne crée pas d'adresse e-mail : aucun paramétrage de claims personnalisés n'est exposé.
+`openid`, `profile` et `email` sont enregistrés comme ressources d'identité. Chaque utilisateur possède un claim `name`, issu du nom affiché.
+
+### Claims de profil
+
+Depuis `0.1.0-alpha.4`, `AddTestUser` prend les mêmes paramètres que `WithTestUser` et retourne l'utilisateur, pour lui ajouter des claims :
+
+```csharp
+idpA.AddTestUser("alice", "alice-dev-only", "Alice A")
+    .WithClaim("email", "alice@example.test")
+    .WithClaim("given_name", "Alice")
+    .WithClaim("family_name", "Anderson")
+    .WithClaim("team", "sales", "support");
+```
+
+Plusieurs valeurs d'un même type sont émises sous forme de tableau JSON, une seule valeur sous forme de chaîne : un consommateur doit accepter les deux. Les claims de protocole (`sub`, `iss`, `aud`, `scope`, `act`...) et `name`, issu du nom affiché, sont refusés.
+
+Un client ne reçoit un claim que s'il demande un scope d'identité qui le liste (`profile` pour `given_name` et `family_name`, `email` pour `email`, ou un scope déclaré ci-dessous), ou par un [Token Exchange](token-exchange.md) qui le sélectionne. Avec `AlwaysIncludeUserClaimsInIdToken`, ces claims figurent dans l'ID token.
+
+## Scopes d'identité personnalisés
+
+```csharp
+var idp = builder.AddIdentityServer("idp")
+    .WithIdentityScope("teams", "team");
+```
+
+Un client interactif qui déclare et demande `teams` reçoit les claims `team` de l'utilisateur. Le nom suit les règles d'un scope ; `openid`, `profile`, `email` et `offline_access` sont réservés, et un même nom ne peut pas être à la fois scope d'identité et scope d'API. Il faut au moins un claim utilisateur, jamais un claim de protocole. Un client machine ne peut pas demander de scope d'identité.
+
+## Refresh tokens
+
+Un client interactif qui ajoute `offline_access` à ses scopes, et le demande à la connexion, reçoit un refresh token. Le token d'accès renouvelé conserve le sujet, l'heure et la méthode d'authentification : il reste utilisable comme jeton source d'un Token Exchange. Les refresh tokens suivent les réglages par défaut de Duende et restent en mémoire, comme le reste de l'état du fournisseur. Un client machine ne peut pas demander `offline_access`.
 
 ## Scopes et audience
 
@@ -119,6 +148,8 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Issuer` | Endpoint HTTPS local du fournisseur. |
 | `IdentityServer__Apis__{i}__Audience` | Audience d'une ressource. |
 | `IdentityServer__Apis__{i}__Scopes__{j}` | Scope de cette ressource. |
+| `IdentityServer__IdentityScopes__{i}__Name` | Scope d'identité personnalisé. |
+| `IdentityServer__IdentityScopes__{i}__UserClaims__{j}` | Claim utilisateur émis pour ce scope. |
 | `IdentityServer__Clients__{i}__ClientId` | Identifiant du client. |
 | `IdentityServer__Clients__{i}__GrantType` | `authorization_code` ou `client_credentials`. |
 | `IdentityServer__Clients__{i}__AuthenticationMethod` | `none`, `client_secret_post` ou `private_key_jwt`. |
@@ -132,6 +163,7 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Users__{i}__SubjectId` | Identifiant de sujet. |
 | `IdentityServer__Users__{i}__DisplayName` | Nom affiché. |
 | `IdentityServer__Users__{i}__Password` | Paramètre secret de mot de passe. |
+| `IdentityServer__Users__{i}__Claims__{j}__Type` et `__Value` | Claim de profil ; un type peut se répéter. |
 
 Les listes serveur utilisent des indices. La projection de scopes vers un consommateur utilise une chaîne séparée par des espaces.
 

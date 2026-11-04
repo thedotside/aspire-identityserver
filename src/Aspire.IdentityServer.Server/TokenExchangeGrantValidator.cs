@@ -117,9 +117,13 @@ internal sealed class TokenExchangeGrantValidator(
                 string.Equals(c.ClientId, sourceClient, StringComparison.Ordinal)
                 && string.Equals(c.GrantType, "authorization_code", StringComparison.Ordinal)
             )
-            || !claims.Any(c =>
-                string.Equals(c.Type, "aud", StringComparison.Ordinal)
-                && string.Equals(c.Value, policy.Audience, StringComparison.Ordinal)
+            // A narrowing exchange keeps the audience the user's token already targets.
+            || (
+                !policy.ScopesFromMachineClient
+                && !claims.Any(c =>
+                    string.Equals(c.Type, "aud", StringComparison.Ordinal)
+                    && string.Equals(c.Value, policy.Audience, StringComparison.Ordinal)
+                )
             )
         )
             return;
@@ -140,10 +144,15 @@ internal sealed class TokenExchangeGrantValidator(
             .ToHashSet(StringComparer.Ordinal);
         context.Result = new GrantValidationResult(TokenRequestErrors.InvalidScope);
         var requestedScopes = context.Request.RequestedScopes?.ToArray() ?? [];
+        // Duende has already limited the request to scopes allowed to this machine client, all of
+        // them when scope is omitted. Choosing for the user is then explicit. Without the
+        // machine-client rule, each scope must also come from the user's token.
         if (
             requestedScopes.Length == 0
+            || (policy.ScopesFromMachineClient && string.IsNullOrWhiteSpace(raw["scope"]))
             || requestedScopes.Any(s =>
-                !sourceScopes.Contains(s) || !api.Scopes.Contains(s, StringComparer.Ordinal)
+                (!policy.ScopesFromMachineClient && !sourceScopes.Contains(s))
+                || !api.Scopes.Contains(s, StringComparer.Ordinal)
             )
         )
             return;

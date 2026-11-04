@@ -1,3 +1,4 @@
+using Aspire.IdentityServer;
 using Aspire.IdentityServer.Hosting;
 
 namespace Aspire.Hosting.ApplicationModel;
@@ -12,7 +13,8 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
 {
     internal List<IdentityClient> Clients { get; } = [];
     internal List<IdentityApiResource> Apis { get; } = [];
-    internal List<TestUser> Users { get; } = [];
+    internal List<IdentityTestUser> Users { get; } = [];
+    internal List<IdentityScope> IdentityScopes { get; } = [];
 
     /// <summary>The clients registered with this provider, in declaration order.</summary>
     public IReadOnlyList<IdentityClient> RegisteredClients => Clients.AsReadOnly();
@@ -34,12 +36,73 @@ public sealed class IdentityServerOptions
     public bool AcceptTokenEndpointAudience { get; set; }
 }
 
-internal sealed record TestUser(
-    string Username,
-    string SubjectId,
-    string DisplayName,
-    IResourceBuilder<ParameterResource> Password
-);
+/// <summary>A local test account and the profile claims the provider issues for it.</summary>
+public sealed class IdentityTestUser
+{
+    private readonly List<KeyValuePair<string, string>> claims = [];
+
+    internal IdentityTestUser(
+        IResourceBuilder<IdentityServerResource> server,
+        string username,
+        string subjectId,
+        string displayName,
+        IResourceBuilder<ParameterResource> password
+    )
+    {
+        Server = server;
+        Username = username;
+        SubjectId = subjectId;
+        DisplayName = displayName;
+        Password = password;
+    }
+
+    /// <summary>The provider of this account.</summary>
+    public IResourceBuilder<IdentityServerResource> Server { get; }
+
+    /// <summary>The sign-in name, unique within its provider.</summary>
+    public string Username { get; }
+
+    /// <summary>The <c>sub</c> of the tokens issued for this account.</summary>
+    public string SubjectId { get; }
+
+    /// <summary>The value of the <c>name</c> claim.</summary>
+    public string DisplayName { get; }
+
+    /// <summary>The secret parameter holding the password.</summary>
+    public IResourceBuilder<ParameterResource> Password { get; }
+
+    /// <summary>The additional claims, in declaration order; a type may have several values.</summary>
+    public IReadOnlyList<KeyValuePair<string, string>> Claims => claims.AsReadOnly();
+
+    /// <summary>
+    /// Adds profile claims. Several values of one type, such as group memberships, are issued as
+    /// a JSON array, a single value as a string. Clients receive a claim only through a requested
+    /// identity scope that lists its type, or a token exchange that selects it.
+    /// </summary>
+    public IdentityTestUser WithClaim(string type, params string[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        if (
+            !TokenExchangeClaims.IsUserClaim(type)
+            || string.Equals(type, "name", StringComparison.Ordinal)
+        )
+            throw new ArgumentException(
+                "Use a profile claim: protocol claims such as sub are issued by the provider, and name comes from the display name.",
+                nameof(type)
+            );
+        if (values.Length == 0 || values.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException("Give at least one non-empty claim value.", nameof(values));
+        foreach (var value in values)
+        {
+            var claim = KeyValuePair.Create(type, value);
+            if (!claims.Contains(claim))
+                claims.Add(claim);
+        }
+        return this;
+    }
+}
+
+internal sealed record IdentityScope(string Name, IReadOnlyList<string> UserClaims);
 
 /// <summary>An API audience and the scopes that issue access tokens for it.</summary>
 public sealed class IdentityApiResource
