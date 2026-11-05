@@ -15,10 +15,9 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `idp.WithTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | Builder du fournisseur. | Username/password requis ; display name = username si null ; subject = `{resource-name}:{username}` si null. |
 | `idp.AddTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | `IdentityTestUser` | Depuis `0.1.0-alpha.4` : mêmes règles que `WithTestUser` ; retourne l'utilisateur pour ajouter des claims. |
 | `testUser.WithClaim(string type, params string[] values)` | Même utilisateur. | Depuis `0.1.0-alpha.4` : claims de profil, plusieurs valeurs par type, doublons exacts ignorés. Claims de protocole et `name` refusés. |
-| `idp.WithIdentityScope(string name, params string[] userClaims)` | Builder du fournisseur. | Depuis `0.1.0-alpha.4` : scope d'identité personnalisé, nom unique, hors `openid`/`profile`/`email`/`offline_access` et scopes d'API ; au moins un claim utilisateur. |
+| `idp.WithIdentityScope(string name, params string[] userClaims)` | Builder du fournisseur. | Depuis `0.1.0-alpha.4` : scope d'identité personnalisé, nom unique, hors `openid`/`profile`/`email`/`offline_access` et scopes d'API ; au moins un claim utilisateur. Depuis alpha.5 (en développement), un scope demandé par un client Authorization Code sélectionne aussi ses claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Voir [communities/member_of](fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token). |
 | `idp.AddApiResource(string audience)` | `IdentityApiResource` | Audience non vide, unique dans le fournisseur. |
 | `apiResource.WithScopes(params string[] scopes)` | Même ressource API. | Ajout cumulatif ; au moins un scope au démarrage. Scopes d'identité et `offline_access` réservés. |
-| `apiResource.WithUserClaims(params string[] userClaims)` | Même ressource API. | Depuis `0.1.0-alpha.5` (en développement) : claims utilisateur des access tokens dès qu'un scope de cette API est accordé. Cumul et déduplication exacte ; au moins un type, aucun claim de protocole. Voir [l'exemple communities/member_of](fournisseurs.md#claims-utilisateur-dans-les-access-tokens). |
 
 ### Options et propriétés
 
@@ -31,7 +30,6 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
 | `IdentityApiResource.Scopes` | `IReadOnlyCollection<string>` | Ensemble des scopes de la ressource. |
-| `IdentityApiResource.UserClaims` | `IReadOnlyCollection<string>` | Types de claims de profil sélectionnés pour les access tokens de la ressource. Vide par défaut. |
 | `IdentityTestUser.Username`, `SubjectId`, `DisplayName` | `string` | Identité de l'utilisateur de test. |
 | `IdentityTestUser.Password` | `IResourceBuilder<ParameterResource>` | Paramètre secret du mot de passe. |
 | `IdentityTestUser.Claims` | `IReadOnlyList<KeyValuePair<string, string>>` | Claims de profil, dans l'ordre de déclaration. |
@@ -160,7 +158,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Contrat de configuration | `IdentityServer__ContractVersion`, version `4`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `3`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |

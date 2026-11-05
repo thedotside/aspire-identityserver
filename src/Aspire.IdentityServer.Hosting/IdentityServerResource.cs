@@ -76,8 +76,9 @@ public sealed class IdentityTestUser
 
     /// <summary>
     /// Adds profile claims. Several values of one type, such as group memberships, are issued as
-    /// a JSON array, a single value as a string. Claims are selected by requested identity scopes,
-    /// API resources, or a token exchange's explicit claim list.
+    /// a JSON array, a single value as a string. A requested identity scope selects its claims
+    /// for the ID token, UserInfo and authorization-code access token; token exchange keeps its
+    /// explicit claim selection.
     /// </summary>
     public IdentityTestUser WithClaim(string type, params string[] values)
     {
@@ -107,8 +108,6 @@ internal sealed record IdentityScope(string Name, IReadOnlyList<string> UserClai
 /// <summary>An API audience and the scopes that issue access tokens for it.</summary>
 public sealed class IdentityApiResource
 {
-    private readonly HashSet<string> userClaims = new(StringComparer.Ordinal);
-
     internal IdentityApiResource(IResourceBuilder<IdentityServerResource> server, string audience)
     {
         Server = server;
@@ -127,26 +126,6 @@ public sealed class IdentityApiResource
 
     /// <summary>The scopes that issue tokens for this API.</summary>
     public IReadOnlyCollection<string> Scopes => ScopeNames;
-
-    /// <summary>The user claim types selected for access tokens targeting this API.</summary>
-    public IReadOnlyCollection<string> UserClaims => userClaims.ToArray();
-
-    /// <summary>
-    /// Adds user claim types to access tokens when any scope of this API is granted.
-    /// Values come from the user's profile; no identity scope is required. Machine tokens have
-    /// no user profile, and token exchange keeps its own explicit claim selection.
-    /// </summary>
-    public IdentityApiResource WithUserClaims(params string[] userClaims)
-    {
-        ArgumentNullException.ThrowIfNull(userClaims);
-        if (userClaims.Length == 0 || userClaims.Any(c => !TokenExchangeClaims.IsUserClaim(c)))
-            throw new ArgumentException(
-                "Select at least one user claim, not protocol claims such as sub, scope, aud or act.",
-                nameof(userClaims)
-            );
-        this.userClaims.UnionWith(userClaims);
-        return this;
-    }
 
     /// <summary>Adds API scopes; identity scopes and <c>offline_access</c> are reserved.</summary>
     public IdentityApiResource WithScopes(params string[] scopes)
