@@ -45,6 +45,7 @@ internal sealed class ApiConfiguration
 {
     public string Audience { get; set; } = "";
     public List<string> Scopes { get; set; } = [];
+    public List<string> UserClaims { get; set; } = [];
 }
 
 internal sealed class IdentityScopeConfiguration

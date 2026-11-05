@@ -39,7 +39,7 @@ using System.Text.Json;
 using Aspire.IdentityServer.Client;
 var builder = DistributedApplication.CreateBuilder(new DistributedApplicationOptions { Args = args, DisableDashboard = true });
 var idp = builder.AddIdentityServer("package-idp");
-idp.AddApiResource("package-api").WithScopes("read");
+idp.AddApiResource("package-api").WithScopes("read").WithUserClaims("member_of");
 var generated = idp.AddClientCredentialsClient("package-generated").WithGeneratedBase64PrivateKeyJwt().WithScopes("read");
 var importedValue = (await generated.PrivateKeyBase64!.Resource.GetValueAsync(default))!;
 var imported = idp.AddClientCredentialsClient("package-imported").WithBase64PrivateKeyJwt(importedValue).WithScopes("read");

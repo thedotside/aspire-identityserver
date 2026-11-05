@@ -55,6 +55,15 @@ foreach (var scheme in new[] { "a", "b" })
         );
 }
 
+// Direct relay: a signed user access token must also carry the required membership.
+app.MapGet("/memberships/a", () => Results.Ok(new { authorized = true }))
+    .RequireAuthorization(
+        new AuthorizationPolicyBuilder("a")
+            .RequireAuthenticatedUser()
+            .RequireClaim("member_of", "product.readers")
+            .Build()
+    );
+
 // Demonstrates outbound OAuth configuration inside an API. No credentials are returned to callers.
 if (app.Environment.IsDevelopment())
 {

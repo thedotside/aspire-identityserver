@@ -45,6 +45,8 @@ builder.Build().Run();
 
 No `using` is needed: the extensions live in `Aspire.Hosting`, like other Aspire integrations. Keys and secrets stay Aspire secret parameters; the provider only receives public keys and secret hashes.
 
+For user claims in API access tokens, add `.WithUserClaims("member_of")` to the API resource. `WithIdentityScope("communities", "member_of")` selects claims for the ID token and UserInfo separately. API claims are selected whenever a scope of that resource is granted, even without the identity scope. See the [communities/member_of example and alpha.4 migration](docs/fournisseurs.md#claims-utilisateur-dans-les-access-tokens). This addition belongs to the unreleased alpha.5; alpha.4 does not expose API user-claim configuration.
+
 In the consumer, the optional `TheDotSide.Aspire.IdentityServer.Client` package binds the projected section and signs `private_key_jwt` assertions with the [draft-ietf-oauth-rfc7523bis](https://datatracker.ietf.org/doc/draft-ietf-oauth-rfc7523bis/) profile:
 
 ```csharp
