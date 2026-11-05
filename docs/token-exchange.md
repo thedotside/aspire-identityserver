@@ -8,6 +8,8 @@ Cette fonctionnalité est disponible depuis `0.1.0-alpha.2`. Elle n'est pas incl
 
 Un utilisateur se connecte par Authorization Code + PKCE. Un client machine du même fournisseur présente ensuite son access token au token endpoint, avec son propre secret ou son assertion `private_key_jwt`. Le fournisseur délivre un nouveau jeton pour l'API autorisée, avec le même `sub`, l'identité du client machine et les informations utilisateur sélectionnées.
 
+Dans le parcours BFF → Xp, YARP relaie directement l'access token de connexion portant les claims du scope d'identité `communities`. Sans Xp, le BFF utilise une règle `FromMachineClient` pour obtenir un token destiné à Capa, avec ses scopes d'API. `communities` reste réservé au client Authorization Code du BFF. Voir [les deux configurations complètes](fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token).
+
 Le terme « trusted device » désigne ici cette autorisation d'agir pour l'utilisateur. Le projet ne fournit pas d'enregistrement matériel, de preuve d'intégrité du terminal ni de confiance persistante après expiration du jeton.
 
 L'échange utilise le grant standard [OAuth Token Exchange, RFC 8693](https://www.rfc-editor.org/rfc/rfc8693.html), via le mécanisme d'[extension grant Duende](https://docs.duendesoftware.com/identityserver/tokens/extension-grants/). Le client machine continue aussi à accepter `grant_type=client_credentials`, qui délivre un jeton sans utilisateur. La requête d'échange utilise `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`.
@@ -54,12 +56,12 @@ Une seule méthode active l'échange. Tu peux remplacer `WithGeneratedPrivateKey
 | Argument | Rôle |
 | --- | --- |
 | `subjectClient` / `browser` | Client Authorization Code autorisé à fournir le jeton utilisateur. |
-| `api` / `ordersApi` | Audience obligatoire du jeton source et du jeton demandé. La V1 conserve cette audience. |
+| `api` / `ordersApi` | Audience du jeton demandé. En mode `FromSubjectToken` (par défaut), le jeton source doit aussi viser cette API. |
 | `userClaims` | Noms des informations utilisateur autorisées en sortie. Vide par défaut. |
 
 `sub` est toujours conservé et ne figure pas dans `userClaims`. Le profil de test local fournit les informations sélectionnées : `name` pour chaque utilisateur, et les [claims de profil](fournisseurs.md#claims-de-profil) ajoutés par `AddTestUser(...).WithClaim(...)`, plusieurs valeurs comprises. Demander un champ absent du profil ne le crée pas. Les champs de protocole (`iss`, `sub`, `aud`, `scope`, `exp`, `act`, etc.) ne peuvent pas être injectés comme informations utilisateur.
 
-Chaque association client source / API est explicite. Plusieurs appels permettent d'autoriser plusieurs associations ; un doublon est refusé. Tous les objets doivent appartenir au même IdP. La configuration refuse au démarrage les associations sans scope API partagé entre le navigateur, le client machine et l'API.
+Chaque association client source / API est explicite. Plusieurs appels permettent d'autoriser plusieurs associations ; un doublon est refusé. Tous les objets doivent appartenir au même IdP. En mode `FromSubjectToken`, la configuration refuse au démarrage les associations sans scope API partagé entre le navigateur, le client machine et l'API. Le mode `FromMachineClient` exige un scope de l'API autorisé au client machine ; le client de connexion peut ne demander que des scopes d'identité.
 
 Déclare les credentials et toutes les règles d'échange avant d'appeler `WithIdentityClient`, afin que la projection standard sélectionne les champs correspondants.
 

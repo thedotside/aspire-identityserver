@@ -131,11 +131,7 @@ internal static class ServerProgram
                     .Select(s => new ApiScope(s))
             )
             .AddInMemoryApiResources(
-                config.Apis.Select(a => new ApiResource(a.Audience)
-                {
-                    Scopes = a.Scopes,
-                    UserClaims = a.UserClaims,
-                })
+                config.Apis.Select(a => new ApiResource(a.Audience) { Scopes = a.Scopes })
             )
             .AddInMemoryClients(
                 config.Clients.Select(c => new Client

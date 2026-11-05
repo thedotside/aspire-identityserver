@@ -4,12 +4,8 @@
 
 ### Features
 
-- `IdentityApiResource.WithUserClaims(userClaims...)` selects profile claims for access tokens whenever any scope of that API is granted. Identity scopes still select ID-token/UserInfo claims separately; machine tokens gain no user claims, and token exchange keeps its explicit claim allow-list.
-- Document `communities` / `member_of`, direct user-token relay, resource-wide claim selection and migration from alpha.4; demonstrate membership authorization in the sample API.
-
-### Breaking changes
-
-- Hosting and Runtime share configuration contract 4 to carry API user-claim types: use matching package versions.
+- Requested identity scopes now select user claims in Authorization Code access tokens as well as ID tokens and UserInfo. `WithIdentityScope("communities", "member_of")` is sufficient to select existing memberships when the BFF requests `communities`; the scope remains unavailable to API resources and machine clients.
+- Document BFF/YARP direct relay to Xp, and delegated token exchange to Capa when Xp is absent. Token exchange keeps its explicit claim allow-list; the Hosting/Runtime configuration contract remains 3.
 
 ## 0.1.0-alpha.4 - 2026-11-04
 

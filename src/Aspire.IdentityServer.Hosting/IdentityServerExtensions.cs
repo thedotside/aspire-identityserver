@@ -156,7 +156,8 @@ public static class IdentityServerExtensions
 
     /// <summary>
     /// Declares an identity scope beyond <c>openid</c>, <c>profile</c> and <c>email</c>: an
-    /// interactive client that requests it receives these user claims in its ID token.
+    /// authorization-code client that requests it receives these user claims in its ID token,
+    /// UserInfo and login access token. This does not declare an API scope.
     /// </summary>
     public static IResourceBuilder<IdentityServerResource> WithIdentityScope(
         this IResourceBuilder<IdentityServerResource> server,
@@ -352,7 +353,6 @@ public static class IdentityServerExtensions
             var api = server.Apis[i];
             environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
             AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
-            AddList(environment, $"IdentityServer__Apis__{i}__UserClaims", api.UserClaims);
         }
         for (var i = 0; i < server.IdentityScopes.Count; i++)
         {

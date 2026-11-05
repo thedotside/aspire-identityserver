@@ -14,10 +14,8 @@ idpA.AddTestUser("alice", "alice", "Alice A")
 idpA.WithTestUser("bob", "bob", "Bob A");
 var idpB = builder.AddIdentityServer("idp-b").WithTestUser("alice", "alice", "Alice B");
 
-// API claims are selected independently of the identity scopes used by the browser session.
-var ordersA = idpA.AddApiResource("orders-api-a")
-    .WithScopes("orders.read", "orders.write")
-    .WithUserClaims("member_of");
+// communities remains an identity scope of the interactive client, never an API scope.
+var ordersA = idpA.AddApiResource("orders-api-a").WithScopes("orders.read", "orders.write");
 var ordersB = idpB.AddApiResource("orders-api-b").WithScopes("orders.read");
 var workerA = idpA.AddClientCredentialsClient("worker")
     .WithGeneratedBase64PrivateKeyJwt()
@@ -73,7 +71,7 @@ idpA.AddClientCredentialsClient("delegate")
         browserA,
         ordersA,
         TokenExchangeScopes.FromMachineClient,
-        userClaims: ["email", "team"]
+        userClaims: ["email", "team", "member_of"]
     );
 
 web.WithIdentityClient(workerA, "TokenExchange:PrivateKey")

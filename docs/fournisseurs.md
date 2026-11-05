@@ -71,7 +71,7 @@ idpA.AddTestUser("alice", "alice-dev-only", "Alice A")
 
 Plusieurs valeurs d'un même type sont émises sous forme de tableau JSON, une seule valeur sous forme de chaîne : un consommateur doit accepter les deux. Les claims de protocole (`sub`, `iss`, `aud`, `scope`, `act`...) et `name`, issu du nom affiché, sont refusés.
 
-Les scopes d'identité sélectionnent les claims de l'ID token et de UserInfo (`profile` pour `given_name` et `family_name`, `email` pour `email`, ou un scope déclaré ci-dessous). Avec `AlwaysIncludeUserClaimsInIdToken`, ces claims figurent dans l'ID token. Les access tokens utilisent une sélection distincte : les [claims des ressources API](#claims-utilisateur-dans-les-access-tokens), ou la liste explicite d'un [Token Exchange](token-exchange.md).
+Les scopes d'identité sélectionnent les claims de l'ID token et de UserInfo (`profile` pour `given_name` et `family_name`, `email` pour `email`, ou un scope déclaré ci-dessous). Avec `AlwaysIncludeUserClaimsInIdToken`, ces claims figurent dans l'ID token. Depuis alpha.5, ces mêmes scopes accordés sélectionnent les claims de l'[access token de connexion](#claims-des-scopes-didentité-dans-laccess-token). Un [Token Exchange](token-exchange.md) garde sa liste explicite de claims.
 
 ## Scopes d'identité personnalisés
 
@@ -82,13 +82,13 @@ var idp = builder.AddIdentityServer("idp")
 
 Un client interactif qui déclare et demande `teams` reçoit les claims `team` de l'utilisateur. Le nom suit les règles d'un scope ; `openid`, `profile`, `email` et `offline_access` sont réservés, et un même nom ne peut pas être à la fois scope d'identité et scope d'API. Il faut au moins un claim utilisateur, jamais un claim de protocole. Un client machine ne peut pas demander de scope d'identité.
 
-## Claims utilisateur dans les access tokens
+## Claims des scopes d'identité dans l'access token
 
-Depuis `0.1.0-alpha.5` (en développement), `api.WithUserClaims(...)` déclare les types de claims à inclure dans les access tokens destinés à une ressource API. Les valeurs proviennent du profil de l'utilisateur authentifié.
+Depuis `0.1.0-alpha.5` (en développement), les scopes d'identité effectivement accordés à un client **Authorization Code** sélectionnent leurs claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Le fournisseur étend ainsi la sélection par défaut de Duende : le profile service filtre les valeurs du profil à partir des seules ressources d'identité accordées, sans recopier tous les claims de l'utilisateur.
 
-### Exemple : `communities` et `member_of` pour Xp
+### BFF et YARP vers Xp
 
-Dans cet AppHost, `web` est le projet du client OIDC déjà ajouté à `builder`, avec un endpoint HTTPS. Le mot de passe de développement est fourni par la configuration locale ; sa projection vers le fournisseur reste un paramètre secret Aspire.
+Dans cet exemple, `web` est le projet BFF déjà ajouté à `builder`, avec un endpoint HTTPS. Son mot de passe de développement est lu dans la configuration locale puis projeté comme paramètre secret Aspire.
 
 ```csharp
 var idp = builder.AddIdentityServer("idp")
@@ -99,42 +99,58 @@ var password = builder.Configuration["DevelopmentUser:Password"]
 idp.AddTestUser("developer", password, "Developer")
     .WithClaim("member_of", "product.readers", "product.contributors");
 
-var xp = idp.AddApiResource("xp")
-    .WithScopes("xp")
-    .WithUserClaims("member_of");
-
-var frontend = idp.AddAuthorizationCodeClient("frontend")
+var xp = idp.AddApiResource("xp").WithScopes("xp");
+var bff = idp.AddAuthorizationCodeClient("bff")
     .WithGeneratedBase64PrivateKeyJwt()
     .WithScopes("openid", "communities", "xp")
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-oidc");
 ```
 
-Le client doit effectivement demander `scope=openid communities xp` à la connexion. `WithScopes` autorise ces scopes ; il ne remplace pas la requête OIDC du client.
+Le client OIDC du BFF demande réellement `scope=openid communities xp`. `WithScopes` déclare les scopes autorisés ; il ne remplace pas cette requête. `communities` est un **scope d'identité du client interactif**, jamais un scope de la ressource API ni du client technique. `xp` désigne ici la ressource API qui donne l'audience `xp` à l'access token.
 
-| Configuration et requête | ID token et UserInfo | Access token |
-| --- | --- | --- |
-| `communities` demandé, sans scope d'API Xp | `member_of` disponible | Pas de `member_of` issu de Xp ; pas d'audience `xp`. |
-| `communities` et `xp` demandés | `member_of` disponible | Audience `xp` et `member_of` disponible. |
-| `xp` demandé sans `communities` | Pas de `member_of` via ce scope d'identité | Audience `xp` et `member_of` disponible. |
-| Un scope d'une autre API, sans déclaration de ce claim | Selon les scopes d'identité demandés | Pas de `member_of` issu de Xp. |
+Après la connexion, l'ID token, UserInfo et l'access token contiennent les appartenances `member_of` du profil. YARP transmet cet access token directement à Xp. Xp valide sa signature, son issuer, son audience et son expiration, puis applique la policy `member_of` du produit. Ce parcours ne nécessite pas de token exchange. La SPA n'a pas besoin de recevoir les tokens du BFF.
 
-« Disponible » signifie que le profil possède la valeur : déclarer un type de claim ne crée aucune appartenance. Un utilisateur sans `member_of` conserve un access token sans ce claim. Plusieurs valeurs sont un tableau JSON ; une seule valeur est une chaîne.
+| Scopes réellement demandés par le BFF | `member_of` dans ID token / UserInfo | `member_of` dans l'access token | Audience API |
+| --- | --- | --- | --- |
+| `openid communities xp` | Oui, si présent dans le profil | Oui, si présent dans le profil | `xp` |
+| `openid xp` | Non | Non | `xp` |
+| `openid communities` | Oui, si présent dans le profil | Oui, si présent dans le profil | Aucune audience API |
 
-`WithUserClaims` s'applique à **tous les scopes de la ressource API**, comme `ApiResource.UserClaims` dans Duende. Il ne conditionne pas l'émission à `communities`. `WithIdentityScope("communities", "member_of")` sélectionne seulement l'ID token et UserInfo ; le scope d'API `xp` sélectionne l'audience et les claims de cette ressource. Les noms des scopes d'identité et d'API restent distincts.
+Un scope seulement autorisé mais non demandé n'ajoute pas ses claims. Déclarer `communities` ne crée aucune appartenance : un utilisateur sans `member_of` conserve un token sans ce claim. Plusieurs valeurs sont émises sous forme de tableau JSON, une valeur sous forme de chaîne. Les autres champs du profil restent filtrés selon les scopes accordés ; les claims de protocole ne proviennent pas des données utilisateur.
 
-Les types doivent être des claims utilisateur, sans espace ni caractère de contrôle ; les claims de protocole (`sub`, `aud`, `scope`, `exp`, `act`, etc.) sont refusés. Les appels sont cumulatifs, les doublons exacts ignorés, et il faut au moins un type. Sans `WithUserClaims`, une ressource API n'ajoute aucun claim de profil. Si plusieurs API sont sélectionnées, leurs claims sont réunis dans le même access token : un token à plusieurs audiences n'isole pas ses claims par destinataire.
+### Sans Xp : token exchange du BFF vers Capa
 
-Un token `client_credentials` n'a pas de profil utilisateur : cette déclaration ne lui ajoute pas `member_of`. Le Token Exchange conserve sa propre liste `userClaims`, même si l'API déclare d'autres types. Le renouvellement conserve les claims de l'access token selon les réglages de refresh de Duende ; il ne recharge pas automatiquement les appartenances modifiées depuis la connexion.
+Le client de connexion demande `openid communities`, sans scope d'API Capa. Son access token contient les appartenances, mais n'est pas destiné à Capa. Un enregistrement technique distinct du BFF porte les scopes de Capa et une autorisation explicite d'échange :
 
-Pour le relais direct BFF → Xp, le BFF transmet l'access token de connexion. Xp valide signature, issuer, audience et expiration puis applique sa policy `member_of`. Avec un utilisateur autorisé, le sample vérifie une réponse 200 ; sans appartenance, la même policy renvoie 403. Aucun échange n'est nécessaire pour ce relais.
+```csharp
+var session = idp.AddAuthorizationCodeClient("bff-session")
+    .WithGeneratedBase64PrivateKeyJwt()
+    .WithScopes("openid", "communities")
+    .WithRedirectUri(web.GetEndpoint("https"), "/signin-oidc");
 
-### Migration depuis alpha.4
+var capa = idp.AddApiResource("capa").WithScopes("capa.read");
+var bffCapa = idp.AddClientCredentialsClient("bff-capa")
+    .WithGeneratedBase64PrivateKeyJwt()
+    .WithScopes("capa.read")
+    .WithTokenExchangeFrom(
+        session,
+        capa,
+        TokenExchangeScopes.FromMachineClient,
+        userClaims: ["member_of"]
+    );
+```
 
-En alpha.4, `WithIdentityScope("communities", "member_of")` alimente l'ID token et UserInfo, mais ne suffit pas pour l'access token Xp. Après installation d'une version contenant cet ajout, déclarer `.WithUserClaims("member_of")` sur la ressource API Xp et demander son scope d'API en plus de `communities`. Refaire la connexion pour obtenir un nouveau token ; un JWT déjà émis ne change pas. Conserver la policy d'autorisation de Xp.
+Pour appeler Capa au nom de l'utilisateur, le BFF présente son access token de connexion comme `subject_token` et demande `audience=capa&scope=capa.read`. Le mode `FromMachineClient` autorise ce scope explicitement demandé même s'il est absent du token utilisateur. Le token émis cible Capa, conserve `sub`, indique l'acteur technique `act` et contient uniquement les claims utilisateur sélectionnés par la policy d'échange. `communities` ne figure pas dans les scopes de la requête d'échange ni dans ceux du client technique. Voir le [guide Token Exchange](token-exchange.md).
 
-Le contrat Hosting/Runtime passe à **4** : utiliser des versions de packages correspondantes. La version alpha.5 est en développement ; cet exemple ne décrit pas le package alpha.4 déjà publié.
+### Limites et migration depuis alpha.4
 
-Voir les références Duende : [émission des claims](https://docs.duendesoftware.com/identityserver/fundamentals/claims/) et [claims des ressources API](https://docs.duendesoftware.com/identityserver/fundamentals/resources/api-resources/#adding-user-claims).
+Les clients `client_credentials` ne peuvent pas demander de scope d'identité. Un appel technique ne gagne aucun claim utilisateur ; demander `communities` avec ce grant est refusé. L'AppHost refuse également qu'un même nom soit déclaré comme scope d'identité et scope d'API.
+
+Les claims liés aux scopes accordés accompagnent le token de connexion indépendamment de son audience. Un token contenant `member_of` reste refusé par une API dont l'audience ne correspond pas. Les tests réels vérifient 200 avec l'appartenance attendue, 403 avec la bonne audience mais sans appartenance, et 401 avec une autre audience. Sans Xp, ils vérifient aussi le refus du relais direct vers Capa puis le succès de l'échange explicite.
+
+En alpha.4, `WithIdentityScope("communities", "member_of")` alimentait seulement l'ID token et UserInfo. L'alpha.5 étend l'émission à l'access token Authorization Code, sans nouvelle déclaration sur la ressource API et sans changement de contrat de configuration (version **3**). Mettre à jour les packages correspondants puis refaire la connexion pour obtenir un nouveau token ; un JWT déjà émis ne change pas. La version alpha.5 est en développement et n'est pas encore publiée.
+
+Le refresh token conserve les claims de l'access token selon les réglages Duende existants ; il ne recharge pas automatiquement les appartenances modifiées après la connexion. Le Token Exchange conserve sa liste explicite `userClaims` et ne propage pas automatiquement tous les claims du token source.
 
 ## Refresh tokens
 
@@ -202,7 +218,6 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Issuer` | Endpoint HTTPS local du fournisseur. |
 | `IdentityServer__Apis__{i}__Audience` | Audience d'une ressource. |
 | `IdentityServer__Apis__{i}__Scopes__{j}` | Scope de cette ressource. |
-| `IdentityServer__Apis__{i}__UserClaims__{j}` | Type de claim utilisateur sélectionné pour les access tokens de cette ressource (contrat 4). |
 | `IdentityServer__IdentityScopes__{i}__Name` | Scope d'identité personnalisé. |
 | `IdentityServer__IdentityScopes__{i}__UserClaims__{j}` | Claim utilisateur émis pour ce scope. |
 | `IdentityServer__Clients__{i}__ClientId` | Identifiant du client. |

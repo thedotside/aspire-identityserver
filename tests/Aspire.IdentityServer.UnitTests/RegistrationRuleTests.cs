@@ -38,9 +38,6 @@ public sealed class RegistrationRuleTests
     [Arguments("identity-scope-duplicate", "Duplicate identity scope")]
     [Arguments("identity-scope-without-claim", "at least one user claim")]
     [Arguments("identity-scope-protocol-claim", "protocol claims")]
-    [Arguments("api-user-claims-empty", "at least one user claim")]
-    [Arguments("api-user-claims-protocol", "protocol claims")]
-    [Arguments("api-user-claims-space", "protocol claims")]
     [Arguments("exchange-scopes-undefined", "scopes")]
     public async Task Invalid_arguments_are_rejected_when_declared(string rule, string message)
     {
@@ -105,9 +102,6 @@ public sealed class RegistrationRuleTests
                 idp.WithIdentityScope("teams", "team").WithIdentityScope("teams", "group"),
             "identity-scope-without-claim" => () => idp.WithIdentityScope("teams"),
             "identity-scope-protocol-claim" => () => idp.WithIdentityScope("teams", "sub"),
-            "api-user-claims-empty" => () => idp.AddApiResource("a").WithUserClaims(),
-            "api-user-claims-protocol" => () => idp.AddApiResource("a").WithUserClaims("scope"),
-            "api-user-claims-space" => () => idp.AddApiResource("a").WithUserClaims("member of"),
             "exchange-scopes-undefined" => () =>
                 idp.AddClientCredentialsClient("m")
                     .WithTokenExchangeFrom(
@@ -315,24 +309,32 @@ public sealed class RegistrationRuleTests
     }
 
     [Test]
-    public async Task Api_user_claims_are_cumulative_deduplicated_and_validated_before_mutation()
+    public async Task Communities_is_projected_as_an_identity_scope_and_cannot_be_an_api_scope()
     {
-        var idp = TestApp.CreateBuilder().AddIdentityServer("claims");
-        var api = idp.AddApiResource("orders").WithScopes("orders.read");
-        await Assert.That(api.UserClaims).IsEmpty();
-        await Assert.That(api.WithUserClaims("member_of", "name")).IsSameReferenceAs(api);
-        api.WithUserClaims("member_of", "email");
-        await Assert.That(api.UserClaims).IsEquivalentTo(["member_of", "name", "email"]);
-        await Assert.ThrowsExactlyAsync<ArgumentNullException>(() =>
-            Task.FromResult(api.WithUserClaims(null!))
-        );
-        foreach (var type in new[] { "", " ", "sub", "iss", "aud", "exp", "act", "cnf", "x\n" })
-        {
-            await Assert.ThrowsExactlyAsync<ArgumentException>(() =>
-                Task.FromResult(api.WithUserClaims("uncommitted", type))
-            );
-        }
-        await Assert.That(api.UserClaims).IsEquivalentTo(["member_of", "name", "email"]);
+        var idp = TestApp
+            .CreateBuilder()
+            .AddIdentityServer("communities")
+            .WithIdentityScope("communities", "member_of");
+        var xp = idp.AddApiResource("xp").WithScopes("xp");
+        idp.AddAuthorizationCodeClient("bff")
+            .WithGeneratedClientSecret()
+            .WithScopes("openid", "communities", "xp")
+            .WithRedirectUri(idp.GetEndpoint("https"), "/signin-oidc");
+        idp.AddClientCredentialsClient("technical").WithGeneratedClientSecret().WithScopes("xp");
+        var environment = await ProjectionTests.Evaluate(idp);
+        await Assert
+            .That(environment["IdentityServer__IdentityScopes__0__Name"])
+            .IsEqualTo("communities");
+        await Assert
+            .That(environment["IdentityServer__IdentityScopes__0__UserClaims__0"])
+            .IsEqualTo("member_of");
+        await Assert.That(environment["IdentityServer__Apis__0__Scopes__0"]).IsEqualTo("xp");
+        await Assert.That(environment.ContainsKey("IdentityServer__Apis__0__Scopes__1")).IsFalse();
+        xp.WithScopes("communities");
+        var error = await Assert
+            .That(() => IdentityServerExtensions.Validate(idp.Resource))
+            .ThrowsExactly<InvalidOperationException>();
+        await Assert.That(error!.Message).Contains("both an identity scope and an API scope");
     }
 
     [Test]
@@ -341,9 +343,7 @@ public sealed class RegistrationRuleTests
         var builder = TestApp.CreateBuilder();
         var idp = builder.AddIdentityServer("contract").WithIdentityScope("teams", "team");
         idp.AddTestUser("alice", "alice", "Alice").WithClaim("team", "sales", "support");
-        var orders = idp.AddApiResource("orders")
-            .WithScopes("orders.read", "orders.write")
-            .WithUserClaims("member_of");
+        var orders = idp.AddApiResource("orders").WithScopes("orders.read", "orders.write");
         var web = idp.AddAuthorizationCodeClient("web")
             .WithGeneratedClientSecret()
             .WithScopes("openid", "orders.read")
@@ -382,7 +382,6 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Apis__0__Audience=orders",
             "IdentityServer__Apis__0__Scopes__0=orders.read",
             "IdentityServer__Apis__0__Scopes__1=orders.write",
-            "IdentityServer__Apis__0__UserClaims__0=member_of",
             "IdentityServer__Clients__0__AuthenticationMethod=client_secret_post",
             "IdentityServer__Clients__0__ClientId=web",
             "IdentityServer__Clients__0__ClientSecretHash=<secret-hash>",
@@ -402,7 +401,7 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Clients__1__TokenExchanges__0__Scopes=FromSubjectToken",
             "IdentityServer__Clients__1__TokenExchanges__0__SubjectClientId=web",
             "IdentityServer__Clients__1__TokenExchanges__0__UserClaims__0=name",
-            "IdentityServer__ContractVersion=4",
+            "IdentityServer__ContractVersion=3",
             "IdentityServer__IdentityScopes__0__Name=teams",
             "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",

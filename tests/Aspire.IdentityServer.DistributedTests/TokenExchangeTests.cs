@@ -142,7 +142,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         else
             await Assert.That(jwt.TryGetClaim("name", out _)).IsFalse();
         await Assert.That(jwt.TryGetClaim("role", out _)).IsFalse();
-        // API defaults must not widen the exchange policy's own claim allow-list.
+        // Identity claims in the source token must not widen the exchange policy's allow-list.
         await Assert.That(jwt.TryGetClaim("member_of", out _)).IsFalse();
         using var api = fixture.App.CreateHttpClient("api", "https");
         api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -293,27 +293,27 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     [Test]
     [Arguments("openid communities orders.read", true, true)]
     [Arguments("openid orders.read", false, true)]
-    [Arguments("openid communities orders.write", true, true)]
     [Arguments("openid communities unrelated.read", true, false)]
     [Arguments("openid unrelated.read", false, false)]
-    public async Task Api_claims_follow_the_granted_resource_independently_of_identity_scopes(
+    public async Task Requested_identity_scopes_select_claims_in_the_login_access_token(
         string scope,
-        bool identityMembership,
-        bool apiMembership
+        bool membership,
+        bool ordersAudience
     )
     {
-        var tokens = await UserTokens(clientId: "public-web", scope: scope);
+        var tokens = await UserTokens(scope: scope);
         var identity = await ValidateIssuedToken(
             tokens.GetProperty("id_token").GetString()!,
-            "public-web"
+            "web"
         );
         var access = await ValidateIssuedToken(
             tokens.GetProperty("access_token").GetString()!,
-            apiMembership ? "orders-api-a" : "unrelated-api"
+            ordersAudience ? "orders-api-a" : "unrelated-api"
         );
-        await Assert.That(identity.TryGetClaim("member_of", out _)).IsEqualTo(identityMembership);
-        await Assert.That(access.TryGetClaim("member_of", out _)).IsEqualTo(apiMembership);
-        if (apiMembership)
+        await Assert.That(identity.TryGetClaim("member_of", out _)).IsEqualTo(membership);
+        await Assert.That(access.TryGetClaim("member_of", out _)).IsEqualTo(membership);
+        await Assert.That(ProtocolTests.ScopeClaim(access)).IsEqualTo(scope);
+        if (membership)
             await Assert
                 .That(Values(access, "member_of"))
                 .IsEquivalentTo(["product.readers", "product.contributors"]);
@@ -327,10 +327,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         );
         var userInfo = await http.GetFromJsonAsync<JsonElement>("/connect/userinfo");
         await Assert.That(userInfo.GetProperty("sub").GetString()).IsEqualTo(identity.Subject);
-        await Assert
-            .That(userInfo.TryGetProperty("member_of", out _))
-            .IsEqualTo(identityMembership);
-        if (identityMembership)
+        await Assert.That(userInfo.TryGetProperty("member_of", out _)).IsEqualTo(membership);
+        if (membership)
             await Assert
                 .That(
                     userInfo
@@ -348,11 +346,15 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         using var response = await api.GetAsync("/memberships/a");
         await Assert
             .That(response.StatusCode)
-            .IsEqualTo(apiMembership ? HttpStatusCode.OK : HttpStatusCode.Unauthorized);
+            .IsEqualTo(
+                !ordersAudience ? HttpStatusCode.Unauthorized
+                : membership ? HttpStatusCode.OK
+                : HttpStatusCode.Forbidden
+            );
     }
 
     [Test]
-    public async Task An_api_claim_declaration_does_not_create_missing_user_memberships()
+    public async Task An_identity_scope_does_not_create_missing_user_memberships()
     {
         var tokens = await UserTokens(scope: "openid communities orders.read", username: "bob");
         var access = await ValidateIssuedToken(
@@ -371,7 +373,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     }
 
     [Test]
-    public async Task Api_user_claims_do_not_turn_a_machine_token_into_a_user_token()
+    public async Task A_machine_token_has_no_user_membership_and_cannot_request_communities()
     {
         using var http = fixture.App.CreateHttpClient("idp-a", "https");
         using var response = await http.PostAsync(
@@ -392,6 +394,66 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         );
         using var result = await api.GetAsync("/memberships/a");
         await Assert.That(result.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+        var fields = ProtocolTests.Fields(await fixture.Client("idp-a", "worker"));
+        fields["scope"] = "orders.read communities";
+        using var rejected = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        await Assert.That(rejected.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(await ProtocolTests.Error(rejected)).IsEqualTo("invalid_scope");
+    }
+
+    [Test]
+    public async Task A_communities_login_token_without_api_scopes_can_be_exchanged_for_capability_access()
+    {
+        // No Xp: the BFF asks for identity scopes only, then explicitly delegates to Capa.
+        var tokens = await UserTokens(scope: "openid communities");
+        var source = new JsonWebToken(tokens.GetProperty("access_token").GetString()!);
+        await Assert.That(source.Audiences.ToArray()).IsEmpty();
+        await Assert.That(ProtocolTests.ScopeClaim(source)).IsEqualTo("openid communities");
+        await Assert
+            .That(Values(source, "member_of"))
+            .IsEquivalentTo(["product.readers", "product.contributors"]);
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            source.EncodedToken
+        );
+        var userInfo = await http.GetFromJsonAsync<JsonElement>("/connect/userinfo");
+        await Assert.That(userInfo.GetProperty("sub").GetString()).IsEqualTo(source.Subject);
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            source.EncodedToken
+        );
+        using var direct = await api.GetAsync("/orders/a");
+        await Assert.That(direct.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+
+        var fields = ExchangeFields(await fixture.Client("idp-a", "delegate"), source.EncodedToken);
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        response.EnsureSuccessStatusCode();
+        var exchanged = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var target = await ValidateIssuedToken(
+            exchanged.GetProperty("access_token").GetString()!,
+            "orders-api-a"
+        );
+        await Assert.That(target.Subject).IsEqualTo(source.Subject);
+        await Assert.That(ProtocolTests.ScopeClaim(target)).IsEqualTo("orders.read");
+        await Assert
+            .That(Values(target, "member_of"))
+            .IsEquivalentTo(["product.readers", "product.contributors"]);
+        using var actor = JsonDocument.Parse(target.GetClaim("act").Value);
+        await Assert.That(actor.RootElement.GetProperty("sub").GetString()).IsEqualTo("delegate");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            target.EncodedToken
+        );
+        using var accepted = await api.GetAsync("/orders/a");
+        await Assert.That(accepted.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
     private async Task<JsonWebToken> ValidateIssuedToken(string token, string audience)

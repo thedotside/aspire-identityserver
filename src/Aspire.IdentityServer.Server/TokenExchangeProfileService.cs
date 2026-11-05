@@ -1,3 +1,4 @@
+using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using Duende.IdentityServer.Validation;
@@ -30,6 +31,26 @@ internal sealed class TokenExchangeProfileService(
                 )
                 .ToList();
             return Task.CompletedTask;
+        }
+        if (
+            context.ProtocolRequest is ValidatedTokenRequest { GrantType: "authorization_code" }
+            && string.Equals(
+                context.Caller,
+                IdentityServerConstants.ProfileDataCallers.ClaimsProviderAccessToken,
+                StringComparison.Ordinal
+            )
+            && context.RequestedResources is { } granted
+        )
+        {
+            // The BFF's granted identity scopes select its user claims for the login access
+            // token too. Keep Duende's profile filtering and never copy the whole user profile.
+            context.RequestedClaimTypes = context
+                .RequestedClaimTypes.Concat(
+                    granted.Resources.IdentityResources.SelectMany(r => r.UserClaims)
+                )
+                .Where(TokenExchangeClaims.IsUserClaim)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
         }
         return base.GetProfileDataAsync(context, ct);
     }
