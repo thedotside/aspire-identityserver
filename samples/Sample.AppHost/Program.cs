@@ -1,16 +1,23 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // The teams identity scope gives clients that request it the team claims of the user.
-var idpA = builder.AddIdentityServer("idp-a").WithIdentityScope("teams", "team");
+var idpA = builder
+    .AddIdentityServer("idp-a")
+    .WithIdentityScope("teams", "team")
+    .WithIdentityScope("communities", "member_of");
 idpA.AddTestUser("alice", "alice", "Alice A")
     .WithClaim("email", "alice@example.test")
     .WithClaim("given_name", "Alice")
     .WithClaim("family_name", "Anderson")
-    .WithClaim("team", "sales", "support");
+    .WithClaim("team", "sales", "support")
+    .WithClaim("member_of", "product.readers", "product.contributors");
 idpA.WithTestUser("bob", "bob", "Bob A");
 var idpB = builder.AddIdentityServer("idp-b").WithTestUser("alice", "alice", "Alice B");
 
-var ordersA = idpA.AddApiResource("orders-api-a").WithScopes("orders.read", "orders.write");
+// API claims are selected independently of the identity scopes used by the browser session.
+var ordersA = idpA.AddApiResource("orders-api-a")
+    .WithScopes("orders.read", "orders.write")
+    .WithUserClaims("member_of");
 var ordersB = idpB.AddApiResource("orders-api-b").WithScopes("orders.read");
 var workerA = idpA.AddClientCredentialsClient("worker")
     .WithGeneratedBase64PrivateKeyJwt()
@@ -27,7 +34,15 @@ var web = builder
 var browserA = idpA.AddAuthorizationCodeClient("web")
     .WithGeneratedBase64PrivateKeyJwt()
     .RequirePkce()
-    .WithScopes("openid", "profile", "email", "teams", "offline_access", "orders.read")
+    .WithScopes(
+        "openid",
+        "profile",
+        "email",
+        "teams",
+        "communities",
+        "offline_access",
+        "orders.read"
+    )
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-a")
     .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a");
 var browserB = idpB.AddAuthorizationCodeClient("web")

@@ -37,6 +37,13 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
                 .Resources.OfType<IdentityServerResource>()
                 .Single(s => string.Equals(s.Name, "idp-a", StringComparison.Ordinal))
         );
+        // Same provider, separate audience: identity-scope claims must not leak into this API.
+        provider.AddApiResource("unrelated-api").WithScopes("unrelated.read");
+        provider
+            .Resource.RegisteredClients.Single(c =>
+                string.Equals(c.ClientId, "public-web", StringComparison.Ordinal)
+            )
+            .WithScopes("communities", "orders.write", "unrelated.read");
         using (var rsa = RSA.Create(2048))
         {
             var value = TestKeys.Encode(rsa, "fixture-key");

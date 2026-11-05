@@ -2,7 +2,14 @@
 
 ## 0.1.0-alpha.5 - Unreleased
 
-- Start the next development iteration after 0.1.0-alpha.4.
+### Features
+
+- `IdentityApiResource.WithUserClaims(userClaims...)` selects profile claims for access tokens whenever any scope of that API is granted. Identity scopes still select ID-token/UserInfo claims separately; machine tokens gain no user claims, and token exchange keeps its explicit claim allow-list.
+- Document `communities` / `member_of`, direct user-token relay, resource-wide claim selection and migration from alpha.4; demonstrate membership authorization in the sample API.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 4 to carry API user-claim types: use matching package versions.
 
 ## 0.1.0-alpha.4 - 2026-11-04
 

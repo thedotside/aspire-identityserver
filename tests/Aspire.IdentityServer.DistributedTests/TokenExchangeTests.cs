@@ -142,6 +142,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         else
             await Assert.That(jwt.TryGetClaim("name", out _)).IsFalse();
         await Assert.That(jwt.TryGetClaim("role", out _)).IsFalse();
+        // API defaults must not widen the exchange policy's own claim allow-list.
+        await Assert.That(jwt.TryGetClaim("member_of", out _)).IsFalse();
         using var api = fixture.App.CreateHttpClient("api", "https");
         api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var accepted = await api.GetAsync("/orders/a");
@@ -289,6 +291,137 @@ public sealed class TokenExchangeTests(AppFixture fixture)
     }
 
     [Test]
+    [Arguments("openid communities orders.read", true, true)]
+    [Arguments("openid orders.read", false, true)]
+    [Arguments("openid communities orders.write", true, true)]
+    [Arguments("openid communities unrelated.read", true, false)]
+    [Arguments("openid unrelated.read", false, false)]
+    public async Task Api_claims_follow_the_granted_resource_independently_of_identity_scopes(
+        string scope,
+        bool identityMembership,
+        bool apiMembership
+    )
+    {
+        var tokens = await UserTokens(clientId: "public-web", scope: scope);
+        var identity = await ValidateIssuedToken(
+            tokens.GetProperty("id_token").GetString()!,
+            "public-web"
+        );
+        var access = await ValidateIssuedToken(
+            tokens.GetProperty("access_token").GetString()!,
+            apiMembership ? "orders-api-a" : "unrelated-api"
+        );
+        await Assert.That(identity.TryGetClaim("member_of", out _)).IsEqualTo(identityMembership);
+        await Assert.That(access.TryGetClaim("member_of", out _)).IsEqualTo(apiMembership);
+        if (apiMembership)
+            await Assert
+                .That(Values(access, "member_of"))
+                .IsEquivalentTo(["product.readers", "product.contributors"]);
+        foreach (var type in new[] { "email", "team", "given_name", "family_name" })
+            await Assert.That(access.TryGetClaim(type, out _)).IsFalse();
+        await Assert.That(access.Subject).IsEqualTo(identity.Subject);
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            access.EncodedToken
+        );
+        var userInfo = await http.GetFromJsonAsync<JsonElement>("/connect/userinfo");
+        await Assert.That(userInfo.GetProperty("sub").GetString()).IsEqualTo(identity.Subject);
+        await Assert
+            .That(userInfo.TryGetProperty("member_of", out _))
+            .IsEqualTo(identityMembership);
+        if (identityMembership)
+            await Assert
+                .That(
+                    userInfo
+                        .GetProperty("member_of")
+                        .EnumerateArray()
+                        .Select(v => v.GetString()!)
+                        .ToArray()
+                )
+                .IsEquivalentTo(["product.readers", "product.contributors"]);
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            access.EncodedToken
+        );
+        using var response = await api.GetAsync("/memberships/a");
+        await Assert
+            .That(response.StatusCode)
+            .IsEqualTo(apiMembership ? HttpStatusCode.OK : HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    public async Task An_api_claim_declaration_does_not_create_missing_user_memberships()
+    {
+        var tokens = await UserTokens(scope: "openid communities orders.read", username: "bob");
+        var access = await ValidateIssuedToken(
+            tokens.GetProperty("access_token").GetString()!,
+            "orders-api-a"
+        );
+        await Assert.That(access.Subject).IsEqualTo("idp-a:bob");
+        await Assert.That(access.TryGetClaim("member_of", out _)).IsFalse();
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            access.EncodedToken
+        );
+        using var response = await api.GetAsync("/memberships/a");
+        await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task Api_user_claims_do_not_turn_a_machine_token_into_a_user_token()
+    {
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(ProtocolTests.Fields(await fixture.Client("idp-a", "worker")))
+        );
+        response.EnsureSuccessStatusCode();
+        var tokens = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var access = await ValidateIssuedToken(
+            tokens.GetProperty("access_token").GetString()!,
+            "orders-api-a"
+        );
+        await Assert.That(access.TryGetClaim("member_of", out _)).IsFalse();
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            access.EncodedToken
+        );
+        using var result = await api.GetAsync("/memberships/a");
+        await Assert.That(result.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    private async Task<JsonWebToken> ValidateIssuedToken(string token, string audience)
+    {
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        var metadata = await http.GetFromJsonAsync<JsonElement>(
+            "/.well-known/openid-configuration"
+        );
+        var jwks = await http.GetStringAsync(metadata.GetProperty("jwks_uri").GetString());
+        var validated = await new JsonWebTokenHandler().ValidateTokenAsync(
+            token,
+            new TokenValidationParameters
+            {
+                ValidIssuer = metadata.GetProperty("issuer").GetString(),
+                ValidAudience = audience,
+                IssuerSigningKeys = new JsonWebKeySet(jwks).GetSigningKeys(),
+                ValidateIssuerSigningKey = true,
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                RequireSignedTokens = true,
+                RequireExpirationTime = true,
+                ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
+            }
+        );
+        await Assert.That(validated.IsValid).IsTrue();
+        return (JsonWebToken)validated.SecurityToken;
+    }
+
+    [Test]
     public async Task Requested_identity_scopes_issue_profile_claims_and_offline_access_a_refresh_token()
     {
         var tokens = await UserTokens();
@@ -334,6 +467,9 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         );
         await Assert.That(renewed.Id).IsNotEqualTo(original.Id);
         await Assert.That(renewed.Subject).IsEqualTo("idp-a:alice");
+        await Assert
+            .That(Values(renewed, "member_of"))
+            .IsEquivalentTo(["product.readers", "product.contributors"]);
         await Assert
             .That(renewed.GetClaim("auth_time").Value)
             .IsEqualTo(original.GetClaim("auth_time").Value);
@@ -491,7 +627,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         string provider = "a",
         string clientId = "web",
         string? scope = null,
-        bool dpop = false
+        bool dpop = false,
+        string username = "alice"
     )
     {
         var client = await fixture.Client($"idp-{provider}", clientId);
@@ -527,8 +664,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
                 }
             )
         );
-        await page.GetByLabel("Username").FillAsync("alice");
-        await page.GetByLabel("Password").FillAsync("alice");
+        await page.GetByLabel("Username").FillAsync(username);
+        await page.GetByLabel("Password").FillAsync(username);
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true })
             .ClickAsync();
         // Only observe the committed callback URL; its document load state is irrelevant.

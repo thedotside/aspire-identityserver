@@ -352,6 +352,7 @@ public static class IdentityServerExtensions
             var api = server.Apis[i];
             environment[$"IdentityServer__Apis__{i}__Audience"] = api.Audience;
             AddList(environment, $"IdentityServer__Apis__{i}__Scopes", api.Scopes);
+            AddList(environment, $"IdentityServer__Apis__{i}__UserClaims", api.UserClaims);
         }
         for (var i = 0; i < server.IdentityScopes.Count; i++)
         {
