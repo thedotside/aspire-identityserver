@@ -27,6 +27,8 @@ foreach (var (provider, section) in new[] { ("a", "IdpA"), ("b", "IdpB"), ("publ
                 options.ClientSecret = client.ClientSecret;
                 options.ResponseType = "code";
                 options.UsePkce = true;
+                // Exercise signed auth_time validation in the ASP.NET Core 11 OIDC handler.
+                options.MaxAge = TimeSpan.FromMinutes(5);
                 options.SaveTokens = true;
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters.NameClaimType = "name";

@@ -33,5 +33,10 @@
       Pack="true"
       PackagePath="buildTransitive/"
     />
+    <None
+      Include="buildTransitive/server.net11.runtimeconfig.json"
+      Pack="true"
+      PackagePath="buildTransitive/"
+    />
   </ItemGroup>
 </Project>

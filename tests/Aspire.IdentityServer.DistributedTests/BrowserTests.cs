@@ -14,6 +14,34 @@ namespace Aspire.IdentityServer.Tests;
 public sealed class BrowserTests(AppFixture fixture)
 {
     [Test]
+    [Arguments("a")]
+    [Arguments("b")]
+    [Arguments("public")]
+    public async Task Oidc_login_honors_max_age_with_the_framework_handler(string provider)
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync($"{origin}/login/{provider}");
+        var loginQuery = QueryHelpers.ParseQuery(new Uri(page.Url).Query);
+        var authorize = new Uri(origin + loginQuery["ReturnUrl"].ToString());
+        await Assert
+            .That(QueryHelpers.ParseQuery(authorize.Query)["max_age"].ToString())
+            .IsEqualTo("300");
+        await Login(page);
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        var response = await session.Context.APIRequest.GetAsync($"{origin}/me/{provider}");
+        try
+        {
+            await Assert.That(response.Status).IsEqualTo(200);
+        }
+        finally
+        {
+            await response.DisposeAsync();
+        }
+    }
+
+    [Test]
     [Arguments("private-key", "worker", "Alice A")]
     [Arguments("secret", "device-secret", null)]
     public async Task Named_client_can_use_the_current_browser_user(

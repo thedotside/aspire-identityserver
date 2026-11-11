@@ -339,7 +339,7 @@ public sealed class IdentityClient
             throw new InvalidOperationException("Only interactive clients have redirect URIs.");
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (
-            !path.StartsWith('/')
+            !path.StartsWith("/", StringComparison.Ordinal)
             || path.StartsWith("//", StringComparison.Ordinal)
             || path.Contains('#', StringComparison.Ordinal)
             || path.Contains('\\', StringComparison.Ordinal)
