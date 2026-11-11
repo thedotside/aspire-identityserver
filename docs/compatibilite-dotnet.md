@@ -36,6 +36,8 @@ pwsh eng/package-smoke.ps1 -TargetFramework net11.0
 
 Remplace `net11.0` par `net10.0` pour l'autre cible. La CI Windows/Linux exécute les deux suites et vérifie les packages dans les deux familles de SDK.
 
+La validation locale Windows du 11 novembre 2026 a réussi : 400 tests au total, soit 117 tests unitaires et 83 distribués par framework, sans test ignoré. Les trois archives et leurs symboles ont été construits ; les consommateurs isolés ont démarré le fournisseur et obtenu des tokens avec SDK 10/.NET 10 puis SDK 11/.NET 11. Cela ne constitue pas une validation macOS ; les résultats Linux sont à lire dans l'exécution CI de la PR.
+
 ## Moteur Duende
 
 Le moteur reste Duende IdentityServer 8.0.10, avec ses dépendances et sa licence d'origine. La [politique de support publiée par Duende](https://docs.duendesoftware.com/general/support-and-issues/#supported-versions) annonce .NET 10 pour IdentityServer 8.0. Les tests de cette intégration sous .NET 11 ne doivent pas être présentés comme une annonce de support ou une certification de Duende sous .NET 11.
