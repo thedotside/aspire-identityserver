@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.6 - Unreleased
+
+- Start the next development iteration after 0.1.0-alpha.5.
+
 ## 0.1.0-alpha.5 - 2026-11-11
 
 ### Security
