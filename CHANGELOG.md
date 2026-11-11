@@ -2,6 +2,10 @@
 
 ## 0.1.0-alpha.5 - Unreleased
 
+### Security
+
+- Require Aspire 13.6.5 or later, including the published Hosting package's dependency floor, to pick up the fix for [GHSA-f7vh-h5g3-7jrh](https://github.com/advisories/GHSA-f7vh-h5g3-7jrh).
+
 ### Features
 
 - Requested identity scopes now select user claims in Authorization Code access tokens as well as ID tokens and UserInfo. `WithIdentityScope("communities", "member_of")` is sufficient to select existing memberships when the BFF requests `communities`; the scope remains unavailable to API resources and machine clients.

@@ -1005,7 +1005,7 @@
       "TheDotSide.Aspire.IdentityServer.Hosting": {
         "type": "Project",
         "dependencies": {
-          "Aspire.Hosting": "[13.6.4, )",
+          "Aspire.Hosting": "[13.6.5, )",
           "TheDotSide.Aspire.IdentityServer.Runtime": "[0.1.0-alpha.5, )"
         }
       },
@@ -1021,7 +1021,7 @@
       },
       "Aspire.Hosting": {
         "type": "CentralTransitive",
-        "requested": "[13.6.4, )",
+        "requested": "[13.6.5, )",
         "resolved": "13.6.5",
         "contentHash": "bhK3KRbXiKLLzwK+ikz4o5ZMahWQYZbV1d2jUh7pzilFlVIQ66bxJnVKsqb3Y1MPcjPOk9QTIf+F8gS6zjngNA==",
         "dependencies": {
