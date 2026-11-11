@@ -1,8 +1,12 @@
 # Changelog
 
-## 0.1.0-alpha.6 - Unreleased
+## 10.0.0 - 2026-11-11
 
-- Start the next development iteration after 0.1.0-alpha.5.
+- First stable release for .NET 10, promoting the functionality of 0.1.0-alpha.5 without changing OAuth/OIDC behavior or the public API.
+- Use the .NET major as a release-family reference; document the supported frameworks explicitly. The planned 11.0.0 family will retain .NET 10 compatibility while validating .NET 11.
+- Keep Hosting, Runtime and Client package versions aligned at 10.0.0. The Hosting/Runtime configuration contract remains 3 and Aspire 13.6.5 remains the minimum.
+- Validate package API compatibility against 0.1.0-alpha.5 and document stable API versioning and migration from the prereleases.
+- The stable status applies to local development and integration testing; the provider remains in-memory, loopback-only and unavailable in production or AppHost publication.
 
 ## 0.1.0-alpha.5 - 2026-11-11
 

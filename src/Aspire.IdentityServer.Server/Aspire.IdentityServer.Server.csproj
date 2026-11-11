@@ -4,7 +4,7 @@
     <IsPackable>true</IsPackable>
     <!-- API compatibility against the last published version; intended breaks are suppressed. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>0.1.0-alpha.2</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>0.1.0-alpha.5</PackageValidationBaselineVersion>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageId>TheDotSide.Aspire.IdentityServer.Runtime</PackageId>

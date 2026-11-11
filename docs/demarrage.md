@@ -41,13 +41,13 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Pour installer la version `0.1.0-alpha.5` sur nuget.org :
+Pour installer la version stable `10.0.0` sur nuget.org :
 
 ```powershell
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.5 --source https://api.nuget.org/v3/index.json
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 10.0.0 --source https://api.nuget.org/v3/index.json
 ```
 
-`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice. Les préversions sont visibles en activant « Inclure les versions préliminaires » dans Visual Studio. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Aucun filtre de préversions n'est nécessaire pour `10.0.0`. Depuis `0.1.0-alpha.5`, la migration consiste à aligner les versions des packages ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
 
 Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 
@@ -61,13 +61,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 0.1.0-alpha.6
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 10.0.0
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 0.1.0-alpha.6
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 10.0.0
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -89,7 +89,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
-    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="0.1.0-alpha.6" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="10.0.0" />
   </ItemGroup>
 </Project>
 ```
