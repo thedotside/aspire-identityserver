@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-alpha.5 - Unreleased
+## 0.1.0-alpha.5 - 2026-11-11
 
 ### Security
 
@@ -10,6 +10,12 @@
 
 - Requested identity scopes now select user claims in Authorization Code access tokens as well as ID tokens and UserInfo. `WithIdentityScope("communities", "member_of")` is sufficient to select existing memberships when the BFF requests `communities`; the scope remains unavailable to API resources and machine clients.
 - Document BFF/YARP direct relay to Xp, and delegated token exchange to Capa when Xp is absent. Token exchange keeps its explicit claim allow-list; the Hosting/Runtime configuration contract remains 3.
+
+### Dependencies and tooling
+
+- Update ASP.NET Core authentication packages to 10.0.15, TUnit to 1.80.0 and the private development analyzer Meziantou.Analyzer to 3.0.325.
+- Update the maintenance workflow to Renovate 44.232.1, Node.js 26, actions/checkout v7 and actions/setup-node v7.
+- Install Playwright's pinned Chromium headless shell using the runtime libraries already present on hosted Ubuntu runners, avoiding an unnecessary apt mirror dependency while retaining the full browser tests.
 
 ## 0.1.0-alpha.4 - 2026-11-04
 

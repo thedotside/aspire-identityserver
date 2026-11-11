@@ -45,7 +45,7 @@ builder.Build().Run();
 
 No `using` is needed: the extensions live in `Aspire.Hosting`, like other Aspire integrations. Keys and secrets stay Aspire secret parameters; the provider only receives public keys and secret hashes.
 
-`WithIdentityScope("communities", "member_of")` declares an identity scope requested only by Authorization Code clients, such as a BFF. In the unreleased alpha.5, the granted identity scopes select user claims in the login access token as well as the ID token and UserInfo. YARP can relay that access token directly to Xp; without Xp, the BFF uses token exchange for Capa. `communities` is never an API or machine-client scope. See the [complete example and alpha.4 migration](docs/fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token).
+`WithIdentityScope("communities", "member_of")` declares an identity scope requested only by Authorization Code clients, such as a BFF. Since alpha.5, the granted identity scopes select user claims in the login access token as well as the ID token and UserInfo. YARP can relay that access token directly to Xp; without Xp, the BFF uses token exchange for Capa. `communities` is never an API or machine-client scope. See the [complete example and alpha.4 migration](docs/fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token).
 
 In the consumer, the optional `TheDotSide.Aspire.IdentityServer.Client` package binds the projected section and signs `private_key_jwt` assertions with the [draft-ietf-oauth-rfc7523bis](https://datatracker.ietf.org/doc/draft-ietf-oauth-rfc7523bis/) profile:
 
