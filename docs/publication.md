@@ -8,7 +8,7 @@ Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'
 
 `10.0.0` est la première version stable : elle reprend `0.1.0-alpha.5`, sans changement de comportement OAuth/OIDC ni rupture d'API publique. Elle cible .NET 10, conserve le contrat Hosting/Runtime 3 et demande Aspire 13.6.5 au minimum. Le saut de numéro rend la famille .NET lisible ; il ne représente pas dix versions fonctionnelles du produit.
 
-La famille majeure suit la version .NET qui motive sa sortie, mais la liste des frameworks pris en charge reste explicite. La préparation de `11.0.0` doit valider .NET 11 tout en conservant .NET 10 ; le numéro seul ne prouve pas cette compatibilité.
+La famille majeure suit la version .NET qui motive sa sortie, mais la liste des frameworks pris en charge reste explicite. La version `11.0.0`, en développement, conserve les assets .NET 10 et ajoute les assets .NET 11 ; la [matrice de compatibilité](compatibilite-dotnet.md) décrit les SDK, les tests et la politique du moteur Duende. Le numéro seul ne prouve pas cette compatibilité.
 
 À partir des versions stables, un correctif corrige un défaut sans rupture de l'API publique, une version mineure ajoute des fonctionnalités compatibles et une rupture exige une version majeure accompagnée d'un guide de migration. Les fonctionnalités internes du moteur Duende suivent la politique de leur éditeur. Le périmètre reste le développement et les tests locaux, avec une mémoire réinitialisée au redémarrage.
 

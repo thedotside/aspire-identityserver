@@ -4,7 +4,8 @@
 
 ## Prérequis
 
-- SDK .NET 10. Le dépôt demande `10.0.403` avec `rollForward: latestFeature` dans [global.json](../global.json).
+- Pour construire le dépôt : SDK .NET 11, `11.0.100` avec `rollForward: latestFeature` dans [global.json](../global.json), et runtime ASP.NET Core .NET 10 pour exécuter aussi les tests `net10.0`.
+- Pour consommer les packages : SDK 10 avec une application `net10.0`, ou SDK 11 avec une application `net11.0`. Les deux cibles sont conservées dans les mêmes packages ; voir [la compatibilité](compatibilite-dotnet.md).
 - Aspire `13.6.5` ou ultérieur : c'est le plancher du package Hosting.
 - PowerShell 7 pour les scripts `eng/*.ps1`.
 - Certificat HTTPS de développement approuvé sur la machine.
@@ -22,10 +23,12 @@ Depuis la racine :
 dotnet dev-certs https --trust
 dotnet restore
 dotnet build
-dotnet run --project samples/Sample.AppHost
+dotnet run --project samples/Sample.AppHost --framework net10.0
 ```
 
 Sous Windows, approuve la fenêtre de confirmation du certificat si elle apparaît. La CI sans bureau dispose d'une préparation distincte dans le workflow du dépôt.
+
+Utilise `--framework net11.0` pour lancer les exemples sous .NET 11. Le choix est obligatoire pour les projets exécutables qui ciblent plusieurs frameworks.
 
 Ouvre la ressource `web` depuis le dashboard Aspire. Le sample propose trois parcours :
 
@@ -61,13 +64,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 10.0.0
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 10.0.0
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.0.0
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -89,12 +92,14 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
-    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="10.0.0" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.0.0" />
   </ItemGroup>
 </Project>
 ```
 
 `AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Les projets API/web conservent leurs références normales.
+
+Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. La version `11.0.0` est encore en développement : les commandes ci-dessus consomment les packages locaux, pas une version déjà publiée sur nuget.org.
 
 ## Premier fournisseur et client machine
 

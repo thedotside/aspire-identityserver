@@ -23,12 +23,19 @@
     },
     {
       "matchPackageNames": ["/^Microsoft\\.AspNetCore\\./"],
+      "matchCurrentVersion": "/^10\\./",
       "groupName": "ASP.NET Core",
       "allowedVersions": "/^10\\./"
     },
     {
+      "matchPackageNames": ["/^Microsoft\\.AspNetCore\\./"],
+      "matchCurrentVersion": "/^11\\./",
+      "groupName": "ASP.NET Core 11",
+      "allowedVersions": "/^11\\./"
+    },
+    {
       "matchDepTypes": ["dotnet-sdk"],
-      "allowedVersions": "/^10\\./"
+      "allowedVersions": "/^11\\./"
     },
     {
       "matchPackageNames": ["/^@commitlint\\//"],

@@ -19,6 +19,7 @@ Built on Duende IdentityServer, with in-memory state and no database or containe
 - [Complete API reference](docs/reference.md)
 - [Tests, packaging and troubleshooting](docs/developpement.md)
 - [Release tags and automated NuGet publishing](docs/publication.md)
+- [.NET 10 / .NET 11 compatibility and migration](docs/compatibilite-dotnet.md)
 
 The documentation lives in the repository's root `docs/` directory, which requires access to the repository. This README covers the essentials for package users.
 
@@ -65,9 +66,9 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
 | `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration, assertion helpers and token-exchange handler for named HTTP clients. |
 
-Version: `10.0.0`. Requires .NET 10, Aspire 13.6.5 or later and a trusted development HTTPS certificate. See [installation](docs/demarrage.md) for NuGet and local packages.
+Version: `11.0.0`. Targets .NET 10 and .NET 11, with Aspire 13.6.5 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for NuGet and local packages.
 
-The first stable release promotes the features of `0.1.0-alpha.5` with the same public API and configuration contract. Upgrade Hosting, Runtime and the optional Client helper together to `10.0.0`. The major number identifies the .NET release family; supported frameworks are documented explicitly. See [versioning and migration](docs/publication.md#versions-stables-et-compatibilité).
+This is the next version in development, following the first stable release [10.0.0](https://github.com/thedotside/aspire-identityserver/releases/tag/10.0.0). It preserves the public API and configuration contract and adds explicit assets for both frameworks. Upgrade Hosting, Runtime and the optional Client helper together. The major number identifies the .NET release family; see [compatibility and migration](docs/compatibilite-dotnet.md) for the exact scope and the upstream Duende support policy.
 
 Local development/testing only: the AppHost must run in `Development` or `Testing`, state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this integration's scope. Performance against Keycloak has not been benchmarked.
 
