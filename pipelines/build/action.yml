@@ -103,9 +103,9 @@ runs:
     - name: Install browser
       shell: pwsh
       run: |
-        # The tests run headless: the shell build is enough, with its system dependencies on Linux.
+        # The hosted Ubuntu image already has Chromium's runtime libraries. Installing
+        # Playwright's extra font packages with --with-deps adds an unnecessary apt mirror dependency.
         $arguments = @('install', '--only-shell', 'chromium')
-        if ($IsLinux) { $arguments = @('install', '--with-deps', '--only-shell', 'chromium') }
         pwsh tests/Aspire.IdentityServer.DistributedTests/bin/Debug/net10.0/playwright.ps1 @arguments
         if ($LASTEXITCODE -ne 0) { throw 'Could not install Chromium.' }
     - name: Test
