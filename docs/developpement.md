@@ -112,7 +112,7 @@ pwsh eng/pack.ps1
 pwsh eng/package-smoke.ps1
 ```
 
-`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la dernière version publiée, `0.1.0-alpha.2` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack, et les ruptures assumées figurent dans les fichiers `CompatibilitySuppressions.xml`, à régénérer avec `-p:GenerateCompatibilitySuppressionFile=true`. Après chaque publication, la version de référence passe à la version publiée.
+`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence publiée `0.1.0-alpha.5` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Après chaque publication, la version de référence passe à la version publiée.
 
 Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel outil à inscrire d'abord dans les ADR selon OUT-26) et une attestation de provenance, que GitHub n'émet pas pour un dépôt privé du plan gratuit. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 
