@@ -84,7 +84,7 @@ Un client interactif qui déclare et demande `teams` reçoit les claims `team` d
 
 ## Claims des scopes d'identité dans l'access token
 
-Depuis `0.1.0-alpha.5` (en développement), les scopes d'identité effectivement accordés à un client **Authorization Code** sélectionnent leurs claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Le fournisseur étend ainsi la sélection par défaut de Duende : le profile service filtre les valeurs du profil à partir des seules ressources d'identité accordées, sans recopier tous les claims de l'utilisateur.
+Depuis `0.1.0-alpha.5`, les scopes d'identité effectivement accordés à un client **Authorization Code** sélectionnent leurs claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Le fournisseur étend ainsi la sélection par défaut de Duende : le profile service filtre les valeurs du profil à partir des seules ressources d'identité accordées, sans recopier tous les claims de l'utilisateur.
 
 ### BFF et YARP vers Xp
 
@@ -148,7 +148,7 @@ Les clients `client_credentials` ne peuvent pas demander de scope d'identité. U
 
 Les claims liés aux scopes accordés accompagnent le token de connexion indépendamment de son audience. Un token contenant `member_of` reste refusé par une API dont l'audience ne correspond pas. Les tests réels vérifient 200 avec l'appartenance attendue, 403 avec la bonne audience mais sans appartenance, et 401 avec une autre audience. Sans Xp, ils vérifient aussi le refus du relais direct vers Capa puis le succès de l'échange explicite.
 
-En alpha.4, `WithIdentityScope("communities", "member_of")` alimentait seulement l'ID token et UserInfo. L'alpha.5 étend l'émission à l'access token Authorization Code, sans nouvelle déclaration sur la ressource API et sans changement de contrat de configuration (version **3**). Mettre à jour les packages correspondants puis refaire la connexion pour obtenir un nouveau token ; un JWT déjà émis ne change pas. La version alpha.5 est en développement et n'est pas encore publiée.
+En alpha.4, `WithIdentityScope("communities", "member_of")` alimentait seulement l'ID token et UserInfo. L'alpha.5 étend l'émission à l'access token Authorization Code, sans nouvelle déclaration sur la ressource API et sans changement de contrat de configuration (version **3**). Mettre à jour les packages correspondants puis refaire la connexion pour obtenir un nouveau token ; un JWT déjà émis ne change pas.
 
 Le refresh token conserve les claims de l'access token selon les réglages Duende existants ; il ne recharge pas automatiquement les appartenances modifiées après la connexion. Le Token Exchange conserve sa liste explicite `userClaims` et ne propage pas automatiquement tous les claims du token source.
 
