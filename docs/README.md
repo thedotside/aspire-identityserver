@@ -2,7 +2,7 @@
 
 Cette documentation décrit le paramétrage de la version `11.0.0`, sur .NET 10 et .NET 11 et Aspire 13.6.5 ou ultérieur.
 
-Cette version est en développement après la première version stable `10.0.0`. Elle conserve l'API publique et le contrat de configuration, avec des assets explicites pour chaque framework. Consulte la [compatibilité .NET 10 / .NET 11](compatibilite-dotnet.md), y compris les limites du support annoncé par Duende.
+Cette version stable succède à `10.0.0`. Elle conserve l'API publique et le contrat de configuration, avec des assets explicites pour chaque framework. Consulte la [compatibilité .NET 10 / .NET 11](compatibilite-dotnet.md), y compris les limites du support annoncé par Duende.
 
 L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
 

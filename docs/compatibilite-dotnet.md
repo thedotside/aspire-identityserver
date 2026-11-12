@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Installation](demarrage.md) · [Publication](publication.md)
 
-La première version stable `10.0.0` reprend les fonctionnalités de `0.1.0-alpha.5` pour .NET 10. La version `11.0.0`, en développement, conserve .NET 10 et ajoute un ciblage explicite .NET 11. Le numéro majeur sert de repère de famille ; la compatibilité dépend des cibles et des validations ci-dessous.
+La première version stable `10.0.0` reprend les fonctionnalités de `0.1.0-alpha.5` pour .NET 10. La version stable `11.0.0` conserve .NET 10 et ajoute un ciblage explicite .NET 11. Le numéro majeur sert de repère de famille ; la compatibilité dépend des cibles et des validations ci-dessous.
 
 ## Packages et SDK
 
@@ -67,6 +67,6 @@ Sur un poste où `dotnet --version` affiche 11 mais le build mentionne un ancien
 
 ## Migration depuis 10.0.0
 
-Avec des packages 11.0.0 construits localement, garde `net10.0` pour rester sur .NET 10 ou choisis `net11.0` avec le SDK correspondant. Aligne les packages IdentityServer. L'API publique, les scopes, les sections projetées et le contrat 3 restent identiques ; aucune migration de données n'est nécessaire pour ce fournisseur en mémoire.
+Avec les packages stables `11.0.0`, garde `net10.0` pour rester sur .NET 10 ou choisis `net11.0` avec le SDK correspondant. Aligne les packages IdentityServer. L'API publique, les scopes, les sections projetées et le contrat 3 restent identiques ; aucune migration de données n'est nécessaire pour ce fournisseur en mémoire.
 
-Les versions 11.0.0 ne sont pas annoncées comme disponibles sur nuget.org avant la réussite de leur publication. Pour installer la version stable déjà publiée, suis le guide de démarrage avec `10.0.0`.
+Suis le [guide d'installation](demarrage.md#installer-dans-une-autre-solution) pour installer `11.0.0` depuis NuGet. La version `10.0.0` reste une version stable ciblant .NET 10 ; passer à la famille 11 n'oblige pas à changer le framework de l'application.
