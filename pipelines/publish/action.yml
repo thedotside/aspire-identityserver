@@ -73,7 +73,7 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
         $pending = @('runtime', 'client', 'hosting')
-        for ($attempt = 0; $attempt -lt 60 -and $pending.Count; $attempt++) {
+        for ($attempt = 0; $attempt -lt 90 -and $pending.Count; $attempt++) {
           $pending = @($pending | Where-Object {
             $url = "https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.$_/index.json"
             $response = Invoke-WebRequest -Uri $url -SkipHttpErrorCheck

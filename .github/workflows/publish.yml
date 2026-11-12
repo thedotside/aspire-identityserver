@@ -23,7 +23,7 @@ jobs:
   publish:
     needs: verify
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     # Required reviewers and the tag rule are set on this environment in the repository
     # settings; NuGet's trusted publishing policy can then require it too.
     environment: nuget

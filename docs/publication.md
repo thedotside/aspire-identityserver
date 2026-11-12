@@ -8,7 +8,7 @@ Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'
 
 `10.0.0` est la première version stable : elle reprend `0.1.0-alpha.5`, sans changement de comportement OAuth/OIDC ni rupture d'API publique. Elle cible .NET 10, conserve le contrat Hosting/Runtime 3 et demande Aspire 13.6.5 au minimum. Le saut de numéro rend la famille .NET lisible ; il ne représente pas dix versions fonctionnelles du produit.
 
-La famille majeure suit la version .NET qui motive sa sortie, mais la liste des frameworks pris en charge reste explicite. La version `11.0.0`, en développement, conserve les assets .NET 10 et ajoute les assets .NET 11 ; la [matrice de compatibilité](compatibilite-dotnet.md) décrit les SDK, les tests et la politique du moteur Duende. Le numéro seul ne prouve pas cette compatibilité.
+La famille majeure suit la version .NET qui motive sa sortie, mais la liste des frameworks pris en charge reste explicite. La version stable `11.0.0` conserve les assets .NET 10 et ajoute les assets .NET 11 ; la [matrice de compatibilité](compatibilite-dotnet.md) décrit les SDK, les tests et la politique du moteur Duende. Le numéro seul ne prouve pas cette compatibilité.
 
 À partir des versions stables, un correctif corrige un défaut sans rupture de l'API publique, une version mineure ajoute des fonctionnalités compatibles et une rupture exige une version majeure accompagnée d'un guide de migration. Les fonctionnalités internes du moteur Duende suivent la politique de leur éditeur. Le périmètre reste le développement et les tests locaux, avec une mémoire réinitialisée au redémarrage.
 
@@ -39,7 +39,7 @@ Le déclencheur GitHub est dans [.github/workflows/publish.yml](../.github/workf
 2. Il construit les trois archives et les consomme dans un AppHost temporaire avec un cache NuGet isolé. Les archives vérifiées sont conservées dans l'artefact `packages-and-test-results`.
 3. Le job `publish` démarre uniquement si `verify` réussit. Il récupère ces mêmes archives, vérifie leurs identifiants, versions et révision source, puis demande un jeton NuGet temporaire via OIDC.
 4. Il publie `Runtime`, `Client`, puis `Hosting`, chacun avec son paquet de symboles `.snupkg`. Seules les trois archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
-5. Il attend leur indexation pendant au plus dix minutes, puis restaure les packages uniquement depuis nuget.org dans un nouveau consommateur. Celui-ci démarre le fournisseur et obtient un token réel avec `private_key_jwt`.
+5. Il attend leur indexation pendant au plus quinze minutes, puis restaure les packages uniquement depuis nuget.org dans des consommateurs indépendants avec SDK 10/.NET 10 et SDK 11/.NET 11. Chaque consommateur démarre le fournisseur et obtient un token réel avec `private_key_jwt`. Le job de publication dispose de vingt-cinq minutes pour couvrir l'indexation et ces vérifications.
 
 Une publication réussie atteste donc la validation des packages et leur consommation depuis le registre. La validation de publication s'exécute sur Windows ; la CI des PR couvre aussi Linux.
 

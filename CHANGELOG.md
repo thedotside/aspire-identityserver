@@ -1,6 +1,6 @@
 # Changelog
 
-## 11.0.0 - Unreleased
+## 11.0.0 - 2026-11-12
 
 - Add explicit `net10.0` and `net11.0` assets to Hosting, Runtime and Client in the same NuGet packages. Preserve the public API and Hosting/Runtime contract 3.
 - Validate public package API compatibility against stable 10.0.0, including the retained .NET 10 assets.
@@ -9,6 +9,7 @@
 - Verify actual NuGet archives in independent AppHosts and distributed-test consumers built with SDK 10/.NET 10 and SDK 11/.NET 11, with isolated caches.
 - Exercise OIDC `max_age` with private-key, secret and public clients without disabling the .NET 11 signed `auth_time` validation.
 - Keep Duende 8.0.10 and Aspire 13.6.5. Document the distinction between this integration's .NET 11 tests and Duende's published .NET 10 support policy.
+- Allow up to fifteen minutes for NuGet indexing before validating registry-only consumers, with a twenty-five-minute publication job limit.
 
 ## 10.0.0 - 2026-11-11
 

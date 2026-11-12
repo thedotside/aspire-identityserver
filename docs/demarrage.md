@@ -44,13 +44,13 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Pour installer la version stable `10.0.0` sur nuget.org :
+Pour installer la version stable `11.0.0` sur nuget.org :
 
 ```powershell
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 10.0.0 --source https://api.nuget.org/v3/index.json
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0 --source https://api.nuget.org/v3/index.json
 ```
 
-`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Aucun filtre de préversions n'est nécessaire pour `10.0.0`. Depuis `0.1.0-alpha.5`, la migration consiste à aligner les versions des packages ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
 
 Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 
@@ -99,7 +99,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
 
 `AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Les projets API/web conservent leurs références normales.
 
-Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. La version `11.0.0` est encore en développement : les commandes ci-dessus consomment les packages locaux, pas une version déjà publiée sur nuget.org.
+Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. NuGet sélectionne l'asset correspondant au framework du consommateur dans les mêmes packages `11.0.0`.
 
 ## Premier fournisseur et client machine
 
