@@ -1,8 +1,8 @@
 # Documentation Aspire IdentityServer
 
-Cette documentation décrit le paramétrage de la version `0.1.0-alpha.6`, sur .NET 10 et Aspire 13.6.5 ou ultérieur.
+Cette documentation décrit le paramétrage de la version `10.0.0`, sur .NET 10 et Aspire 13.6.5 ou ultérieur.
 
-Il s'agit de la prochaine version en développement. La dernière préversion publiée est [0.1.0-alpha.5](https://github.com/thedotside/aspire-identityserver/releases/tag/0.1.0-alpha.5).
+Première version stable, elle reprend les fonctionnalités de `0.1.0-alpha.5` avec la même API publique et le même contrat de configuration. La [politique de versions et la migration](publication.md#versions-stables-et-compatibilité) expliquent le passage à `10.0.0`.
 
 L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
 
@@ -44,7 +44,7 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Claims de profil des utilisateurs de test, scopes d'identité personnalisés, refresh tokens (`offline_access`), Token Exchange par délégation | Disponible depuis `0.1.0-alpha.4`. Voir [les fournisseurs](fournisseurs.md) et [le guide](token-exchange.md#scopes-choisis-par-le-client-machine). |
 | Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
-| Utilisateurs persistants, fédération | Hors périmètre de cette alpha. |
+| Utilisateurs persistants, fédération | Hors périmètre de cette intégration. |
 | Déploiement du fournisseur sur Kubernetes ou en production | Non pris en charge ; publication Aspire refusée. |
 | Benchmark comparatif face à Keycloak | Non réalisé. |
 
