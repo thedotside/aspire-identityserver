@@ -8,7 +8,7 @@ $aspire = (([xml](Get-Content (Join-Path $repo 'Directory.Packages.props') -Raw)
 $expectations = @(
     @{ File = 'README.md'; Text = "Version: ``$version``." }
     @{ File = 'README.md'; Text = "Aspire $aspire or later" }
-    @{ File = 'docs/README.md'; Text = "version ``$version``, sur .NET 10 et Aspire $aspire ou ultérieur" }
+    @{ File = 'docs/README.md'; Text = "version ``$version``, sur .NET 10 et .NET 11 et Aspire $aspire ou ultérieur" }
     @{ File = 'docs/demarrage.md'; Text = "Aspire ``$aspire`` ou ultérieur" }
     @{ File = 'docs/demarrage.md'; Text = "<Sdk Name=`"Aspire.AppHost.Sdk`" Version=`"$aspire`" />" }
     @{ File = 'docs/demarrage.md'; Text = "<PackageReference Include=`"Aspire.Hosting.AppHost`" Version=`"$aspire`" />" }

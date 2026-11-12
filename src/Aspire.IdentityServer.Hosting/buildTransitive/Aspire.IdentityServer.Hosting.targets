@@ -80,6 +80,10 @@
     <!-- Before IncrementalClean records FileWrites, so that dotnet clean removes the folder. -->
     <PropertyGroup>
       <_IdentityServerRuntimeDirectory>$(TargetDir)identityserver/</_IdentityServerRuntimeDirectory>
+      <_IdentityServerRuntimeConfig>server.runtimeconfig.json</_IdentityServerRuntimeConfig>
+      <_IdentityServerRuntimeConfig
+        Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(TargetFrameworkVersion)', '11.0'))"
+        >server.net11.runtimeconfig.json</_IdentityServerRuntimeConfig>
     </PropertyGroup>
     <!-- The SDK task kept for EmitLegacyAssetsFileItems exposes the restored package graph. -->
     <ResolvePackageDependencies
@@ -119,7 +123,7 @@
       SkipUnchangedFiles="true"
     />
     <Copy
-      SourceFiles="$(MSBuildThisFileDirectory)server.runtimeconfig.json"
+      SourceFiles="$(MSBuildThisFileDirectory)$(_IdentityServerRuntimeConfig)"
       DestinationFiles="$(_IdentityServerRuntimeDirectory)Aspire.IdentityServer.Server.runtimeconfig.json"
       SkipUnchangedFiles="true"
     />

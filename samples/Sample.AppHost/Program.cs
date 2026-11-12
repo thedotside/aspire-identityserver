@@ -1,5 +1,11 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+#if NET11_0_OR_GREATER
+const string targetFramework = "net11.0";
+#else
+const string targetFramework = "net10.0";
+#endif
+
 // The teams identity scope gives clients that request it the team claims of the user.
 var idpA = builder
     .AddIdentityServer("idp-a")
@@ -24,11 +30,25 @@ var workerB = idpB.AddClientCredentialsClient("worker")
     .WithGeneratedClientSecret()
     .WithScopes("orders.read");
 
+// Aspire 13.6 does not infer a target framework for multi-target project launches.
+// This sample-only annotation selects the same framework as the running AppHost.
+#pragma warning disable ASPIREPROJECTS001
 var web = builder
     .AddProject<Projects.Sample_Web>("web")
+    .WithAnnotation(
+        new ProjectLaunchArgsOverrideAnnotation([
+            "run",
+            "--framework",
+            targetFramework,
+            "--no-build",
+            "--no-launch-profile",
+            "--project",
+        ])
+    )
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithHttpsEndpoint()
     .WithHttpHealthCheck("/health", endpointName: "https");
+#pragma warning restore ASPIREPROJECTS001
 var browserA = idpA.AddAuthorizationCodeClient("web")
     .WithGeneratedBase64PrivateKeyJwt()
     .RequirePkce()
@@ -81,8 +101,19 @@ web.WithIdentityClient(browserA, "Authentication:IdpA")
     .WithIdentityClient(browserB, "Authentication:IdpB")
     .WithIdentityClient(publicClient, "Authentication:Public");
 
+#pragma warning disable ASPIREPROJECTS001
 var api = builder
     .AddProject<Projects.Sample_Api>("api")
+    .WithAnnotation(
+        new ProjectLaunchArgsOverrideAnnotation([
+            "run",
+            "--framework",
+            targetFramework,
+            "--no-build",
+            "--no-launch-profile",
+            "--project",
+        ])
+    )
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithHttpsEndpoint()
     .WithHttpHealthCheck("/health", endpointName: "https")
@@ -98,6 +129,7 @@ var api = builder
                 .ClientSecret("Warehouse:OAuth:Secret")
                 .Scopes("Warehouse:OAuth:Scope")
     );
+#pragma warning restore ASPIREPROJECTS001
 
 web.WithReference(api);
 

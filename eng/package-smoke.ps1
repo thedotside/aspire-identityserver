@@ -1,5 +1,11 @@
-param([string]$Version, [switch]$FromNuGet)
+param([string]$Version, [switch]$FromNuGet, [ValidateSet('net10.0', 'net11.0')][string]$TargetFramework)
 $ErrorActionPreference = 'Stop'
+if (!$TargetFramework) {
+    foreach ($framework in @('net10.0', 'net11.0')) {
+        & $PSCommandPath -Version $Version -FromNuGet:$FromNuGet -TargetFramework $framework
+    }
+    return
+}
 $repo = Split-Path $PSScriptRoot -Parent
 # Versions come from the repository files, never from copies in this script.
 if (!$Version) { $Version = ([xml](Get-Content (Join-Path $repo 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version }
@@ -13,6 +19,10 @@ if (!$FromNuGet -and !(Test-Path (Join-Path $feed "TheDotSide.Aspire.IdentitySer
 # Use a unique directory and NuGet cache so a prior build cannot mask a broken package.
 $consumer = Join-Path ([System.IO.Path]::GetTempPath()) ("aspire-identityserver-smoke-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $consumer | Out-Null
+$sdkMajor = $TargetFramework.Substring(3).Split('.')[0]
+# Build consumers with their own SDK family too, without inheriting this repository's SDK 11 pin.
+@{ sdk = @{ version = "$sdkMajor.0.100"; rollForward = 'latestFeature'; allowPrerelease = $false } } |
+    ConvertTo-Json -Depth 3 | Set-Content (Join-Path $consumer 'global.json')
 $escapedFeed = [System.Security.SecurityElement]::Escape($feed)
 $localSource = if ($FromNuGet) { '' } else { "<add key=`"local`" value=`"$escapedFeed`"/>" }
 @"
@@ -25,7 +35,7 @@ $localSource = if ($FromNuGet) { '' } else { "<add key=`"local`" value=`"$escape
 @"
 <Project Sdk="Microsoft.NET.Sdk">
   <Sdk Name="Aspire.AppHost.Sdk" Version="$aspire" />
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAspireHost>true</IsAspireHost><AspireUseCliBundle>true</AspireUseCliBundle></PropertyGroup>
+  <PropertyGroup><TargetFramework>$TargetFramework</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAspireHost>true</IsAspireHost><AspireUseCliBundle>true</AspireUseCliBundle></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="$aspire" />
     <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="$Version" />
@@ -85,6 +95,9 @@ try {
     $restoredLibraries = $assets.libraries.PSObject.Properties.Name
     foreach ($name in @('TheDotSide.Aspire.IdentityServer.Hosting', 'TheDotSide.Aspire.IdentityServer.Runtime', 'TheDotSide.Aspire.IdentityServer.Client')) {
         if ($restoredLibraries -notcontains "$name/$Version") { throw "The renamed package $name was not restored." }
+        $assembly = if ($name.EndsWith('.Runtime')) { 'Aspire.IdentityServer.Server' } else { $name.Substring('TheDotSide.'.Length) }
+        $runtimeAssets = $assets.targets.$TargetFramework."$name/$Version".runtime.PSObject.Properties.Name
+        if ($runtimeAssets -notcontains "lib/$TargetFramework/$assembly.dll") { throw "NuGet did not select the $TargetFramework asset of $name." }
     }
     if ($restoredLibraries -match '^Aspire\.IdentityServer\.(Hosting|Runtime|Client)/') {
         throw 'The consumer still depends on an old IdentityServer package identifier.'
@@ -92,7 +105,9 @@ try {
     dotnet build --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'Package consumer build failed.' }
     # The provider folder holds only the Runtime closure, without the consumer's deps.json.
-    $runtime = Join-Path $consumer 'bin/Debug/net10.0/identityserver'
+    $runtime = Join-Path $consumer "bin/Debug/$TargetFramework/identityserver"
+    $runtimeConfig = Get-Content (Join-Path $runtime 'Aspire.IdentityServer.Server.runtimeconfig.json') -Raw | ConvertFrom-Json
+    if ($runtimeConfig.runtimeOptions.tfm -ne $TargetFramework) { throw 'The provider runtime does not match the consumer framework.' }
     if (Get-ChildItem -Path $runtime -Filter '*.deps.json' -Recurse) { throw 'The provider folder must not contain a deps.json.' }
     foreach ($foreign in @('Consumer.dll', 'Aspire.Hosting.dll', 'Aspire.IdentityServer.Client.dll')) {
         if (Test-Path (Join-Path $runtime $foreign)) { throw "The provider folder contains a consumer assembly: $foreign" }
@@ -103,12 +118,12 @@ try {
     # A sibling folder: inside the AppHost folder, its sources would join the AppHost's globs.
     $tests = "$consumer-tests"
     New-Item -ItemType Directory -Path $tests | Out-Null
-    foreach ($file in @('NuGet.Config', 'Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props')) {
+    foreach ($file in @('global.json', 'NuGet.Config', 'Directory.Build.props', 'Directory.Build.targets', 'Directory.Packages.props')) {
         Copy-Item (Join-Path $consumer $file) (Join-Path $tests $file)
     }
 @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsTestProject>true</IsTestProject></PropertyGroup>
+  <PropertyGroup><TargetFramework>$TargetFramework</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsTestProject>true</IsTestProject></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="$aspire" />
     <ProjectReference Include="$consumer/Consumer.csproj" />
@@ -131,12 +146,12 @@ Console.WriteLine("PACKAGE_TEST_CONSUMER_OK: a test project started the packaged
     # The AppHost is already built: rebuilding it from this restore loses its reference assembly.
     dotnet build (Join-Path $tests 'ConsumerTests.csproj') --packages (Join-Path $consumer 'packages') -p:BuildProjectReferences=false
     if ($LASTEXITCODE -ne 0) { throw 'Test consumer build failed.' }
-    if (!(Test-Path (Join-Path $tests 'bin/Debug/net10.0/identityserver/Aspire.IdentityServer.Server.dll'))) {
+    if (!(Test-Path (Join-Path $tests "bin/Debug/$TargetFramework/identityserver/Aspire.IdentityServer.Server.dll"))) {
         throw 'The test project did not receive the provider folder.'
     }
     # Direct execution keeps the finite smoke check independent of the interactive Aspire CLI.
     # Without a launch profile, the AppHost environment must be set explicitly.
-    $consumerAssembly = Join-Path $consumer 'bin/Debug/net10.0/Consumer.dll'
+    $consumerAssembly = Join-Path $consumer "bin/Debug/$TargetFramework/Consumer.dll"
     $previousEnvironment = $env:DOTNET_ENVIRONMENT
     try {
         $env:DOTNET_ENVIRONMENT = 'Production'
@@ -154,10 +169,10 @@ Console.WriteLine("PACKAGE_TEST_CONSUMER_OK: a test project started the packaged
 
     try {
         $env:DOTNET_ENVIRONMENT = 'Development'
-        $testOutput = & dotnet (Join-Path $tests 'bin/Debug/net10.0/ConsumerTests.dll') 2>&1
+        $testOutput = & dotnet (Join-Path $tests "bin/Debug/$TargetFramework/ConsumerTests.dll") 2>&1
         $testResult = $LASTEXITCODE
     } finally { $env:DOTNET_ENVIRONMENT = $previousEnvironment }
     $testOutput | Write-Output
     if ($testResult -ne 0 -or !($testOutput -match 'PACKAGE_TEST_CONSUMER_OK:')) { throw 'Test consumer failed.' }
-    Write-Host "Verified independent consumers: $consumer and $tests"
+    Write-Host "Verified independent consumers ($TargetFramework): $consumer and $tests"
 } finally { Pop-Location }

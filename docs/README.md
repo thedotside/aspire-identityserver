@@ -1,8 +1,8 @@
 # Documentation Aspire IdentityServer
 
-Cette documentation décrit le paramétrage de la version `10.0.0`, sur .NET 10 et Aspire 13.6.5 ou ultérieur.
+Cette documentation décrit le paramétrage de la version `11.0.0`, sur .NET 10 et .NET 11 et Aspire 13.6.5 ou ultérieur.
 
-Première version stable, elle reprend les fonctionnalités de `0.1.0-alpha.5` avec la même API publique et le même contrat de configuration. La [politique de versions et la migration](publication.md#versions-stables-et-compatibilité) expliquent le passage à `10.0.0`.
+Cette version est en développement après la première version stable `10.0.0`. Elle conserve l'API publique et le contrat de configuration, avec des assets explicites pour chaque framework. Consulte la [compatibilité .NET 10 / .NET 11](compatibilite-dotnet.md), y compris les limites du support annoncé par Duende.
 
 L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants dans un AppHost de développement ou de tests. Duende IdentityServer exécute les protocoles dans des processus .NET locaux.
 
@@ -11,6 +11,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | Page | Contenu |
 | --- | --- |
 | [Démarrage](demarrage.md) | Prérequis, installation locale des packages, premier AppHost et lancement des exemples. |
+| [Compatibilité .NET 10 / .NET 11](compatibilite-dotnet.md) | Cibles des packages, SDK, runtime du fournisseur et audit de migration. |
 | [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
 | [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
 | [JWK privée Base64](jwk-base64.md) | Depuis `0.1.0-alpha.2` : génération/import RSA, configurations BFF et CC Xp/Capa, migration depuis PEM et encodage Kubernetes. |
