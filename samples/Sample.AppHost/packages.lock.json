@@ -736,7 +736,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Runtime": {
@@ -1475,7 +1475,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Runtime": {

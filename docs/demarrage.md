@@ -64,13 +64,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.1.0
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.0.0
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.1.0
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -92,14 +92,14 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
-    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.0.0" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.1.0" />
   </ItemGroup>
 </Project>
 ```
 
 `AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Les projets API/web conservent leurs références normales.
 
-Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. NuGet sélectionne l'asset correspondant au framework du consommateur dans les mêmes packages `11.0.0`.
+Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. Le numéro `11.1.0` ci-dessus désigne les packages de développement construits localement. Pour les packages publiés, utilise `11.0.0` dans ce modèle ; NuGet sélectionne l'asset correspondant au framework du consommateur.
 
 ## Premier fournisseur et client machine
 

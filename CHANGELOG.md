@@ -1,5 +1,10 @@
 # Changelog
 
+## 11.1.0 - Unreleased
+
+- Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
+- Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+
 ## 11.0.0 - 2026-11-12
 
 - Add explicit `net10.0` and `net11.0` assets to Hosting, Runtime and Client in the same NuGet packages. Preserve the public API and Hosting/Runtime contract 3.

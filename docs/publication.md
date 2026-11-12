@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Développement](developpement.md) · [Installation](demarrage.md)
 
-Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `10.0.0` publie la version NuGet stable `10.0.0` ; un suffixe comme `-rc.1` désigne une préversion.
+Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `11.0.0` publie la version NuGet stable `11.0.0` ; un suffixe comme `-rc.1` désigne une préversion.
 
 ## Versions stables et compatibilité
 
@@ -12,17 +12,19 @@ La famille majeure suit la version .NET qui motive sa sortie, mais la liste des 
 
 À partir des versions stables, un correctif corrige un défaut sans rupture de l'API publique, une version mineure ajoute des fonctionnalités compatibles et une rupture exige une version majeure accompagnée d'un guide de migration. Les fonctionnalités internes du moteur Duende suivent la politique de leur éditeur. Le périmètre reste le développement et les tests locaux, avec une mémoire réinitialisée au redémarrage.
 
-Depuis `0.1.0-alpha.5`, mets Hosting et le helper Client facultatif à `10.0.0` ; Runtime suit transitivement Hosting. Avec Central Package Management, modifie `Directory.Packages.props`. Aucun scope, nom de section ou appel de configuration ne change. Depuis alpha.4 ou une version antérieure, applique aussi les migrations décrites dans le CHANGELOG, notamment les scopes d'identité demandés lors de la connexion, puis redémarre et reconnecte les utilisateurs.
+Après `11.0.0`, les nouvelles fonctionnalités sont préparées dans `11.1.0`. Les versions `11.0.x` sont réservées aux correctifs nécessaires.
+
+Depuis `10.0.0` ou `0.1.0-alpha.5`, mets Hosting et le helper Client facultatif à `11.0.0` ; Runtime suit transitivement Hosting. Avec Central Package Management, modifie `Directory.Packages.props`. Aucun scope, nom de section ou appel de configuration ne change. Depuis alpha.4 ou une version antérieure, applique aussi les migrations décrites dans le CHANGELOG, notamment les scopes d'identité demandés lors de la connexion, puis redémarre et reconnecte les utilisateurs.
 
 ## Publier depuis main
 
-Après fusion des changements dans `main` et réussite de la CI, date l'entrée de la version dans le [CHANGELOG](../CHANGELOG.md) (`## 10.0.0 - 2026-11-11`) : le workflow refuse un tag sans entrée datée. Puis :
+Après fusion des changements dans `main` et réussite de la CI, date l'entrée de la version dans le [CHANGELOG](../CHANGELOG.md) (`## 11.0.0 - 2026-11-12`) : le workflow refuse un tag sans entrée datée. Exemple de commandes pour la version publiée `11.0.0` :
 
 ```powershell
 git switch main
 git pull --ff-only
-git tag -a 10.0.0 -m "Release 10.0.0: stable local OAuth/OIDC integration for .NET 10"
-git push origin 10.0.0
+git tag -a 11.0.0 -m "Release 11.0.0: stable local OAuth/OIDC integration for .NET 10 and .NET 11"
+git push origin 11.0.0
 ```
 
 Juste après la publication, passe `Version` de [Directory.Build.props](../Directory.Build.props) à la version suivante, avec une entrée `Unreleased` dans le CHANGELOG. La CI des branches refuse une version déjà présente sur nuget.org : les archives d'une branche ne peuvent donc pas porter une version publiée. Tant que ce changement n'est pas fusionné, toutes les PR échouent, celles de Renovate comprises : fais-le en premier. Une panne réseau vers nuget.org ne produit qu'un avertissement.
@@ -80,16 +82,16 @@ Sans protection, quiconque a le droit d'écriture sur le dépôt peut publier so
 
 ## Vérifier une version publiée
 
-Les pages de la version stable `10.0.0` sont :
+Les pages de la version stable `11.0.0` sont :
 
-- [Hosting 10.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/10.0.0)
-- [Runtime 10.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/10.0.0)
-- [Client 10.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/10.0.0)
+- [Hosting 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/11.0.0)
+- [Runtime 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/11.0.0)
+- [Client 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/11.0.0)
 
 Pour relancer la vérification sans source locale :
 
 ```powershell
-pwsh eng/package-smoke.ps1 -Version 10.0.0 -FromNuGet
+pwsh eng/package-smoke.ps1 -Version 11.0.0 -FromNuGet
 ```
 
 ## Réserver le préfixe TheDotSide.
