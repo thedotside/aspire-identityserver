@@ -991,7 +991,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting.AppHost": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Client": {
@@ -1006,7 +1006,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Runtime": {
@@ -2029,7 +2029,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting.AppHost": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Client": {
@@ -2044,7 +2044,7 @@
         "type": "Project",
         "dependencies": {
           "Aspire.Hosting": "[13.6.5, )",
-          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.0.0, )"
+          "TheDotSide.Aspire.IdentityServer.Runtime": "[11.1.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Runtime": {
