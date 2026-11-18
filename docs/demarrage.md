@@ -30,7 +30,7 @@ Sous Windows, approuve la fenêtre de confirmation du certificat si elle appara�
 
 Utilise `--framework net11.0` pour lancer les exemples sous .NET 11. Le choix est obligatoire pour les projets exécutables qui ciblent plusieurs frameworks.
 
-Ouvre la ressource `web` depuis le dashboard Aspire. Le sample propose trois parcours :
+Dans le dashboard Aspire, les commandes d'un fournisseur (« Show registrations », « Request a client token ») affichent ses enregistrements et un jeton prêt à l'emploi pour un client machine. Ouvre la ressource `web` depuis le dashboard Aspire. Le sample propose trois parcours :
 
 | Parcours | Fournisseur | Authentification du client | PKCE |
 | --- | --- | --- | --- |

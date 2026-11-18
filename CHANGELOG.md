@@ -4,6 +4,7 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- Dashboard commands on each provider: **Show registrations** lists its clients, API resources, identity scopes and test users without secrets, and **Request a client token** requests and displays a client-credentials token, with its claims, for a chosen machine client. Aspire's resource command API makes them discoverable by other clients too.
 
 ## 11.0.0 - 2026-11-12
 

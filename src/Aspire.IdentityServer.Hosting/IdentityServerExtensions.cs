@@ -87,6 +87,8 @@ public static class IdentityServerExtensions
             (_, _) =>
             {
                 Validate(server.Resource);
+                // Every client is declared by now: the token command lists the machine clients.
+                DashboardCommands.Add(server);
                 return Task.CompletedTask;
             }
         );
