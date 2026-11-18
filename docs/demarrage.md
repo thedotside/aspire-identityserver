@@ -131,7 +131,7 @@ La projection attend que le fournisseur soit sain et transmet ses paramètres au
 
 `AddIdentityServer()` n'accepte qu'un AppHost démarré en `Development` ou `Testing`. Le profil `launchSettings.json` d'un AppHost Aspire fixe déjà `Development` ; un AppHost lancé autrement, par son binaire, un script ou la CI, doit définir `DOTNET_ENVIRONMENT`. Le fournisseur reçoit ce nom réel, refuse lui aussi tout autre environnement et journalise un avertissement à chaque démarrage.
 
-`aspire publish` échoue dès qu'un fournisseur est déclaré. Pour garder un AppHost publiable, déclare le fournisseur et ses projections seulement en mode exécution. En publication, les consommateurs reçoivent la configuration du fournisseur réel par leurs propres paramètres ; voir [Kubernetes](kubernetes.md).
+`aspire publish` échoue dès qu'un fournisseur est déclaré. Pour garder un AppHost publiable, déclare le fournisseur et ses projections seulement en mode exécution. En publication, les consommateurs reçoivent la configuration du fournisseur réel par leurs propres paramètres ; voir [Kubernetes](kubernetes.md). Une [proposition d'ADR](decisions/0002-publication-avec-un-fournisseur-externe.md) décrit comment publier les mêmes projections vers un fournisseur externe, sans dupliquer cette configuration.
 
 ```csharp
 if (builder.ExecutionContext.IsRunMode)
