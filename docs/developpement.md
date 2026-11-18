@@ -112,7 +112,7 @@ pwsh eng/pack.ps1
 pwsh eng/package-smoke.ps1
 ```
 
-`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Après chaque publication, la version de référence passe à la version publiée.
+`pack.ps1` construit en Release les quatre archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting, Client et Testing embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Après chaque publication, la version de référence passe à la version publiée.
 
 Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel outil à inscrire d'abord dans les ADR selon OUT-26) et une attestation de provenance, que GitHub n'émet pas pour un dépôt privé du plan gratuit. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 
@@ -120,7 +120,7 @@ Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel 
 
 ```text
 PACKAGE_SMOKE_OK: packaged provider authenticated generated, imported and deferred Base64 JWK clients plus legacy PEM.
-PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder.
+PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder and obtained client and user tokens with the Testing package.
 ```
 
 Sans `-Version`, les deux scripts prennent la version de `Directory.Build.props`. Ils acceptent le même paramètre `-Version`. Pour vérifier une version différente, utilise la même valeur dans les deux commandes. Ne remplace pas une version déjà publiée : une version NuGet publiée est destinée à rester immuable.

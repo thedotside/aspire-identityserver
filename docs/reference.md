@@ -26,6 +26,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityServerOptions.RuntimeDirectory` | `string` modifiable. | Dossier contenant le serveur ; défaut `AppContext.BaseDirectory/identityserver`. Chemin relatif résolu depuis l'AppHost. |
 | `IdentityServerOptions.AcceptTokenEndpointAudience` | `bool`, défaut `false`. | Accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Par défaut, seul le profil draft-ietf-oauth-rfc7523bis est accepté. |
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
+| `IdentityServerResource.RegisteredUsers` | `IReadOnlyList<IdentityTestUser>` | Depuis `11.1.0` : utilisateurs de test, dans l'ordre de déclaration ; utilisés par le package `Testing`. |
 | `IdentityApiResource.Server` | Builder du fournisseur. | Fournisseur associé. |
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
@@ -82,10 +83,12 @@ L'authentification commence à `none`. Les méthodes de secret la fixent à `cli
 | `KeyId` | `string?` | `kid` pour un client JWT. |
 | `PublicJwk` | `string?` | JWK public enregistré côté IDP. |
 | `UsePkce` | `bool` | Vrai par défaut ; pertinent pour authorization code. |
+| `GrantType` | `string` | Depuis `11.1.0` : `authorization_code` ou `client_credentials`. |
+| `RegisteredRedirectUris` | `IReadOnlyList<ReferenceExpression>` | Depuis `11.1.0` : callbacks de connexion différés, dans l'ordre de déclaration. |
 | `Scopes` | `IReadOnlyCollection<string>` | Scopes autorisés. |
 | `TokenExchangeAudience` | `string?` | Depuis `0.1.0-alpha.2` : audience unique des règles d'échange, sinon null. |
 
-Ces propriétés sont consultables ; les enregistrements se modifient par les méthodes fluides. Les URI de redirection et le grant ne sont pas exposés comme propriétés publiques par cette version.
+Ces propriétés sont consultables ; les enregistrements se modifient par les méthodes fluides. Les URI de déconnexion ne sont pas exposées.
 
 ## Projections
 
@@ -151,6 +154,19 @@ Avec `PrivateKeyBase64`, le helper importe directement les composants validés d
 | `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
 
 Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+
+## Package Testing
+
+Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Testing`, pour une application démarrée. Voir [les tests d'intégration](tests.md).
+
+| Membre | Comportement |
+| --- | --- |
+| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, CancellationToken cancellationToken = default)` | Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
+| `GetClientCredentialsTokensAsync(string provider, string clientId, string? scope = null, CancellationToken cancellationToken = default)` | Jeton `client_credentials` d'un client machine. |
+| `GetIdentityClientOptionsAsync(string provider, string clientId, CancellationToken cancellationToken = default)` | `IdentityClientOptions` avec credentials résolus, comme la projection standard. |
+| `IdentityTokens` | `AccessToken`, `TokenType`, `IdToken`, `RefreshToken`, `Scope`, `ExpiresIn`. |
+
+Un nom inconnu ou un client du mauvais type lève `ArgumentException` ; une erreur du token endpoint, `HttpRequestException`.
 
 ## Réglages fixes du runtime
 

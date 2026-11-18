@@ -50,7 +50,7 @@ Pour installer la version stable `11.0.0` sur nuget.org :
 dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0 --source https://api.nuget.org/v3/index.json
 ```
 
-`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Les projets de test peuvent ajouter `TheDotSide.Aspire.IdentityServer.Testing`, à la même version : voir [les tests d'intégration](tests.md). Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
 
 Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 
