@@ -96,6 +96,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
+| Package Testing : jetons utilisateur par le vrai parcours code + PKCE sans navigateur (clé, secret, client public), jetons machine, options résolues et refus des noms inconnus | [TestingHelpersTests](../tests/Aspire.IdentityServer.DistributedTests/TestingHelpersTests.cs). |
 | Sessions A/B coexistantes et indépendantes | BrowserTests. |
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
