@@ -401,7 +401,7 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Clients__1__TokenExchanges__0__Scopes=FromSubjectToken",
             "IdentityServer__Clients__1__TokenExchanges__0__SubjectClientId=web",
             "IdentityServer__Clients__1__TokenExchanges__0__UserClaims__0=name",
-            "IdentityServer__ContractVersion=3",
+            "IdentityServer__ContractVersion=4",
             "IdentityServer__IdentityScopes__0__Name=teams",
             "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",

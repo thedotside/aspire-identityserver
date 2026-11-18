@@ -61,7 +61,7 @@ Une seule méthode active l'échange. Tu peux remplacer `WithGeneratedPrivateKey
 
 `sub` est toujours conservé et ne figure pas dans `userClaims`. Le profil de test local fournit les informations sélectionnées : `name` pour chaque utilisateur, et les [claims de profil](fournisseurs.md#claims-de-profil) ajoutés par `AddTestUser(...).WithClaim(...)`, plusieurs valeurs comprises. Demander un champ absent du profil ne le crée pas. Les champs de protocole (`iss`, `sub`, `aud`, `scope`, `exp`, `act`, etc.) ne peuvent pas être injectés comme informations utilisateur.
 
-Chaque association client source / API est explicite. Plusieurs appels permettent d'autoriser plusieurs associations ; un doublon est refusé. Tous les objets doivent appartenir au même IdP. En mode `FromSubjectToken`, la configuration refuse au démarrage les associations sans scope API partagé entre le navigateur, le client machine et l'API. Le mode `FromMachineClient` exige un scope de l'API autorisé au client machine ; le client de connexion peut ne demander que des scopes d'identité.
+Chaque association client source / API est explicite. Plusieurs appels permettent d'autoriser plusieurs associations ; un doublon est refusé. Le client machine et l'API doivent appartenir au même IdP ; le client source peut appartenir à un autre IdP, voir [entre deux IdP](#entre-deux-idp). En mode `FromSubjectToken`, la configuration refuse au démarrage les associations sans scope API partagé entre le navigateur, le client machine et l'API. Le mode `FromMachineClient` exige un scope de l'API autorisé au client machine ; le client de connexion peut ne demander que des scopes d'identité.
 
 Déclare les credentials et toutes les règles d'échange avant d'appeler `WithIdentityClient`, afin que la projection standard sélectionne les champs correspondants.
 
@@ -246,8 +246,27 @@ Un access token utilisateur peut servir à plusieurs échanges tant qu'il reste 
 
 Le [sample AppHost](../samples/Sample.AppHost/Program.cs) montre un client RSA autorisant `name` et un client avec secret sans claim utilisateur supplémentaire. Les [tests réels](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs) couvrent les parcours PKCE, l'authentification du client machine, l'acceptation du jeton par l'API et les refus.
 
-## Étape suivante : deux IdP
+## Entre deux IdP
 
-Le scénario IdP2 → IdP1 est décrit dans le [suivi de la phase 2](roadmap/token-exchange-cross-idp.md). Il sera implémenté après validation du parcours local. La V1 rejette explicitement cette configuration et les jetons étrangers.
+Depuis `11.1.0`, un client machine de l'IdP1 peut échanger l'access token d'un utilisateur de l'IdP2. La politique, déclarée sur l'IdP1 avec un client source de l'IdP2, est la déclaration de confiance : directionnelle, inactive sans elle, jamais transitive. L'IdP2 ne reçoit aucune configuration et ne fait pas confiance à l'IdP1 en retour.
+
+```csharp
+// Le partenaire de l'IdP A échange les jetons des utilisateurs du client web de l'IdP B.
+idpA.AddClientCredentialsClient("partner")
+    .WithGeneratedClientSecret()
+    .WithScopes("orders.read")
+    .WithTokenExchangeFrom(browserB, ordersA, userClaims: ["name"]);
+```
+
+L'AppHost transmet à l'IdP1 l'issuer différé de l'IdP2 et son nom. L'IdP1 accepte un jeton étranger seulement si une politique du client machine déclare son issuer exact, puis :
+
+- découvre les clés exclusivement auprès de cet issuer (document de découverte dont l'`issuer` correspond, JWKS de la même origine), les met en cache, et ne les rafraîchit sur une clé inconnue qu'une fois par période de 30 secondes : une clé toujours inconnue est refusée ;
+- valide la signature RS256, le type `at+jwt`, l'issuer, la date d'expiration ; refuse un jeton sans utilisateur, à preuve de possession (`cnf`) ou déjà échangé (`act`) ;
+- exige que le jeton ait été émis au client source déclaré (`client_id`). Un client de même nom sur l'IdP1 ne correspond jamais à une politique de l'IdP2, et inversement ;
+- applique les mêmes règles de scopes qu'en local : en `FromSubjectToken`, chaque scope demandé doit figurer dans le jeton source sous le même nom et appartenir à l'API cible ; en `FromMachineClient`, le client machine les choisit explicitement. Rien n'est accordé implicitement au-delà.
+
+Le jeton émis porte l'issuer et la signature de l'IdP1, l'audience de son API et un sujet local stable, `{IdP source}|{sub source}` (par exemple `idp-b|idp-b:alice`) : deux utilisateurs `alice` de fournisseurs différents ne sont jamais confondus, et aucun rattachement par nom ou e-mail n'a lieu. `idp` vaut le nom de l'IdP source ; `amr` et `auth_time` viennent du jeton source ; `act` identifie le client machine. Les claims utilisateur sélectionnés viennent du jeton source, faute de compte local. Sa durée ne dépasse pas celle du jeton source ; aucun refresh token n'est émis.
+
+L'audience du jeton source, propre aux API de l'IdP2, n'est pas vérifiée : la confiance porte sur le client source et les scopes de son jeton. Le [sample AppHost](../samples/Sample.AppHost/Program.cs) déclare le client `partner` ; les [tests réels](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs) couvrent le parcours accepté et les refus : confiance inverse, client source d'un autre IdP, jeton machine, audience et scope hors politique, jeton modifié, clé jamais publiée.
 
 Le runtime reste exclusivement destiné au développement et aux tests locaux. Les contrats de projection ne rendent pas le fournisseur déployable sur Kubernetes.

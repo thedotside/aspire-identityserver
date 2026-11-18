@@ -15,7 +15,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Fournisseurs et ressources API](fournisseurs.md) | IDP, utilisateurs, scopes, audiences, isolation et configuration du serveur. |
 | [Clients et authentification](clients.md) | Authorization code, client credentials, PKCE, secrets, clés privées et redirections. |
 | [JWK privée Base64](jwk-base64.md) | Depuis `0.1.0-alpha.2` : génération/import RSA, configurations BFF et CC Xp/Capa, migration depuis PEM et encodage Kubernetes. |
-| [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
+| [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP ; depuis `11.1.0`, entre deux IdP par confiance explicite. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
@@ -43,7 +43,7 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
 | Token Exchange local, sélection des informations utilisateur | Disponible depuis `0.1.0-alpha.2`. Voir le [guide](token-exchange.md). |
 | Claims de profil des utilisateurs de test, scopes d'identité personnalisés, refresh tokens (`offline_access`), Token Exchange par délégation | Disponible depuis `0.1.0-alpha.4`. Voir [les fournisseurs](fournisseurs.md) et [le guide](token-exchange.md#scopes-choisis-par-le-client-machine). |
-| Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
+| Token Exchange entre deux IdP | Disponible depuis `11.1.0` : [confiance directionnelle explicite](token-exchange.md#entre-deux-idp) ; [état des critères](roadmap/token-exchange-cross-idp.md). |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
 | Utilisateurs persistants, fédération | Hors périmètre de cette intégration. |
 | Déploiement du fournisseur sur Kubernetes ou en production | Non pris en charge ; publication Aspire refusée. |

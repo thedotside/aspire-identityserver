@@ -4,6 +4,11 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- Token exchange between two providers (#4): `WithTokenExchangeFrom` accepts a source client of another provider, which declares a directional trust. The target provider validates the foreign token with keys discovered only from that issuer (bounded refresh on an unknown key), requires the declared source client and the usual scope rules, and issues a token for its own API whose subject is `{source provider}|{sub}`, so that equal subject IDs never collide. The sample AppHost adds a `partner` client of provider A trusting provider B's web users.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 4 (trusted issuer and provider of cross-provider policies): use the same package versions.
 
 ## 11.0.0 - 2026-11-12
 

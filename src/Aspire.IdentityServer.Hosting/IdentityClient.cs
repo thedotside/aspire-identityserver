@@ -72,9 +72,11 @@ public sealed class IdentityClient
     internal List<TokenExchangePolicy> TokenExchanges { get; } = [];
 
     /// <summary>
-    /// Allows this machine client to exchange a same-provider authorization-code access token
-    /// for this API. Requested scopes must also be present in the source token.
-    /// The subject is preserved; only the named user claims are included.
+    /// Allows this machine client to exchange an authorization-code access token for this API.
+    /// Requested scopes must also be present in the source token. With a source client of this
+    /// provider, the subject is preserved; with a source client of another provider, this
+    /// declares a directional trust and the local subject is <c>{source provider}|{sub}</c>.
+    /// Only the named user claims are included.
     /// </summary>
     public IdentityClient WithTokenExchangeFrom(
         IdentityClient subjectClient,
@@ -107,13 +109,12 @@ public sealed class IdentityClient
                 "The source must be an authorization-code client.",
                 nameof(subjectClient)
             );
-        if (
-            !ReferenceEquals(Server.Resource, subjectClient.Server.Resource)
-            || !ReferenceEquals(Server.Resource, api.Server.Resource)
-        )
+        // The source client may belong to another provider, whose tokens this provider then
+        // trusts for this policy only; the issued token always targets an API of this provider.
+        if (!ReferenceEquals(Server.Resource, api.Server.Resource))
             throw new ArgumentException(
-                "Token exchange currently requires the same identity provider.",
-                nameof(subjectClient)
+                "The exchanged token targets an API of this machine client's provider.",
+                nameof(api)
             );
         if (userClaims.Any(c => !TokenExchangeClaims.IsUserClaim(c)))
             throw new ArgumentException(

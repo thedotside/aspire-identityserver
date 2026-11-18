@@ -382,6 +382,18 @@ public static class IdentityServerExtensions
                 var policy = client.TokenExchanges[policyIndex];
                 var policyPrefix = $"{prefix}__TokenExchanges__{policyIndex}";
                 environment[$"{policyPrefix}__SubjectClientId"] = policy.SubjectClient.ClientId;
+                // A source client of another provider: the deferred issuer that this provider
+                // trusts for the policy, and the name that qualifies the local subject.
+                if (!ReferenceEquals(policy.SubjectClient.Server.Resource, server))
+                {
+                    environment[$"{policyPrefix}__SubjectIssuer"] =
+                        policy.SubjectClient.Server.GetEndpoint("https");
+                    environment[$"{policyPrefix}__SubjectProvider"] = policy
+                        .SubjectClient
+                        .Server
+                        .Resource
+                        .Name;
+                }
                 environment[$"{policyPrefix}__Audience"] = policy.Api.Audience;
                 environment[$"{policyPrefix}__Scopes"] = policy.Scopes.ToString();
                 AddList(environment, $"{policyPrefix}__UserClaims", policy.UserClaims);

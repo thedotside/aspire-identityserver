@@ -102,6 +102,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Scopes inconnus, champs absents et collisions de projections | ProjectionTests. |
 | Claims de profil, scopes d'identité, `offline_access` et délégation : règles d'enregistrement et contrat | [RegistrationRuleTests](../tests/Aspire.IdentityServer.UnitTests/RegistrationRuleTests.cs). |
 | Claims de profil multi-valeurs, refresh token renouvelant un jeton échangeable, délégation `FromMachineClient` acceptée par l'API et scope explicite exigé | [TokenExchangeTests](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs). |
+| Échange entre deux IdP : confiance explicite, sujet sans collision, API cible ; refus de la confiance inverse, d'un client source d'un autre IdP, d'un jeton machine, d'une audience ou d'un scope hors politique, d'un jeton modifié et d'une clé jamais publiée | TokenExchangeTests. |
 
 La validation locale consignée le **31 octobre 2026**, sur macOS arm64, a produit **162 tests réussis, zéro échec** : 96 unitaires et 66 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
 

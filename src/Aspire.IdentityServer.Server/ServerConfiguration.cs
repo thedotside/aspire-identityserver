@@ -31,6 +31,12 @@ internal sealed class ClientConfiguration
 internal sealed class TokenExchangeConfiguration
 {
     public string SubjectClientId { get; set; } = "";
+
+    /// <summary>The issuer of another provider whose source tokens this policy trusts; local when null.</summary>
+    public string? SubjectIssuer { get; set; }
+
+    /// <summary>The name of that provider, which qualifies local subjects and provenance.</summary>
+    public string? SubjectProvider { get; set; }
     public string Audience { get; set; } = "";
 
     /// <summary><c>FromSubjectToken</c> or <c>FromMachineClient</c>.</summary>

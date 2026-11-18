@@ -82,6 +82,13 @@ var deviceWithSecret = idpA.AddClientCredentialsClient("device-secret")
     .WithScopes("orders.read", "orders.write")
     .WithTokenExchangeFrom(browserA, ordersA);
 
+// Two providers: provider A's partner exchanges the access tokens of provider B's web users for
+// provider A's API. The trust is explicit and directional: provider B trusts nothing of A.
+idpA.AddClientCredentialsClient("partner")
+    .WithGeneratedClientSecret()
+    .WithScopes("orders.read")
+    .WithTokenExchangeFrom(browserB, ordersA, userClaims: ["name"]);
+
 // Delegation: this machine client chooses, for each user, API scopes that the user's token
 // does not carry, and forwards the selected profile claims.
 idpA.AddClientCredentialsClient("delegate")
