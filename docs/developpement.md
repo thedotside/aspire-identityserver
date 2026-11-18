@@ -143,6 +143,10 @@ Le workflow de CI ne publie pas sur NuGet. Un [workflow distinct](../.github/wor
 
 La présence d'une archive GitHub Actions ne signifie pas que le package existe sur nuget.org. Vérifie séparément le résultat du run et celui d'une publication.
 
+### Compatibilité hebdomadaire
+
+Le [workflow `compatibility`](../.github/workflows/compatibility.yml) tourne chaque lundi et à la demande, hors du budget des PR. Sur Windows, il construit la solution avec le MSBuild de Visual Studio, qui exécute sur .NET Framework la tâche inline et `ResolvePackageDependencies` du dossier du fournisseur, puis vérifie ce dossier pour les deux frameworks. Sur Linux, il installe la préversion du SDK suivant quand elle existe et construit l'AppHost d'exemple avec elle, pour voir venir un retrait de ces tâches avant que Renovate ne propose la nouvelle famille. Sans préversion publiée, le job l'indique et ne vérifie rien.
+
 ### Messages de commit
 
 Le job `commits` de la CI vérifie, sur chaque PR, les messages de ses commits et son titre avec [commitlint](https://commitlint.js.org) et `@commitlint/config-conventional` (OUT-08, TST-11). Les versions exactes sont dans [package.json](../package.json) et `package-lock.json`. Le titre de PR devenant le message d'une fusion en squash, autoriser seulement ce mode de fusion dans les paramètres du dépôt garantit un historique conforme. En local :

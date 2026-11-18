@@ -4,6 +4,7 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- A weekly `compatibility` workflow builds the solution with the MSBuild of Visual Studio and, once published, the next SDK preview, which the provider folder target of ADR 0001 depends on.
 
 ## 11.0.0 - 2026-11-12
 
