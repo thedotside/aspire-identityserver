@@ -5,6 +5,7 @@
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
 - The sign-in and sign-out pages behave like production providers: `login_hint` pre-fills the username, **Cancel** returns `access_denied` to the client, and a sign-out request carrying a valid `id_token_hint` ends the session without confirmation and returns to the client's `post_logout_redirect_uri`, after any notification frame has loaded. Other sign-out requests still ask for confirmation. The Runtime's Razor page models, public only because Razor Pages requires it, change their handler signatures; package validation records this intended break.
+- The provider pages share a modern layout with light and dark themes following the system. The sign-in page names the requesting application; the error page shows the OAuth error, its description, the client and the request id. Their stylesheet and icon are embedded in the Runtime and served from the provider's origin, as the pages' CSP refuses inline styles and scripts.
 
 ## 11.0.0 - 2026-11-12
 
