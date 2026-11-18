@@ -183,4 +183,18 @@ Les exemples exécutés dans ce dépôt utilisent le handler OIDC ASP.NET Core s
 
 Pour une architecture React + BFF, projette la clé ou le secret vers le BFF .NET, qui réalise le parcours confidentiel et les appels sortants. React utilise les routes et la session applicative du BFF.
 
-Pour une SPA sans BFF, enregistre un client public avec PKCE. La version actuelle n'offre pas de sample React, de configuration CORS ou de réécriture d'issuer adaptée à ce parcours dans des conteneurs. N'ajoute pas une clé privée au code JavaScript pour contourner cette limite.
+Pour une SPA sans BFF, enregistre un client public avec PKCE et autorise l'origine de l'application en CORS, par exemple avec l'hébergement JavaScript d'Aspire :
+
+```csharp
+var spa = builder.AddViteApp("spa", "../spa");
+idp.AddAuthorizationCodeClient("spa")
+    .WithScopes("openid", "profile", "orders.read")
+    .WithRedirectUri(spa.GetEndpoint("http"), "/callback")
+    .WithAllowedCorsOrigin(spa.GetEndpoint("http"));
+```
+
+Une SPA ne lit pas les variables d'environnement du serveur à l'exécution : sers-lui sa configuration (authority, client ID, scopes), comme le fait `/spa/config.json` dans [Sample.Web](../samples/Sample.Web/Program.cs). Sa page `/spa/`, sans dépendance, échange le code et appelle UserInfo depuis le navigateur ; une application réelle utilise une bibliothèque maintenue comme oidc-client-ts. Le CORS du fournisseur couvre la découverte, le JWKS, le token endpoint et UserInfo ; une API appelée par la SPA configure son propre CORS. Les consommateurs dans des conteneurs ne sont pas validés : l'issuer reste local. N'ajoute jamais une clé privée au code JavaScript.
+
+## Déconnexion back-channel
+
+`WithBackChannelLogoutUri(web.GetEndpoint("https"), "/backchannel-logout")` fait poster par le fournisseur un logout token signé, avec le `sid` de la session, quand l'utilisateur se déconnecte du fournisseur. L'application valide ce jeton (issuer, audience = son client ID, signature, événement `http://schemas.openid.net/event/backchannel-logout`) puis termine la session correspondante. [Sample.Web](../samples/Sample.Web/Program.cs) montre la validation et enregistre seulement le `sid` reçu ; ASP.NET Core ne fournit pas ce traitement. `WithFrontChannelLogoutUri` charge à la place une adresse de l'application dans une iframe de la page de déconnexion.

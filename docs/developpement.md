@@ -96,6 +96,9 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
+| SPA sans dépendance : code et UserInfo en CORS ; déconnexion back-channel avec `sid` | BrowserTests. |
+| Durée de vie d'un jeton par client, clé de signature générée par l'AppHost | ProtocolTests. |
+| Durées de vie, origines CORS, redirect URIs littérales, URI de déconnexion et clé de signature dans l'environnement du fournisseur | [ProviderOptionsTests](../tests/Aspire.IdentityServer.UnitTests/ProviderOptionsTests.cs). |
 | Sessions A/B coexistantes et indépendantes | BrowserTests. |
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
@@ -207,7 +210,7 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | Consommateur en attente | Vérifier que l'IDP est sain via `/health` et ses logs, sans y afficher les credentials. |
 | Publication Aspire refusée | Limite volontaire : déclarer le fournisseur dans `if (builder.ExecutionContext.IsRunMode)`, voir [le démarrage](demarrage.md#environnement-de-lapphost-et-publication). |
 | `runs only in an AppHost started in Development or Testing` | Lancer l'AppHost avec son profil, ou définir `DOTNET_ENVIRONMENT=Development`. |
-| Session perdue après redémarrage | État et Data Protection éphémères, comportement prévu. |
+| Session perdue après redémarrage | État et Data Protection éphémères, comportement prévu. La clé de signature, elle, est conservée pendant l'exécution de l'AppHost : les jetons émis restent valides. |
 
 ## Licence et contributions
 

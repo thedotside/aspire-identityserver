@@ -65,6 +65,12 @@ Chaque méthode retourne le même `IdentityClient`.
 | `WithPrivateKeyJwt(IResourceBuilder<ParameterResource> privateKey, string publicJwk)` | Paramètre secret différé et JWK RSA public >= 2048 bits avec `kid`. La paire doit correspondre ; pas de comparaison privée/publique pendant l'enregistrement. |
 | `WithRedirectUri(EndpointReference endpoint, string path)` | Ajoute un callback de connexion, client interactif uniquement. |
 | `WithPostLogoutRedirectUri(EndpointReference endpoint, string path)` | Ajoute un callback de déconnexion, client interactif uniquement. |
+| `WithRedirectUri(Uri redirectUri)`, `WithPostLogoutRedirectUri(Uri postLogoutRedirectUri)` | Depuis `11.1.0` : callback littéral pour un outil hors de l'AppHost (Postman, Bruno, CLI, application native) : adresse HTTPS, adresse HTTP loopback, ou schéma privé à nom de domaine inversé (`com.example.app:/callback`, RFC 8252). Fragment, informations d'utilisateur et autres schémas refusés. Comparaison exacte, port compris. |
+| `WithAllowedCorsOrigin(EndpointReference endpoint)` | Depuis `11.1.0` : autorise l'origine de cet endpoint à appeler en CORS la découverte, le JWKS, le token endpoint et UserInfo, comme une SPA. Client interactif uniquement. |
+| `WithAccessTokenLifetime(TimeSpan lifetime)` | Depuis `11.1.0` : durée des jetons d'accès du client, d'une seconde à un jour ; 300 secondes par défaut. |
+| `WithRefreshTokenLifetime(TimeSpan lifetime)` | Depuis `11.1.0` : durée absolue des refresh tokens d'un client interactif, d'une seconde à 30 jours (défaut de Duende). Exige `offline_access`, vérifié au démarrage. |
+| `WithBackChannelLogoutUri(EndpointReference endpoint, string path)` | Depuis `11.1.0` : le fournisseur poste un logout token signé (avec `sid`) à cette adresse quand la session se termine (OpenID Connect Back-Channel Logout 1.0). |
+| `WithFrontChannelLogoutUri(EndpointReference endpoint, string path)` | Depuis `11.1.0` : adresse chargée dans une iframe de la page de déconnexion du fournisseur (OpenID Connect Front-Channel Logout 1.0). |
 
 L'authentification commence à `none`. Les méthodes de secret la fixent à `client_secret_post`, celles de clé à `private_key_jwt`. Une méthode déjà définie ne peut pas être remplacée. Un client machine laissé à `none` est refusé.
 
@@ -158,17 +164,17 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Contrat de configuration | `IdentityServer__ContractVersion`, version `3`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `4` depuis `11.1.0`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |
-| Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
-| Refresh tokens | Émis aux clients interactifs qui déclarent et demandent `offline_access` ; réglages par défaut de Duende (réutilisation du handle, expiration absolue), en mémoire. |
+| Token d'accès | 300 secondes par défaut, `WithAccessTokenLifetime` par client ; Token Exchange borné par la validité restante du jeton source. |
+| Refresh tokens | Émis aux clients interactifs qui déclarent et demandent `offline_access` ; réglages par défaut de Duende (réutilisation du handle, expiration absolue de 30 jours, `WithRefreshTokenLifetime` par client), en mémoire. |
 | Assertions `private_key_jwt` | Seul `RS256` est annoncé (`token_endpoint_auth_signing_alg_values_supported`) et accepté. |
 | Claim `scope` des JWT | Une chaîne séparée par des espaces (RFC 9068, RFC 8693), comme chez Keycloak ; jamais un tableau JSON. |
 | Consentement | `RequireConsent = false`. |
 | Claims utilisateur dans l'ID token | `AlwaysIncludeUserClaimsInIdToken = true`, sous réserve des claims effectivement disponibles et scopes demandés. |
-| Gestion automatique des clés Duende | Désactivée ; clé de développement en mémoire, `persistKey: false`. |
+| Gestion automatique des clés Duende | Désactivée. Depuis `11.1.0`, l'AppHost génère une clé RSA 2048 par fournisseur, transmise comme paramètre secret `{fournisseur}-signing-key` : un fournisseur redémarré depuis le tableau de bord la retrouve, ses jetons précédents restent valides et les clés en cache des API continuent de correspondre. Nouvelle clé à chaque lancement de l'AppHost. |
 | Protection des données | Fournisseur éphémère, application `AspireIdentityServer:{name}`. |
 | Stockages | En mémoire. |
 | Health check | `/health`. |
@@ -179,7 +185,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |
 | Racine `/` | Redirection vers `/.well-known/openid-configuration`. |
 
-Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour la durée des refresh tokens, la fédération, CORS, la persistance ou la rotation durable de clés.
+Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour la fédération, la persistance ou la rotation durable de clés.
 
 ## Sources de référence
 

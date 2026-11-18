@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Text.Encodings.Web;
 using Aspire.IdentityServer.Client;
@@ -5,7 +6,10 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -92,6 +96,10 @@ foreach (var (name, section) in new[] { ("private-key", "PrivateKey"), ("secret"
         );
 }
 var app = builder.Build();
+
+// The single-page application of /spa/ is plain static files.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDefaultEndpoints();
@@ -114,6 +122,55 @@ app.MapGet(
     .RequireAuthorization(
         new AuthorizationPolicyBuilder("cookie-a").RequireAuthenticatedUser().Build()
     );
+app.MapGet(
+    "/spa/config.json",
+    (IConfiguration configuration) =>
+        new
+        {
+            authority = configuration["Spa:Authority"],
+            clientId = configuration["Spa:ClientId"],
+            scopes = configuration["Spa:Scopes"],
+        }
+);
+
+// OpenID Connect Back-Channel Logout: the provider posts a signed logout token when a session
+// ends. This sample only records its session ID; an application would end that session.
+var loggedOutSessions = new ConcurrentQueue<string>();
+app.MapPost(
+    "/backchannel-logout-a",
+    async (HttpContext context, IOptionsMonitor<OpenIdConnectOptions> oidc) =>
+    {
+        var form = await context.Request.ReadFormAsync(context.RequestAborted);
+        var options = oidc.Get("oidc-a");
+        var metadata = await options.ConfigurationManager!.GetConfigurationAsync(
+            context.RequestAborted
+        );
+        var result = await new JsonWebTokenHandler().ValidateTokenAsync(
+            form["logout_token"].ToString(),
+            new TokenValidationParameters
+            {
+                ValidIssuer = metadata.Issuer,
+                ValidAudience = options.ClientId,
+                IssuerSigningKeys = metadata.SigningKeys,
+            }
+        );
+        if (
+            !result.IsValid
+            || !result.Claims.TryGetValue("events", out var events)
+            || events
+                .ToString()
+                ?.Contains(
+                    "http://schemas.openid.net/event/backchannel-logout",
+                    StringComparison.Ordinal
+                ) != true
+            || !result.Claims.TryGetValue("sid", out var sid)
+        )
+            return Results.BadRequest();
+        loggedOutSessions.Enqueue(sid.ToString()!);
+        return Results.Ok();
+    }
+);
+app.MapGet("/backchannel-logouts", () => loggedOutSessions.ToArray());
 app.MapGet(
     "/",
     async (HttpContext context, IAntiforgery antiforgery) =>
@@ -166,6 +223,7 @@ foreach (var provider in new[] { "a", "b", "public" })
                 {
                     name = context.User.Identity?.Name,
                     subject = context.User.FindFirst("sub")?.Value,
+                    sid = context.User.FindFirst("sid")?.Value,
                 }
         )
         .RequireAuthorization(

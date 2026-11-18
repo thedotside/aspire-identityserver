@@ -4,6 +4,13 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- Clients gain `WithAccessTokenLifetime` and `WithRefreshTokenLifetime` (refresh lifetimes require `offline_access`), `WithAllowedCorsOrigin` for single-page applications, literal `WithRedirectUri(Uri)`/`WithPostLogoutRedirectUri(Uri)` for tools and native applications (HTTPS, HTTP loopback or RFC 8252 private-use schemes), and `WithBackChannelLogoutUri`/`WithFrontChannelLogoutUri`.
+- The AppHost generates each provider's signing key as the secret parameter `{provider}-signing-key`: a provider restarted from the dashboard keeps it, so earlier tokens stay valid and consumers' cached keys keep matching.
+- The web sample adds a dependency-free single-page application at `/spa/` (code redemption and UserInfo through CORS) and records back-channel logout tokens.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 4 (signing key, lifetimes, CORS origins, logout URIs): use the same package versions.
 
 ## 11.0.0 - 2026-11-12
 
