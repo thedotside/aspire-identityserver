@@ -150,7 +150,24 @@ Avec `PrivateKeyBase64`, le helper importe directement les composants validés d
 | `TokenExchangeHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. |
 | `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
 
-Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Une erreur du token endpoint lève `TokenEndpointException`. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+
+### HttpClient nommé et client credentials
+
+`IHttpClientBuilder.AddClientCredentialsHandler(IConfigurationSection clientConfiguration, Action<ClientCredentialsHandlerOptions>? configure = null)` ajoute un jeton `client_credentials` à chaque requête du client nommé. La section est bindée sur des options `IdentityClientOptions` nommées comme ce client. Le handler partage la découverte et le backchannel du handler d'échange : chaque tentative de demande de jeton porte une assertion neuve, y compris derrière les handlers de résilience.
+
+| Réglage | Comportement |
+| --- | --- |
+| `ClientCredentialsHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. Vides tous les deux : le paramètre est omis et le fournisseur accorde les scopes autorisés au client. |
+| `ClientCredentialsHandlerOptions.AllowedOrigins` | Origines (schéma, hôte, port) autorisées à recevoir le jeton. Vide par défaut : toute adresse HTTPS du client nommé. |
+| `ClientCredentialsHandlerOptions.BackchannelTimeout` | Budget de la découverte et de la demande de jeton, tentatives comprises ; 30 s par défaut. Dépassé : `TimeoutException`. |
+| `ClientCredentialsHandlerOptions.RefreshBeforeExpiration` | Délai avant l'expiration (`expires_in`) auquel un jeton en cache est renouvelé ; 30 s par défaut. |
+
+Le jeton est mis en cache par client nommé et par scope ; des requêtes simultanées partagent une seule demande. Une réponse 401 de la ressource l'écarte, par exemple après le redémarrage du fournisseur avec une nouvelle clé de signature : la requête suivante en obtient un autre, sans rejouer celle qui a échoué. Une adresse non HTTPS, une origine non autorisée ou un header Authorization préexistant provoquent un échec.
+
+`ClientCredentials.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string? scope = null, string? issuer = null)` crée la requête `client_credentials` seule, avec des credentials neufs, pour une bibliothèque qui envoie elle-même ses requêtes. La constante `ClientCredentials.GrantType` expose l'identifiant standard.
+
+`TokenEndpointException`, dérivée d'`HttpRequestException`, porte le statut HTTP, `Error` (par exemple `invalid_scope`, `invalid_target`) et `ErrorDescription` renvoyés par le token endpoint, pour les deux handlers.
 
 ## Réglages fixes du runtime
 

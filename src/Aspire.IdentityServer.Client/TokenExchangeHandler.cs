@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 
@@ -20,34 +19,7 @@ internal sealed class TokenExchangeHandler(
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (request.Headers.Authorization is not null)
-            throw new InvalidOperationException(
-                "The exchange handler requires an outgoing request without an Authorization header."
-            );
-        if (
-            request.RequestUri is not { IsAbsoluteUri: true } resource
-            || !string.Equals(resource.Scheme, "https", StringComparison.Ordinal)
-            || !string.IsNullOrEmpty(resource.UserInfo)
-        )
-            throw new InvalidOperationException(
-                "Token exchange requires an HTTPS resource address."
-            );
-        // The exchanged user token only travels to the declared API origins.
-        if (
-            settings.AllowedOrigins.Count > 0
-            && !settings.AllowedOrigins.Any(o =>
-                Uri.Compare(
-                    o,
-                    resource,
-                    UriComponents.SchemeAndServer,
-                    UriFormat.Unescaped,
-                    StringComparison.OrdinalIgnoreCase
-                ) == 0
-            )
-        )
-            throw new InvalidOperationException(
-                "The resource address is not one of the allowed origins of this exchange handler."
-            );
+        TokenRequests.EnsureSendable(request, settings.AllowedOrigins, "token-exchange");
         string? subject;
         if (settings.SubjectTokenProvider is { } provider)
             subject = await provider(services, request, cancellationToken).ConfigureAwait(false);
@@ -59,16 +31,7 @@ internal sealed class TokenExchangeHandler(
             );
 
         var client = clientOptions.Get(clientName);
-        if (
-            !Uri.TryCreate(client.Authority, UriKind.Absolute, out var authority)
-            || !string.Equals(authority.Scheme, "https", StringComparison.Ordinal)
-            || !string.IsNullOrEmpty(authority.UserInfo)
-            || !string.IsNullOrEmpty(authority.Query)
-            || !string.IsNullOrEmpty(authority.Fragment)
-        )
-            throw new InvalidOperationException(
-                "Configure an absolute HTTPS identity-provider authority."
-            );
+        TokenRequests.EnsureAuthority(client);
         var accessToken = await ExchangeAsync(client, subject, cancellationToken)
             .ConfigureAwait(false);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
@@ -111,9 +74,8 @@ internal sealed class TokenExchangeHandler(
             using var exchangeResponse = await backchannel
                 .SendAsync(exchangeRequest, timeout.Token)
                 .ConfigureAwait(false);
-            exchangeResponse.EnsureSuccessStatusCode();
-            var payload = await exchangeResponse
-                .Content.ReadFromJsonAsync<JsonElement>(timeout.Token)
+            var payload = await TokenRequests
+                .ReadAsync(exchangeResponse, timeout.Token)
                 .ConfigureAwait(false);
             if (
                 !payload.TryGetProperty("access_token", out var accessToken)

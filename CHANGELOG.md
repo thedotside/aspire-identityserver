@@ -4,6 +4,8 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- Client: `AddClientCredentialsHandler` sends client-credentials tokens on a named `HttpClient`, cached per client and scope until shortly before they expire, shared by concurrent requests and dropped when a resource answers 401. Each token request attempt carries a new assertion, so resilience handlers can stay in place. `ClientCredentials.CreateRequest` builds the request alone for other HTTP stacks; Sample.Api calls a partner API with the handler.
+- Client: token endpoint errors of both handlers raise `TokenEndpointException`, an `HttpRequestException` carrying the OAuth `error` and `error_description` instead of a bare status code.
 
 ## 11.0.0 - 2026-11-12
 
