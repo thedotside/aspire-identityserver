@@ -1,4 +1,5 @@
 using Duende.IdentityServer;
+using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Services;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication;
@@ -19,12 +20,29 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
     [BindProperty]
     public string Password { get; set; } = "";
 
-    public IActionResult OnGet() => ValidReturnUrl() ? Page() : BadRequest();
+    /// <summary>The submit button used: <c>login</c> or <c>cancel</c>.</summary>
+    [BindProperty]
+    public string? Button { get; set; }
+
+    public async Task<IActionResult> OnGetAsync()
+    {
+        if (!ValidReturnUrl())
+            return BadRequest();
+        // Like production providers, login_hint pre-fills the account; the password stays required.
+        var context = await interaction.GetAuthorizationContextAsync(
+            ReturnUrl,
+            HttpContext.RequestAborted
+        );
+        Username = context?.LoginHint ?? "";
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostAsync()
     {
         if (!ValidReturnUrl())
             return BadRequest();
+        if (string.Equals(Button, "cancel", StringComparison.Ordinal))
+            return await CancelAsync();
         if (!ModelState.IsValid || !users.ValidateCredentials(Username, Password))
         {
             ModelState.AddModelError("", "Invalid username or password.");
@@ -40,6 +58,23 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
                     )?.Value
                     ?? user.Username,
             }
+        );
+        return Redirect(ReturnUrl);
+    }
+
+    /// <summary>The client receives <c>access_denied</c>, the standard answer when a user declines.</summary>
+    private async Task<IActionResult> CancelAsync()
+    {
+        var context = await interaction.GetAuthorizationContextAsync(
+            ReturnUrl,
+            HttpContext.RequestAborted
+        );
+        if (context is null)
+            return Redirect("/");
+        await interaction.DenyAuthorizationAsync(
+            context,
+            InteractionError.AccessDenied,
+            HttpContext.RequestAborted
         );
         return Redirect(ReturnUrl);
     }

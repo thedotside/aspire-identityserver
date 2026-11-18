@@ -251,6 +251,14 @@ internal static class ServerProgram
         app.UseIdentityServer();
         app.UseAuthorization();
         app.MapRazorPages();
+        app.MapGet(
+            "/Account/signed-out.js",
+            () =>
+                Results.Text(
+                    Pages.Account.LogoutModel.RedirectScript,
+                    "text/javascript; charset=utf-8"
+                )
+        );
         app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         app.MapGet("/", () => Results.Redirect("/.well-known/openid-configuration"));
         await app.StartAsync(CancellationToken.None);
