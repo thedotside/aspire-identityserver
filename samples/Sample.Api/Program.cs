@@ -1,23 +1,15 @@
 using System.Text.Json;
 using Aspire.IdentityServer.Client;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 var auth = builder.Services.AddAuthentication();
 foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
-{
-    auth.AddJwtBearer(
+    auth.AddIdentityServerJwtBearer(
         scheme,
-        options =>
-        {
-            options.Authority = builder.Configuration[$"Authentication:{section}:Authority"];
-            options.Audience = builder.Configuration[$"Authentication:{section}:Audience"];
-            options.MapInboundClaims = false;
-        }
+        builder.Configuration.GetSection($"Authentication:{section}")
     );
-}
 builder.Services.AddAuthorization();
 
 // A token request carries a one-time assertion: a retried copy would be refused as a replay.
@@ -48,9 +40,7 @@ foreach (var scheme in new[] { "a", "b" })
         .RequireAuthorization(
             new AuthorizationPolicyBuilder(scheme)
                 .RequireAuthenticatedUser()
-                .RequireAssertion(ctx =>
-                    ctx.User.FindAll("scope").Any(c => c.Value.Split(' ').Contains("orders.read"))
-                )
+                .RequireScope("orders.read")
                 .Build()
         );
 }

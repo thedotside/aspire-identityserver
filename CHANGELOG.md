@@ -5,6 +5,7 @@
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
 - New optional package `TheDotSide.Aspire.IdentityServer.Testing`: `GetUserTokensAsync` signs a test user in through the provider's authorization code + PKCE flow and sign-in form without a browser, `GetClientCredentialsTokensAsync` requests machine tokens, and `GetIdentityClientOptionsAsync` resolves a client's settings and credentials, on a started `DistributedApplication`. Publishing pushes it after Hosting and Client; the package smoke test uses it from an isolated test project.
+- New optional package `TheDotSide.Aspire.IdentityServer.Authentication`: `AddIdentityServerJwtBearer` and `AddIdentityServerOpenIdConnect` configure ASP.NET Core from the projected sections, with JWT claim names, PKCE, and a fresh `private_key_jwt` assertion for the code redemption and pushed authorization requests (PAR), so PAR no longer needs to be disabled. `RequireScope` matches the space-delimited `scope` claim. The samples use them, and the web sample adds a `par` scheme that requires PAR with the private-key client.
 - Hosting exposes `IdentityServerResource.RegisteredUsers`, `IdentityClient.GrantType` and `IdentityClient.RegisteredRedirectUris`.
 
 ## 11.0.0 - 2026-11-12

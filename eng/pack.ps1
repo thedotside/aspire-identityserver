@@ -4,13 +4,13 @@ $repo = Split-Path $PSScriptRoot -Parent
 if (!$Version) { $Version = ([xml](Get-Content (Join-Path $repo 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version }
 Push-Location $repo
 try {
-    foreach ($project in @('Aspire.IdentityServer.Server', 'Aspire.IdentityServer.Hosting', 'Aspire.IdentityServer.Client', 'Aspire.IdentityServer.Testing')) {
+    foreach ($project in @('Aspire.IdentityServer.Server', 'Aspire.IdentityServer.Hosting', 'Aspire.IdentityServer.Client', 'Aspire.IdentityServer.Testing', 'Aspire.IdentityServer.Authentication')) {
         dotnet pack "src/$project" -c Release -o artifacts/packages "/p:Version=$Version"
         if ($LASTEXITCODE -ne 0) { throw "Packing $project failed." }
     }
     # Only our assemblies belong in these archives; dependencies remain NuGet references.
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    foreach ($name in @('TheDotSide.Aspire.IdentityServer.Runtime', 'TheDotSide.Aspire.IdentityServer.Hosting', 'TheDotSide.Aspire.IdentityServer.Client', 'TheDotSide.Aspire.IdentityServer.Testing')) {
+    foreach ($name in @('TheDotSide.Aspire.IdentityServer.Runtime', 'TheDotSide.Aspire.IdentityServer.Hosting', 'TheDotSide.Aspire.IdentityServer.Client', 'TheDotSide.Aspire.IdentityServer.Testing', 'TheDotSide.Aspire.IdentityServer.Authentication')) {
         $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $repo "artifacts/packages/$name.$Version.nupkg"))
         try {
             foreach ($entry in $archive.Entries) {

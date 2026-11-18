@@ -62,7 +62,10 @@ var browserA = idpA.AddAuthorizationCodeClient("web")
         "orders.read"
     )
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-a")
-    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a");
+    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a")
+    // The "par" scheme of the web sample: the same client, through pushed authorization requests.
+    .WithRedirectUri(web.GetEndpoint("https"), "/signin-par")
+    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-par");
 var browserB = idpB.AddAuthorizationCodeClient("web")
     .WithGeneratedClientSecret()
     .RequirePkce()

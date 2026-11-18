@@ -155,6 +155,16 @@ Avec `PrivateKeyBase64`, le helper importe directement les composants validés d
 
 Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
 
+## Package Authentication
+
+Extensions ASP.NET Core du package facultatif `TheDotSide.Aspire.IdentityServer.Authentication`, dans l'espace de noms `Microsoft.Extensions.DependencyInjection` (et `Microsoft.AspNetCore.Authorization` pour `RequireScope`). Voir [l'intégration](integration.md).
+
+| Membre | Comportement |
+| --- | --- |
+| `AuthenticationBuilder.AddIdentityServerJwtBearer(string authenticationScheme, IConfigurationSection apiConfiguration, Action<JwtBearerOptions>? configure = null)` | Lit `Authority` et `Audience` projetés par `WithIdentityApiResource` ; `MapInboundClaims = false`, claims `name` et `role`. Valeur absente : `InvalidOperationException` qui nomme la clé. `configure` s'applique ensuite. |
+| `AuthenticationBuilder.AddIdentityServerOpenIdConnect(string authenticationScheme, IConfigurationSection clientConfiguration, Action<OpenIdConnectOptions>? configure = null)` | Lit la section projetée par `WithIdentityClient` : authority, client ID, scopes, secret pour `client_secret_post` ; `code`, PKCE, `SaveTokens`, noms de claims JWT. Pour `private_key_jwt`, signe une assertion neuve (audience = issuer découvert) dans `OnAuthorizationCodeReceived` et `OnPushAuthorization`, après les événements de `configure`. |
+| `AuthorizationPolicyBuilder.RequireScope(params string[] scopes)` | Exige au moins un des scopes dans le claim `scope` séparé par des espaces. |
+
 ## Package Testing
 
 Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Testing`, pour une application démarrée. Voir [les tests d'intégration](tests.md).

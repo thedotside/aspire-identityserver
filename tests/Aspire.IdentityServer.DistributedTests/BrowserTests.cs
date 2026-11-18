@@ -64,6 +64,26 @@ public sealed class BrowserTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task Pushed_authorization_requests_carry_the_private_key_client_authentication()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync($"{origin}/login/par");
+        // The browser only carries a request_uri: the application pushed the parameters,
+        // authenticated with a private_key_jwt assertion that the provider accepted.
+        var returnUrl = QueryHelpers.ParseQuery(new Uri(page.Url).Query)["ReturnUrl"].ToString();
+        var authorize = QueryHelpers.ParseQuery(new Uri(new Uri(origin), returnUrl).Query);
+        await Assert
+            .That(authorize["request_uri"].ToString())
+            .StartsWith("urn:ietf:params:oauth:request_uri:", StringComparison.Ordinal);
+        await Assert.That(authorize.ContainsKey("code_challenge")).IsFalse();
+        await Login(page);
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        await Assert.That(await page.Locator("#user-par").InnerTextAsync()).IsEqualTo("Alice A");
+    }
+
+    [Test]
     public async Task A_pooled_named_client_handler_keeps_concurrent_browser_users_isolated()
     {
         await using var aliceSession = await fixture.NewBrowserSessionAsync();
