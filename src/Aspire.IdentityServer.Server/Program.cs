@@ -251,6 +251,20 @@ internal static class ServerProgram
         app.UseIdentityServer();
         app.UseAuthorization();
         app.MapRazorPages();
+        app.MapGet(
+            "/Account/signed-out.js",
+            () =>
+                Results.Text(
+                    Pages.Account.LogoutModel.RedirectScript,
+                    "text/javascript; charset=utf-8"
+                )
+        );
+        // Read at startup, so that a runtime built without its assets fails here. nosniff
+        // applies: each asset needs its exact media type.
+        var stylesheet = ProviderAssets.Read("site.css");
+        var icon = ProviderAssets.Read("icon.svg");
+        app.MapGet("/Account/site.css", () => Results.Text(stylesheet, "text/css; charset=utf-8"));
+        app.MapGet("/Account/icon.svg", () => Results.Text(icon, "image/svg+xml; charset=utf-8"));
         app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         app.MapGet("/", () => Results.Redirect("/.well-known/openid-configuration"));
         await app.StartAsync(CancellationToken.None);

@@ -153,7 +153,24 @@ Avec `PrivateKeyBase64`, le helper importe directement les composants validés d
 | `TokenExchangeHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. |
 | `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
 
-Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Une erreur du token endpoint lève `TokenEndpointException`. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+
+### HttpClient nommé et client credentials
+
+`IHttpClientBuilder.AddClientCredentialsHandler(IConfigurationSection clientConfiguration, Action<ClientCredentialsHandlerOptions>? configure = null)` ajoute un jeton `client_credentials` à chaque requête du client nommé. La section est bindée sur des options `IdentityClientOptions` nommées comme ce client. Le handler partage la découverte et le backchannel du handler d'échange : chaque tentative de demande de jeton porte une assertion neuve, y compris derrière les handlers de résilience.
+
+| Réglage | Comportement |
+| --- | --- |
+| `ClientCredentialsHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. Vides tous les deux : le paramètre est omis et le fournisseur accorde les scopes autorisés au client. |
+| `ClientCredentialsHandlerOptions.AllowedOrigins` | Origines (schéma, hôte, port) autorisées à recevoir le jeton. Vide par défaut : toute adresse HTTPS du client nommé. |
+| `ClientCredentialsHandlerOptions.BackchannelTimeout` | Budget de la découverte et de la demande de jeton, tentatives comprises ; 30 s par défaut. Dépassé : `TimeoutException`. |
+| `ClientCredentialsHandlerOptions.RefreshBeforeExpiration` | Délai avant l'expiration (`expires_in`) auquel un jeton en cache est renouvelé ; 30 s par défaut. |
+
+Le jeton est mis en cache par client nommé et par scope ; des requêtes simultanées partagent une seule demande. Une réponse 401 de la ressource l'écarte, par exemple après le redémarrage du fournisseur avec une nouvelle clé de signature : la requête suivante en obtient un autre, sans rejouer celle qui a échoué. Une adresse non HTTPS, une origine non autorisée ou un header Authorization préexistant provoquent un échec.
+
+`ClientCredentials.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string? scope = null, string? issuer = null)` crée la requête `client_credentials` seule, avec des credentials neufs, pour une bibliothèque qui envoie elle-même ses requêtes. La constante `ClientCredentials.GrantType` expose l'identifiant standard.
+
+`TokenEndpointException`, dérivée d'`HttpRequestException`, porte le statut HTTP, `Error` (par exemple `invalid_scope`, `invalid_target`) et `ErrorDescription` renvoyés par le token endpoint, pour les deux handlers.
 
 ## Package Testing
 
@@ -190,7 +207,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 | Health check | `/health`. |
 | Tableau de bord | Icône de fournisseur et lien « OpenID discovery ». Les secrets, clés et mots de passe générés s'appellent `{fournisseur}-{client ou utilisateur}-{secret, key ou password}` et apparaissent sous leur fournisseur. Un nom invalide ou déjà pris retombe sur un nom indexé. Ils sont régénérés à chaque lancement : aucune persistance n'est proposée. |
 | Télémétrie | `AddIdentityServer()` appelle `WithOtlpExporter()`. Quand l'AppHost fournit un point OTLP, comme avec le tableau de bord Aspire, le fournisseur exporte ses traces (ASP.NET Core, HttpClient et sources Duende), ses métriques et ses journaux. Sans point OTLP, rien n'est configuré. Les valeurs de chaîne de requête restent masquées par l'instrumentation. |
-| Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. |
+| Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. `login_hint` pré-remplit l'utilisateur ; le mot de passe reste exigé. **Cancel** renvoie l'erreur standard `access_denied` au client. Une déconnexion qui présente un `id_token_hint` valide se fait sans confirmation et revient à `post_logout_redirect_uri`, après le chargement de l'éventuelle iframe de notification ; toute autre demande de déconnexion est confirmée par un POST. Les pages partagent une mise en page en thème clair ou sombre, selon le système. La connexion nomme l'application cliente ; la page d'erreur affiche l'erreur OAuth, sa description, le client et l'identifiant de requête. La feuille de style et l'icône, embarquées dans le runtime, sont servies par le fournisseur (`/Account/site.css`, `/Account/icon.svg`) : la CSP des pages refuse tout style ou script en ligne. |
 | Cookies | Session `aspire-idp-{name}` et `aspire-idp-{name}.session` : `Secure`, `SameSite=Lax`. Antiforgery `aspire-idp-{name}.csrf` : `Secure`. Les cookies ne sont pas isolés par port : ils partent vers les autres applications `https://localhost` du poste. `Lax` suppose des clients sur `localhost` : un client servi sous un autre nom, comme `*.dev.localhost`, n'est pas « same-site », et la surveillance de session par iframe ou `prompt=none` ne recevraient pas la session. |
 | En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |
 | Racine `/` | Redirection vers `/.well-known/openid-configuration`. |
