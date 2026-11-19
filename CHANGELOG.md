@@ -4,6 +4,8 @@
 
 - Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
+- `WithIdentityClient(client, section)` chooses the projected fields when the consumer starts: credentials and token-exchange policies declared after the projection are no longer silently left out.
+- Renovate keeps the SDK 10 installed by the pipelines and the `net10.0` Microsoft.Extensions references in their family, and asks for approval before raising OpenTelemetry. Those versions reach every AppHost: Aspire.Hosting 13.6.5 requires 1.17.0, and the provider currently resolves 1.20.1.
 - The sign-in and sign-out pages behave like production providers: `login_hint` pre-fills the username, **Cancel** returns `access_denied` to the client, and a sign-out request carrying a valid `id_token_hint` ends the session without confirmation and returns to the client's `post_logout_redirect_uri`, after any notification frame has loaded. Other sign-out requests still ask for confirmation. The Runtime's Razor page models, public only because Razor Pages requires it, change their handler signatures; package validation records this intended break.
 
 ## 11.0.0 - 2026-11-12
