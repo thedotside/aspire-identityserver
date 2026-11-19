@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <!-- A new package: validated across frameworks until its first release becomes the baseline. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>TheDotSide.Aspire.IdentityServer.Authentication</PackageId>
+    <Description>ASP.NET Core authentication from the configurations that TheDotSide.Aspire.IdentityServer projects: JWT bearer validation of an API audience, OpenID Connect sign-in with PKCE and a client secret or private_key_jwt (code redemption and pushed authorization requests), and a scope policy.</Description>
+    <PackageTags>aspire;openid-connect;oauth;authentication;jwt</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
+    <ProjectReference Include="../Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

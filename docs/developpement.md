@@ -93,18 +93,30 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Issuers et clés de signature différents entre IDP | [ProtocolTests](../tests/Aspire.IdentityServer.DistributedTests/ProtocolTests.cs). |
 | Tokens machine, audiences et scopes validés par l'API | ProtocolTests. |
 | Plusieurs composants OAuth sortants dans une API | ProtocolTests. |
+| Handler `client_credentials` contre le vrai fournisseur (clé et secret), jeton réutilisé, appel partenaire de Sample.Api | ProtocolTests. |
+| Cache, demandes simultanées, assertion neuve par tentative, 401, erreurs OAuth et origines du handler `client_credentials` | [ClientCredentialsHandlerTests](../tests/Aspire.IdentityServer.UnitTests/ClientCredentialsHandlerTests.cs). |
 | Commandes du tableau de bord : jeton d'un client machine (clé, secret) accepté par l'API, refus d'un client interactif, enregistrements sans secret | [DashboardCommandTests](../tests/Aspire.IdentityServer.DistributedTests/DashboardCommandTests.cs). |
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
+| Déconnexion directe avec `id_token_hint`, confirmation sans ce jeton, `login_hint` et annulation `access_denied` | BrowserTests. |
+| PAR authentifié par `private_key_jwt` avec le handler OIDC (schéma `par` du sample web) | BrowserTests. |
+| Options JWT bearer et OIDC tirées des sections projetées, assertions PAR et échange du code, `RequireScope` | [AuthenticationTests](../tests/Aspire.IdentityServer.UnitTests/AuthenticationTests.cs). |
+| Package Testing : jetons utilisateur par le vrai parcours code + PKCE sans navigateur (clé, secret, client public), jetons machine, options résolues et refus des noms inconnus | [TestingHelpersTests](../tests/Aspire.IdentityServer.DistributedTests/TestingHelpersTests.cs). |
+| SPA sans dépendance : code et UserInfo en CORS ; déconnexion back-channel avec `sid` | BrowserTests. |
+| Durée de vie d'un jeton par client, clé de signature générée par l'AppHost | ProtocolTests. |
+| Durées de vie, origines CORS, redirect URIs littérales, URI de déconnexion et clé de signature dans l'environnement du fournisseur | [ProviderOptionsTests](../tests/Aspire.IdentityServer.UnitTests/ProviderOptionsTests.cs). |
 | Sessions A/B coexistantes et indépendantes | BrowserTests. |
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
 | Scopes inconnus, champs absents et collisions de projections | ProjectionTests. |
 | Claims de profil, scopes d'identité, `offline_access` et délégation : règles d'enregistrement et contrat | [RegistrationRuleTests](../tests/Aspire.IdentityServer.UnitTests/RegistrationRuleTests.cs). |
 | Claims de profil multi-valeurs, refresh token renouvelant un jeton échangeable, délégation `FromMachineClient` acceptée par l'API et scope explicite exigé | [TokenExchangeTests](../tests/Aspire.IdentityServer.DistributedTests/TokenExchangeTests.cs). |
+| Scopes d'identité sélectionnant les claims de l'access token de connexion | TokenExchangeTests. |
+| `max_age` et `auth_time` signé avec le handler OIDC de .NET 10 et .NET 11 | BrowserTests. |
+| Champs de la projection standard choisis au démarrage, quel que soit l'ordre de déclaration | ProjectionTests. |
 
-La validation locale consignée le **31 octobre 2026**, sur macOS arm64, a produit **162 tests réussis, zéro échec** : 96 unitaires et 66 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
+La validation locale consignée le **18 novembre 2026**, sur macOS arm64 avec les SDK 11.0.100 et 10.0.404, a produit **408 tests réussis, zéro échec** sur `net10.0` et `net11.0` : 242 unitaires et 166 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs pour chaque framework. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
 
 ## Construire et vérifier les packages
 
@@ -113,7 +125,7 @@ pwsh eng/pack.ps1
 pwsh eng/package-smoke.ps1
 ```
 
-`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Après chaque publication, la version de référence passe à la version publiée.
+`pack.ps1` construit en Release les cinq archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting, Client, Authentication et Testing embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Le package Runtime en déclare de nouveau dans [CompatibilitySuppressions.xml](../src/Aspire.IdentityServer.Server/CompatibilitySuppressions.xml) : Razor Pages impose des modèles de pages publics, qui ne constituent pas une API pour les consommateurs, et `11.1.0` a rendu asynchrones les handlers de connexion et de déconnexion. Après chaque publication, la version de référence passe à la version publiée.
 
 Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel outil à inscrire d'abord dans les ADR selon OUT-26) et une attestation de provenance, que GitHub n'émet pas pour un dépôt privé du plan gratuit. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 
@@ -121,7 +133,7 @@ Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel 
 
 ```text
 PACKAGE_SMOKE_OK: packaged provider authenticated generated, imported and deferred Base64 JWK clients plus legacy PEM.
-PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder.
+PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder, obtained client and user tokens with the Testing package and validated them with the Authentication package.
 ```
 
 Sans `-Version`, les deux scripts prennent la version de `Directory.Build.props`. Ils acceptent le même paramètre `-Version`. Pour vérifier une version différente, utilise la même valeur dans les deux commandes. Ne remplace pas une version déjà publiée : une version NuGet publiée est destinée à rester immuable.
@@ -161,9 +173,9 @@ npx commitlint --from origin/main --to HEAD
 
 Le [workflow Renovate](../.github/workflows/renovate.yml) exécute l'action [pipelines/renovate/action.yml](../pipelines/renovate/action.yml) chaque lundi à vendredi à 05:17 UTC. Il peut aussi être lancé depuis l'onglet Actions et tourne lorsqu'une modification de sa configuration arrive sur `main`. Il reprend également après la réussite du workflow `build-test-pack` d'une PR issue d'une branche `renovate/` du même dépôt. Il exécute toujours le code de `main`.
 
-La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés et leurs fichiers de verrouillage, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub épinglées, y compris celles de `pipelines/`. Les scripts lisent les versions de packages dans [Directory.Build.props](../Directory.Build.props) et [Directory.Packages.props](../Directory.Packages.props). Le SDK du dépôt reste sur la famille 11 ; les packages ASP.NET Core sont maintenus séparément dans les familles 10 et 11 selon le framework cible.
+La politique figure dans [renovate.json](../renovate.json). Elle couvre les packages NuGet centralisés et leurs fichiers de verrouillage, les SDK MSBuild, `global.json`, les outils .NET et les actions GitHub épinglées, y compris celles de `pipelines/`. Les scripts lisent les versions de packages dans [Directory.Build.props](../Directory.Build.props) et [Directory.Packages.props](../Directory.Packages.props). Le SDK de `global.json` reste sur la famille 11, et le SDK 10 que les pipelines installent pour les tests et consommateurs `net10.0` reste sur la famille 10. Les packages ASP.NET Core et les références `Microsoft.Extensions` conditionnées par framework sont maintenus séparément dans les familles 10 et 11 selon le framework cible.
 
-Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures et les mises à jour du plancher `Aspire.Hosting` nécessitent une approbation dans son issue « Dependency Dashboard ». Les PR déclenchent la CI habituelle et sont fusionnées automatiquement par Renovate une fois leur branche à jour et tous les contrôles réussis (`automerge: true`, `platformAutomerge: false`, `ignoreTests: false`). Sans résultat de CI, ou si des contrôles sont en attente ou en échec, Renovate attend. La fusion automatique native de GitHub reste désactivée : sur ce dépôt privé GitHub Free, c'est Renovate qui vérifie les contrôles. Chaque passage fusionne au plus une PR ; les autres sont rebasées et retestées avant le passage suivant.
+Renovate ouvre au maximum trois PR simultanées et deux nouvelles PR par heure. Les versions majeures, les mises à jour du plancher `Aspire.Hosting` et celles d'OpenTelemetry nécessitent une approbation dans son issue « Dependency Dashboard ». Les versions OpenTelemetry du fournisseur entrent dans chaque AppHost consommateur : `Aspire.Hosting` 13.6.5 n'en exige que la 1.17.0, et une version supérieure relève celle que l'AppHost résout. Les PR déclenchent la CI habituelle et sont fusionnées automatiquement par Renovate une fois leur branche à jour et tous les contrôles réussis (`automerge: true`, `platformAutomerge: false`, `ignoreTests: false`). Sans résultat de CI, ou si des contrôles sont en attente ou en échec, Renovate attend. La fusion automatique native de GitHub reste désactivée : sur ce dépôt privé GitHub Free, c'est Renovate qui vérifie les contrôles. Chaque passage fusionne au plus une PR ; les autres sont rebasées et retestées avant le passage suivant.
 
 L'exécution utilise Node.js 26 et le SDK .NET de `global.json` sur le runner GitHub Ubuntu, sans Docker. La version de Renovate est fixée dans l'action et est elle-même suivie pour les mises à jour.
 
@@ -197,7 +209,7 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | `needs an openid scope and a redirect URI` | Compléter le client interactif et vérifier le callback de son handler. |
 | `Public client '…' must use PKCE` | Garder PKCE activé côté enregistrement et côté consommateur. |
 | `Client authentication is already configured` | Choisir une seule méthode de credentials par client, ou créer un autre client. |
-| `has no PrivateKeyPem to project` | La projection demande une clé absente ; vérifier la méthode et l'ordre de déclaration. |
+| `has no PrivateKeyPem to project` | Une projection explicite demande une clé que le client n'a pas ; vérifier sa méthode d'authentification. |
 | `Configuration key ... is already assigned` | Donner des sections distinctes aux projections de clients ; voir [les collisions](projections.md). |
 | `invalid_client` avec clé privée | Vérifier la paire privée/JWK, le `kid`, le client ID et l'audience d'assertion, qui doit être l'issuer ; créer une assertion neuve. |
 | Assertion acceptée une fois puis refusée | Ne pas réutiliser l'assertion ; le `jti` protège contre le rejeu. |
@@ -208,7 +220,7 @@ Cette checklist n'affirme pas qu'une publication a été effectuée. Les identit
 | Consommateur en attente | Vérifier que l'IDP est sain via `/health` et ses logs, sans y afficher les credentials. |
 | Publication Aspire refusée | Limite volontaire : déclarer le fournisseur dans `if (builder.ExecutionContext.IsRunMode)`, voir [le démarrage](demarrage.md#environnement-de-lapphost-et-publication). |
 | `runs only in an AppHost started in Development or Testing` | Lancer l'AppHost avec son profil, ou définir `DOTNET_ENVIRONMENT=Development`. |
-| Session perdue après redémarrage | État et Data Protection éphémères, comportement prévu. |
+| Session perdue après redémarrage | État et Data Protection éphémères, comportement prévu. La clé de signature, elle, est conservée pendant l'exécution de l'AppHost : les jetons émis restent valides. |
 
 ## Licence et contributions
 

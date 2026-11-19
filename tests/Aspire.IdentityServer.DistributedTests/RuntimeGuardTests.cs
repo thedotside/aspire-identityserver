@@ -188,6 +188,13 @@ public sealed class RuntimeGuardTests
         }
     }
 
+    /// <summary>The key that an AppHost would generate, as Base64(UTF8(private JWK JSON)).</summary>
+    private static readonly Lazy<string> GuardSigningKey = new(() =>
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        return TestKeys.Encode(rsa, "guard-key");
+    });
+
     private static Dictionary<string, string?> Environment(int port, TemporaryCertificate cert) =>
         new(StringComparer.Ordinal)
         {
@@ -195,7 +202,8 @@ public sealed class RuntimeGuardTests
             ["ASPNETCORE_HTTPS_PORTS"] = port.ToString(CultureInfo.InvariantCulture),
             ["Kestrel__Certificates__Default__Path"] = cert.Path,
             ["Kestrel__Certificates__Default__Password"] = cert.Password,
-            ["IdentityServer__ContractVersion"] = "3",
+            ["IdentityServer__ContractVersion"] = "4",
+            ["IdentityServer__SigningKey"] = GuardSigningKey.Value,
             ["IdentityServer__Name"] = "guard",
             ["IdentityServer__Issuer"] = $"https://localhost:{port}",
         };

@@ -80,6 +80,19 @@ public static class IdentityServerExtensions
             });
 #pragma warning restore ASPIRECERTIFICATES001
         server.WithEnvironment("IdentityServer__Issuer", server.GetEndpoint("https"));
+        // The AppHost owns the signing key: a provider restarted from the dashboard keeps it, so
+        // tokens issued before stay valid and consumers' cached keys keep matching.
+        var signingKey = GenerateSigningKey();
+        server.WithEnvironment(
+            "IdentityServer__SigningKey",
+            builder
+                .AddParameter(
+                    ParameterName(server, "signing", "key", $"{name}-signing-key"),
+                    () => signingKey,
+                    secret: true
+                )
+                .WithParentRelationship(server)
+        );
         server.WithEnvironment(context =>
             WriteConfiguration(server.Resource, context.EnvironmentVariables)
         );
@@ -93,6 +106,28 @@ public static class IdentityServerExtensions
             }
         );
         return server;
+    }
+
+    /// <summary>An RSA 2048 signing key as Base64(UTF8(private JWK JSON)), its kid derived from the public key.</summary>
+    private static string GenerateSigningKey()
+    {
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var keyId = Convert
+            .ToHexString(
+                System.Security.Cryptography.SHA256.HashData(rsa.ExportSubjectPublicKeyInfo())
+            )
+            .ToLowerInvariant();
+        var parameters = rsa.ExportParameters(true);
+        try
+        {
+            return Convert.ToBase64String(
+                System.Text.Encoding.UTF8.GetBytes(RsaJwk.Serialize(parameters, keyId))
+            );
+        }
+        finally
+        {
+            RsaJwk.Clear(parameters);
+        }
     }
 
     /// <summary>Adds a test user; its password becomes an Aspire secret parameter.</summary>
@@ -316,6 +351,13 @@ public static class IdentityServerExtensions
                     $"Interactive client '{client.ClientId}' needs an openid scope and a redirect URI."
                 );
             if (
+                client.RefreshTokenLifetimeSeconds is not null
+                && !client.Scopes.Contains("offline_access", StringComparer.Ordinal)
+            )
+                throw new InvalidOperationException(
+                    $"Client '{client.ClientId}' sets a refresh token lifetime without the offline_access scope."
+                );
+            if (
                 string.Equals(client.GrantType, "authorization_code", StringComparison.Ordinal)
                 && string.Equals(client.AuthenticationMethod, "none", StringComparison.Ordinal)
                 && !client.UsePkce
@@ -388,6 +430,19 @@ public static class IdentityServerExtensions
                 environment[$"{policyPrefix}__Scopes"] = policy.Scopes.ToString();
                 AddList(environment, $"{policyPrefix}__UserClaims", policy.UserClaims);
             }
+            if (client.AccessTokenLifetimeSeconds is { } accessLifetime)
+                environment[$"{prefix}__AccessTokenLifetime"] = accessLifetime.ToString(
+                    CultureInfo.InvariantCulture
+                );
+            if (client.RefreshTokenLifetimeSeconds is { } refreshLifetime)
+                environment[$"{prefix}__AbsoluteRefreshTokenLifetime"] = refreshLifetime.ToString(
+                    CultureInfo.InvariantCulture
+                );
+            AddList(environment, $"{prefix}__AllowedCorsOrigins", client.AllowedCorsOrigins);
+            if (client.BackChannelLogoutUri is { } backChannel)
+                environment[$"{prefix}__BackChannelLogoutUri"] = backChannel;
+            if (client.FrontChannelLogoutUri is { } frontChannel)
+                environment[$"{prefix}__FrontChannelLogoutUri"] = frontChannel;
             AddList(environment, $"{prefix}__RedirectUris", client.RedirectUris);
             AddList(
                 environment,

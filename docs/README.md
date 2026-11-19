@@ -18,6 +18,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
+| [Tests d'intégration](tests.md) | Package `Testing` : jetons d'utilisateurs de test sans navigateur, jetons machine et options résolues dans `DistributedApplicationTestingBuilder`. |
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
 | [Référence de l'API](reference.md) | Signatures, valeurs par défaut, propriétés, validations et paramètres non exposés. |
 | [Développement et dépannage](developpement.md) | Tests, packages, CI, erreurs courantes et préparation d'une publication. |
@@ -43,6 +44,7 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
 | Token Exchange local, sélection des informations utilisateur | Disponible depuis `0.1.0-alpha.2`. Voir le [guide](token-exchange.md). |
 | Claims de profil des utilisateurs de test, scopes d'identité personnalisés, refresh tokens (`offline_access`), Token Exchange par délégation | Disponible depuis `0.1.0-alpha.4`. Voir [les fournisseurs](fournisseurs.md) et [le guide](token-exchange.md#scopes-choisis-par-le-client-machine). |
+| SPA (CORS), durées de vie des jetons par client, callbacks littéraux, déconnexion back-channel et front-channel, clé de signature stable pendant l'exécution de l'AppHost | Disponible depuis `11.1.0`. Voir [les clients](clients.md) et [l'intégration](integration.md). |
 | Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
 | Utilisateurs persistants, fédération | Hors périmètre de cette intégration. |
