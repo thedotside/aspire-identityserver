@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
+<!--
+  Razor Pages require public page models, which are not a consumer API: 11.1.0 made the
+  sign-in and sign-out handlers asynchronous to honor login_hint, Cancel and id_token_hint.
+-->
+<Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Aspire.IdentityServer.Server.Pages.Account.LoginModel.OnGet</Target>
+    <Left>lib/net10.0/Aspire.IdentityServer.Server.dll</Left>
+    <Right>lib/net10.0/Aspire.IdentityServer.Server.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Aspire.IdentityServer.Server.Pages.Account.LogoutModel.OnPostAsync</Target>
+    <Left>lib/net10.0/Aspire.IdentityServer.Server.dll</Left>
+    <Right>lib/net10.0/Aspire.IdentityServer.Server.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Aspire.IdentityServer.Server.Pages.Account.LoginModel.OnGet</Target>
+    <Left>lib/net11.0/Aspire.IdentityServer.Server.dll</Left>
+    <Right>lib/net11.0/Aspire.IdentityServer.Server.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Aspire.IdentityServer.Server.Pages.Account.LogoutModel.OnPostAsync</Target>
+    <Left>lib/net11.0/Aspire.IdentityServer.Server.dll</Left>
+    <Right>lib/net11.0/Aspire.IdentityServer.Server.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+</Suppressions>
