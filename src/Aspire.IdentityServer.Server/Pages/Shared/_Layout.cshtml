@@ -1,0 +1,32 @@
+@* The policy of these pages refuses inline styles and scripts: assets come from this origin. *@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4f4f8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0e1017" media="(prefers-color-scheme: dark)" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@ViewData["Title"] · @Provider.Name</title>
+    <link rel="icon" href="/Account/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/Account/site.css" />
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+    <div class="card">
+        <header class="card-header">
+            <img class="brand-mark" src="/Account/icon.svg" alt="" width="36" height="36" />
+            <div class="brand">
+                <span class="brand-name">@Provider.Name</span>
+                <span class="brand-role">Identity provider</span>
+            </div>
+            <span class="badge">Development</span>
+        </header>
+        <main class="card-body">
+            @RenderBody()
+        </main>
+    </div>
+    <footer class="footnote">For local development and tests only. Never expose this provider.</footer>
+</body>
+</html>

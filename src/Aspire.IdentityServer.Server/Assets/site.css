@@ -1,0 +1,447 @@
+/*
+  Provider pages. One stylesheet served from the provider's own origin: their policy
+  (default-src 'self') refuses inline styles and scripts. Light and dark themes follow the
+  system. Text pairs meet WCAG AA contrast; status colours always come with text.
+*/
+
+:root {
+  color-scheme: light dark;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", Arial,
+    sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
+
+  /* Neutrals: a cool grey tinted towards the primary. */
+  --bg: #f4f4f8;
+  --glow: rgb(81 43 212 / 0.14);
+  --surface: #ffffff;
+  --surface-muted: #f7f7fb;
+  --border: #e3e3ec;
+  --text: #1a1c29;
+  --muted: #5b6072;
+  --field-border: #8a8fa3;
+
+  /* Primary: .NET purple. --accent is its readable variant for text and icons. */
+  --primary: #512bd4;
+  --primary-hover: #4220b0;
+  --on-primary: #ffffff;
+  --accent: #512bd4;
+  --tint: #eeeafc;
+
+  /* Supporting colours. */
+  --dev-text: #8a3b0a;
+  --dev-bg: #fef3c7;
+  --success-text: #14532d;
+  --success-bg: #dcfce7;
+  --danger-text: #8f1d1d;
+  --danger-bg: #fee2e2;
+  --danger-border: #fca5a5;
+
+  --radius: 16px;
+  --radius-control: 10px;
+  --shadow: 0 1px 2px rgb(16 18 27 / 0.06), 0 16px 40px -16px rgb(16 18 27 / 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1017;
+    --glow: rgb(106 78 230 / 0.22);
+    --surface: #171a24;
+    --surface-muted: #1c202b;
+    --border: #2a2e3d;
+    --text: #e7e8f0;
+    --muted: #a3a7b8;
+    --field-border: #6b7083;
+
+    --primary: #6a4ee6;
+    --primary-hover: #5b3fd9;
+    --accent: #b4a5ff;
+    --tint: #262046;
+
+    --dev-text: #fcd34d;
+    --dev-bg: #3a2a09;
+    --success-text: #86efac;
+    --success-bg: #0f2c1b;
+    --danger-text: #fca5a5;
+    --danger-bg: #3a1416;
+    --danger-border: #7f1d1d;
+
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px -16px rgb(0 0 0 / 0.6);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 40px 16px;
+  background:
+    radial-gradient(1100px 520px at 50% -160px, var(--glow), transparent 70%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Card and brand */
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-mark {
+  display: block;
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.brand-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.brand-role {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.badge {
+  flex: none;
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--dev-bg);
+  color: var(--dev-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.card-body {
+  padding: 28px 24px 32px;
+}
+
+.footnote {
+  max-width: 420px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+/* Text */
+
+h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+/* No single word left alone on the last line. */
+.lead,
+.hint,
+.footnote {
+  text-wrap: pretty;
+}
+
+.lead {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.lead strong {
+  color: var(--text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+code {
+  font-family: var(--mono);
+  font-size: 0.875em;
+}
+
+/* Status icon above the heading */
+
+.status {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--accent);
+}
+
+.status svg {
+  width: 24px;
+  height: 24px;
+}
+
+.status-success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.status-danger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+/* Form */
+
+form {
+  margin: 0;
+}
+
+.field {
+  margin-top: 20px;
+}
+
+.field + .field {
+  margin-top: 16px;
+}
+
+label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+input[type="text"],
+input[type="password"] {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--field-border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+input[type="text"]:hover,
+input[type="password"]:hover {
+  border-color: var(--muted);
+}
+
+/* A solid 3px accent edge: field border plus outline, also drawn in forced colours. */
+input[type="text"]:focus,
+input[type="password"]:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+/* Browser autofill keeps the theme instead of its own light background. */
+input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text);
+  box-shadow: inset 0 0 0 1000px var(--surface);
+  caret-color: var(--text);
+}
+
+/* Buttons */
+
+.actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.button-primary:hover {
+  background: var(--primary-hover);
+}
+
+.button-secondary {
+  border-color: var(--field-border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.button-secondary:hover {
+  background: var(--surface-muted);
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Messages */
+
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-control);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  font-size: 0.9375rem;
+}
+
+.alert svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 24px 0 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  font-size: 0.9375rem;
+}
+
+.details dt {
+  color: var(--muted);
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.hint svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+}
+
+.hint code {
+  color: var(--text);
+}
+
+/* Layout and motion */
+
+@media (min-width: 480px) {
+  .card-header {
+    padding: 16px 32px;
+  }
+
+  .card-body {
+    padding: 32px 32px 36px;
+  }
+}
+
+@media (max-width: 380px) {
+  .details {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .details dd + dt {
+    margin-top: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .button,
+  input {
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+}

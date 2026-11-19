@@ -18,6 +18,9 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
 
     /// <summary>The clients registered with this provider, in declaration order.</summary>
     public IReadOnlyList<IdentityClient> RegisteredClients => Clients.AsReadOnly();
+
+    /// <summary>The test users of this provider, in declaration order.</summary>
+    public IReadOnlyList<IdentityTestUser> RegisteredUsers => Users.AsReadOnly();
 }
 
 /// <summary>Options of one local identity provider.</summary>

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <!-- A new package: validated across frameworks until its first release becomes the baseline. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageId>TheDotSide.Aspire.IdentityServer.Testing</PackageId>
+    <Description>Integration-test helpers for TheDotSide.Aspire.IdentityServer: resolved client options, client-credentials tokens, and user tokens obtained through the provider's real authorization code + PKCE sign-in without a browser. Local development and tests only.</Description>
+    <PackageTags>aspire;openid-connect;oauth;testing;identityserver</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Aspire.IdentityServer.Hosting/Aspire.IdentityServer.Hosting.csproj" />
+    <ProjectReference Include="../Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

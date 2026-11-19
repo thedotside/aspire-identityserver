@@ -86,10 +86,11 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         var foreignSubject = (await UserTokens("b")).GetProperty("access_token").GetString()!;
         using var foreignRequest = new HttpRequestMessage(HttpMethod.Get, "/orders/a");
         foreignRequest.Options.Set(TokenExchange.SubjectTokenKey, foreignSubject);
-        var rejected = await Assert.ThrowsExactlyAsync<HttpRequestException>(() =>
+        var rejected = await Assert.ThrowsExactlyAsync<TokenEndpointException>(() =>
             orders.SendAsync(foreignRequest)
         );
         await Assert.That(rejected!.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(rejected.Error).IsEqualTo("invalid_grant");
         await Assert.That(foreignRequest.Headers.Authorization).IsNull();
     }
 

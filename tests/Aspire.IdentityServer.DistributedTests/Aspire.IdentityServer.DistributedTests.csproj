@@ -12,6 +12,7 @@
     <PackageReference Include="TUnit" />
     <ProjectReference Include="../../samples/Sample.AppHost/Sample.AppHost.csproj" />
     <ProjectReference Include="../../src/Aspire.IdentityServer.Client/Aspire.IdentityServer.Client.csproj" />
+    <ProjectReference Include="../../src/Aspire.IdentityServer.Testing/Aspire.IdentityServer.Testing.csproj" />
   </ItemGroup>
   <Import Project="../../src/Aspire.IdentityServer.Hosting/buildTransitive/Aspire.IdentityServer.Hosting.targets" />
 </Project>

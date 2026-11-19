@@ -1,6 +1,6 @@
 # 0001 — Dossier runtime du fournisseur
 
-Statut : proposé, 31 octobre 2026.
+Statut : accepté. Proposé le 31 octobre 2026, livré dans `0.1.0-alpha.3`, stable depuis `10.0.0`.
 
 ## Contexte
 

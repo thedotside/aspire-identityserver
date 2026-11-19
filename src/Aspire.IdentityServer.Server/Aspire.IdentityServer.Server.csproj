@@ -13,11 +13,18 @@
   <ItemGroup>
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
     <Compile Include="../Shared/RuntimeContract.cs" Link="RuntimeContract.cs" />
+    <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
     <PackageReference Include="Duende.IdentityServer" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+    <!-- Page assets travel inside the assembly: the runtime folder holds assemblies only. -->
+    <None Remove="Assets/**" />
+    <EmbeddedResource
+      Include="Assets/**"
+      LogicalName="Aspire.IdentityServer.Server.Assets.%(Filename)%(Extension)"
+    />
     <None Include="../../README.md" Pack="true" PackagePath="/" />
     <None Include="../../THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="/" />
   </ItemGroup>
