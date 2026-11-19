@@ -280,6 +280,60 @@ public sealed class ProjectionTests
     }
 
     [Test]
+    [Arguments("secret", "OAuth__ClientSecret")]
+    [Arguments("pem", "OAuth__PrivateKeyPem")]
+    [Arguments("base64", "OAuth__PrivateKeyBase64")]
+    public async Task Credentials_declared_after_the_default_projection_are_projected(
+        string credential,
+        string expectedKey
+    )
+    {
+        var builder = TestApp.CreateBuilder();
+        var server = builder.AddIdentityServer("late-credentials");
+        server.AddApiResource("orders").WithScopes("read");
+        var machine = server.AddClientCredentialsClient("device").WithScopes("read");
+        var consumer = builder
+            .AddExecutable("consumer", "dotnet", ".")
+            .WithIdentityClient(machine, "OAuth");
+        // Another statement may give the client its credentials after the projection.
+        _ = credential switch
+        {
+            "secret" => machine.WithGeneratedClientSecret(),
+            "pem" => machine.WithGeneratedPrivateKeyJwt(),
+            _ => machine.WithGeneratedBase64PrivateKeyJwt(),
+        };
+        var environment = await Evaluate(consumer);
+        await Assert
+            .That(environment["OAuth__AuthenticationMethod"])
+            .IsEqualTo(machine.AuthenticationMethod);
+        await Assert.That(environment).ContainsKey(expectedKey);
+        if (machine.KeyId is { } keyId)
+            await Assert.That(environment["OAuth__KeyId"]).IsEqualTo(keyId);
+    }
+
+    [Test]
+    public async Task An_exchange_policy_declared_after_the_default_projection_is_projected()
+    {
+        var builder = TestApp.CreateBuilder();
+        var server = builder.AddIdentityServer("late-exchange");
+        var api = server.AddApiResource("orders").WithScopes("read");
+        var browser = server
+            .AddAuthorizationCodeClient("web")
+            .WithScopes("openid", "read")
+            .WithRedirectUri(server.GetEndpoint("https"), "/callback");
+        var machine = server
+            .AddClientCredentialsClient("device")
+            .WithGeneratedClientSecret()
+            .WithScopes("read");
+        var consumer = builder
+            .AddExecutable("consumer", "dotnet", ".")
+            .WithIdentityClient(machine, "OAuth");
+        machine.WithTokenExchangeFrom(browser, api);
+        var environment = await Evaluate(consumer);
+        await Assert.That(environment["OAuth__TokenExchangeAudience"]).IsEqualTo("orders");
+    }
+
+    [Test]
     public async Task Conflicting_projections_do_not_silently_overwrite_credentials()
     {
         var builder = TestApp.CreateBuilder();

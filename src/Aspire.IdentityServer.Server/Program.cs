@@ -1,11 +1,13 @@
 using System.Globalization;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Aspire.IdentityServer.Server;
 using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
@@ -204,7 +206,12 @@ internal static class ServerProgram
                         .ToList(),
                     RedirectUris = c.RedirectUris,
                     PostLogoutRedirectUris = c.PostLogoutRedirectUris,
-                    AccessTokenLifetime = 300,
+                    AllowedCorsOrigins = c.AllowedCorsOrigins,
+                    BackChannelLogoutUri = c.BackChannelLogoutUri,
+                    FrontChannelLogoutUri = c.FrontChannelLogoutUri,
+                    AccessTokenLifetime = c.AccessTokenLifetime ?? 300,
+                    // Duende's default absolute lifetime: 30 days.
+                    AbsoluteRefreshTokenLifetime = c.AbsoluteRefreshTokenLifetime ?? 2_592_000,
                     AlwaysIncludeUserClaimsInIdToken = true,
                 })
             )
@@ -226,7 +233,7 @@ internal static class ServerProgram
             .AddJwtBearerClientAuthentication()
             .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
             .AddProfileService<TokenExchangeProfileService>()
-            .AddDeveloperSigningCredential(persistKey: false);
+            .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
         builder.Services.Configure<CookieAuthenticationOptions>(
             IdentityServerConstants.DefaultCookieAuthenticationScheme,
             o =>
@@ -271,6 +278,20 @@ internal static class ServerProgram
         app.UseIdentityServer();
         app.UseAuthorization();
         app.MapRazorPages();
+        app.MapGet(
+            "/Account/signed-out.js",
+            () =>
+                Results.Text(
+                    Pages.Account.LogoutModel.RedirectScript,
+                    "text/javascript; charset=utf-8"
+                )
+        );
+        // Read at startup, so that a runtime built without its assets fails here. nosniff
+        // applies: each asset needs its exact media type.
+        var stylesheet = ProviderAssets.Read("site.css");
+        var icon = ProviderAssets.Read("icon.svg");
+        app.MapGet("/Account/site.css", () => Results.Text(stylesheet, "text/css; charset=utf-8"));
+        app.MapGet("/Account/icon.svg", () => Results.Text(icon, "image/svg+xml; charset=utf-8"));
         app.MapGet("/health", () => Results.Ok(new { status = "ready" }));
         app.MapGet("/", () => Results.Redirect("/.well-known/openid-configuration"));
         await app.StartAsync(CancellationToken.None);
@@ -282,6 +303,26 @@ internal static class ServerProgram
             );
         }
         await app.WaitForShutdownAsync(CancellationToken.None);
+    }
+
+    /// <summary>The RS256 key that the AppHost generated for this provider, kept across restarts.</summary>
+    private static RsaSecurityKey SigningKey(ServerConfiguration config)
+    {
+        if (string.IsNullOrWhiteSpace(config.SigningKey))
+            throw new InvalidOperationException(
+                "The AppHost must provide the provider's signing key."
+            );
+        var (parameters, keyId) = RsaJwk.ReadPrivateBase64(config.SigningKey);
+        try
+        {
+            var rsa = RSA.Create();
+            rsa.ImportParameters(parameters);
+            return new RsaSecurityKey(rsa) { KeyId = keyId };
+        }
+        finally
+        {
+            RsaJwk.Clear(parameters);
+        }
     }
 
     private static int LoopbackPort(IConfiguration configuration)

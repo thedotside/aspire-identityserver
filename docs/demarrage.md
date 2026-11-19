@@ -30,7 +30,7 @@ Sous Windows, approuve la fenêtre de confirmation du certificat si elle appara�
 
 Utilise `--framework net11.0` pour lancer les exemples sous .NET 11. Le choix est obligatoire pour les projets exécutables qui ciblent plusieurs frameworks.
 
-Ouvre la ressource `web` depuis le dashboard Aspire. Le sample propose trois parcours :
+Dans le dashboard Aspire, les commandes d'un fournisseur (« Show registrations », « Request a client token ») affichent ses enregistrements et un jeton prêt à l'emploi pour un client machine. Ouvre la ressource `web` depuis le dashboard Aspire. Le sample propose trois parcours :
 
 | Parcours | Fournisseur | Authentification du client | PKCE |
 | --- | --- | --- | --- |
@@ -50,7 +50,7 @@ Pour installer la version stable `11.0.0` sur nuget.org :
 dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0 --source https://api.nuget.org/v3/index.json
 ```
 
-`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Les applications ASP.NET Core peuvent ajouter `TheDotSide.Aspire.IdentityServer.Authentication` pour configurer JWT bearer et OpenID Connect depuis les sections projetées, et les projets de test `TheDotSide.Aspire.IdentityServer.Testing`, à la même version : voir [l'intégration](integration.md) et [les tests d'intégration](tests.md). Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
 
 Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 

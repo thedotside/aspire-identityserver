@@ -406,6 +406,7 @@ public sealed class RegistrationRuleTests
             "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",
             "IdentityServer__Name=contract",
+            "IdentityServer__SigningKey=<secret-parameter>",
             "IdentityServer__Users__0__Claims__0__Type=team",
             "IdentityServer__Users__0__Claims__0__Value=sales",
             "IdentityServer__Users__0__Claims__1__Type=team",

@@ -26,6 +26,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityServerOptions.RuntimeDirectory` | `string` modifiable. | Dossier contenant le serveur ; défaut `AppContext.BaseDirectory/identityserver`. Chemin relatif résolu depuis l'AppHost. |
 | `IdentityServerOptions.AcceptTokenEndpointAudience` | `bool`, défaut `false`. | Accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Par défaut, seul le profil draft-ietf-oauth-rfc7523bis est accepté. |
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
+| `IdentityServerResource.RegisteredUsers` | `IReadOnlyList<IdentityTestUser>` | Depuis `11.1.0` : utilisateurs de test, dans l'ordre de déclaration ; utilisés par le package `Testing`. |
 | `IdentityApiResource.Server` | Builder du fournisseur. | Fournisseur associé. |
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
@@ -65,6 +66,12 @@ Chaque méthode retourne le même `IdentityClient`.
 | `WithPrivateKeyJwt(IResourceBuilder<ParameterResource> privateKey, string publicJwk)` | Paramètre secret différé et JWK RSA public >= 2048 bits avec `kid`. La paire doit correspondre ; pas de comparaison privée/publique pendant l'enregistrement. |
 | `WithRedirectUri(EndpointReference endpoint, string path)` | Ajoute un callback de connexion, client interactif uniquement. |
 | `WithPostLogoutRedirectUri(EndpointReference endpoint, string path)` | Ajoute un callback de déconnexion, client interactif uniquement. |
+| `WithRedirectUri(Uri redirectUri)`, `WithPostLogoutRedirectUri(Uri postLogoutRedirectUri)` | Depuis `11.1.0` : callback littéral pour un outil hors de l'AppHost (Postman, Bruno, CLI, application native) : adresse HTTPS, adresse HTTP loopback, ou schéma privé à nom de domaine inversé (`com.example.app:/callback`, RFC 8252). Fragment, informations d'utilisateur et autres schémas refusés. Comparaison exacte, port compris. |
+| `WithAllowedCorsOrigin(EndpointReference endpoint)` | Depuis `11.1.0` : autorise l'origine de cet endpoint à appeler en CORS la découverte, le JWKS, le token endpoint et UserInfo, comme une SPA. Client interactif uniquement. |
+| `WithAccessTokenLifetime(TimeSpan lifetime)` | Depuis `11.1.0` : durée des jetons d'accès du client, d'une seconde à un jour ; 300 secondes par défaut. |
+| `WithRefreshTokenLifetime(TimeSpan lifetime)` | Depuis `11.1.0` : durée absolue des refresh tokens d'un client interactif, d'une seconde à 30 jours (défaut de Duende). Exige `offline_access`, vérifié au démarrage. |
+| `WithBackChannelLogoutUri(EndpointReference endpoint, string path)` | Depuis `11.1.0` : le fournisseur poste un logout token signé (avec `sid`) à cette adresse quand la session se termine (OpenID Connect Back-Channel Logout 1.0). |
+| `WithFrontChannelLogoutUri(EndpointReference endpoint, string path)` | Depuis `11.1.0` : adresse chargée dans une iframe de la page de déconnexion du fournisseur (OpenID Connect Front-Channel Logout 1.0). |
 
 L'authentification commence à `none`. Les méthodes de secret la fixent à `client_secret_post`, celles de clé à `private_key_jwt`. Une méthode déjà définie ne peut pas être remplacée. Un client machine laissé à `none` est refusé.
 
@@ -82,10 +89,12 @@ L'authentification commence à `none`. Les méthodes de secret la fixent à `cli
 | `KeyId` | `string?` | `kid` pour un client JWT. |
 | `PublicJwk` | `string?` | JWK public enregistré côté IDP. |
 | `UsePkce` | `bool` | Vrai par défaut ; pertinent pour authorization code. |
+| `GrantType` | `string` | Depuis `11.1.0` : `authorization_code` ou `client_credentials`. |
+| `RegisteredRedirectUris` | `IReadOnlyList<ReferenceExpression>` | Depuis `11.1.0` : callbacks de connexion différés, dans l'ordre de déclaration. |
 | `Scopes` | `IReadOnlyCollection<string>` | Scopes autorisés. |
 | `TokenExchangeAudience` | `string?` | Depuis `0.1.0-alpha.2` : audience unique des règles d'échange, sinon null. |
 
-Ces propriétés sont consultables ; les enregistrements se modifient par les méthodes fluides. Les URI de redirection et le grant ne sont pas exposés comme propriétés publiques par cette version.
+Ces propriétés sont consultables ; les enregistrements se modifient par les méthodes fluides. Les URI de déconnexion ne sont pas exposées.
 
 ## Projections
 
@@ -150,7 +159,47 @@ Avec `PrivateKeyBase64`, le helper importe directement les composants validés d
 | `TokenExchangeHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. |
 | `TokenExchangeHttpClientExtensions.BackchannelClientName` | Client nommé distinct pour discovery et token endpoint ; aucun handler d'échange sur ce client. |
 
-Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+Pas de cache de jeton utilisateur, de contexte HTTP ou de token échangé dans le handler partagé. Un jeton absent, une adresse non HTTPS, un header Authorization préexistant ou une réponse d'échange invalide provoquent un échec. Une erreur du token endpoint lève `TokenEndpointException`. Voir le [sample et le guide d'intégration](token-exchange.md#appeler-lapi-avec-un-httpclient-nommé).
+
+### HttpClient nommé et client credentials
+
+`IHttpClientBuilder.AddClientCredentialsHandler(IConfigurationSection clientConfiguration, Action<ClientCredentialsHandlerOptions>? configure = null)` ajoute un jeton `client_credentials` à chaque requête du client nommé. La section est bindée sur des options `IdentityClientOptions` nommées comme ce client. Le handler partage la découverte et le backchannel du handler d'échange : chaque tentative de demande de jeton porte une assertion neuve, y compris derrière les handlers de résilience.
+
+| Réglage | Comportement |
+| --- | --- |
+| `ClientCredentialsHandlerOptions.Scope` | Scopes explicites ; sinon scopes projetés. Vides tous les deux : le paramètre est omis et le fournisseur accorde les scopes autorisés au client. |
+| `ClientCredentialsHandlerOptions.AllowedOrigins` | Origines (schéma, hôte, port) autorisées à recevoir le jeton. Vide par défaut : toute adresse HTTPS du client nommé. |
+| `ClientCredentialsHandlerOptions.BackchannelTimeout` | Budget de la découverte et de la demande de jeton, tentatives comprises ; 30 s par défaut. Dépassé : `TimeoutException`. |
+| `ClientCredentialsHandlerOptions.RefreshBeforeExpiration` | Délai avant l'expiration (`expires_in`) auquel un jeton en cache est renouvelé ; 30 s par défaut. |
+
+Le jeton est mis en cache par client nommé et par scope ; des requêtes simultanées partagent une seule demande. Une réponse 401 de la ressource l'écarte, par exemple après le redémarrage du fournisseur avec une nouvelle clé de signature : la requête suivante en obtient un autre, sans rejouer celle qui a échoué. Une adresse non HTTPS, une origine non autorisée ou un header Authorization préexistant provoquent un échec.
+
+`ClientCredentials.CreateRequest(IdentityClientOptions client, string tokenEndpoint, string? scope = null, string? issuer = null)` crée la requête `client_credentials` seule, avec des credentials neufs, pour une bibliothèque qui envoie elle-même ses requêtes. La constante `ClientCredentials.GrantType` expose l'identifiant standard.
+
+`TokenEndpointException`, dérivée d'`HttpRequestException`, porte le statut HTTP, `Error` (par exemple `invalid_scope`, `invalid_target`) et `ErrorDescription` renvoyés par le token endpoint, pour les deux handlers.
+
+## Package Authentication
+
+Extensions ASP.NET Core du package facultatif `TheDotSide.Aspire.IdentityServer.Authentication`, dans l'espace de noms `Microsoft.Extensions.DependencyInjection` (et `Microsoft.AspNetCore.Authorization` pour `RequireScope`). Voir [l'intégration](integration.md).
+
+| Membre | Comportement |
+| --- | --- |
+| `AuthenticationBuilder.AddIdentityServerJwtBearer(string authenticationScheme, IConfigurationSection apiConfiguration, Action<JwtBearerOptions>? configure = null)` | Lit `Authority` et `Audience` projetés par `WithIdentityApiResource` ; `MapInboundClaims = false`, claims `name` et `role`. Valeur absente : `InvalidOperationException` qui nomme la clé. `configure` s'applique ensuite. |
+| `AuthenticationBuilder.AddIdentityServerOpenIdConnect(string authenticationScheme, IConfigurationSection clientConfiguration, Action<OpenIdConnectOptions>? configure = null)` | Lit la section projetée par `WithIdentityClient` : authority, client ID, scopes, secret pour `client_secret_post` ; `code`, PKCE, `SaveTokens`, noms de claims JWT. Pour `private_key_jwt`, signe une assertion neuve (audience = issuer découvert) dans `OnAuthorizationCodeReceived` et `OnPushAuthorization`, après les événements de `configure`. |
+| `AuthorizationPolicyBuilder.RequireScope(params string[] scopes)` | Exige au moins un des scopes dans le claim `scope` séparé par des espaces. |
+
+## Package Testing
+
+Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Testing`, pour une application démarrée. Voir [les tests d'intégration](tests.md).
+
+| Membre | Comportement |
+| --- | --- |
+| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, CancellationToken cancellationToken = default)` | Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
+| `GetClientCredentialsTokensAsync(string provider, string clientId, string? scope = null, CancellationToken cancellationToken = default)` | Jeton `client_credentials` d'un client machine. |
+| `GetIdentityClientOptionsAsync(string provider, string clientId, CancellationToken cancellationToken = default)` | `IdentityClientOptions` avec credentials résolus, comme la projection standard. |
+| `IdentityTokens` | `AccessToken`, `TokenType`, `IdToken`, `RefreshToken`, `Scope`, `ExpiresIn`. |
+
+Un nom inconnu ou un client du mauvais type lève `ArgumentException` ; une erreur du token endpoint, `HttpRequestException`.
 
 ## Réglages fixes du runtime
 
@@ -158,28 +207,28 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Contrat de configuration | `IdentityServer__ContractVersion`, version `3`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `4` depuis `11.1.0`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |
-| Token d'accès | Durée configurée de 300 secondes ; Token Exchange borné par la validité restante du jeton source. |
-| Refresh tokens | Émis aux clients interactifs qui déclarent et demandent `offline_access` ; réglages par défaut de Duende (réutilisation du handle, expiration absolue), en mémoire. |
+| Token d'accès | 300 secondes par défaut, `WithAccessTokenLifetime` par client ; Token Exchange borné par la validité restante du jeton source. |
+| Refresh tokens | Émis aux clients interactifs qui déclarent et demandent `offline_access` ; réglages par défaut de Duende (réutilisation du handle, expiration absolue de 30 jours, `WithRefreshTokenLifetime` par client), en mémoire. |
 | Assertions `private_key_jwt` | Seul `RS256` est annoncé (`token_endpoint_auth_signing_alg_values_supported`) et accepté. |
 | Claim `scope` des JWT | Une chaîne séparée par des espaces (RFC 9068, RFC 8693), comme chez Keycloak ; jamais un tableau JSON. |
 | Consentement | `RequireConsent = false`. |
 | Claims utilisateur dans l'ID token | `AlwaysIncludeUserClaimsInIdToken = true`, sous réserve des claims effectivement disponibles et scopes demandés. |
-| Gestion automatique des clés Duende | Désactivée ; clé de développement en mémoire, `persistKey: false`. |
+| Gestion automatique des clés Duende | Désactivée. Depuis `11.1.0`, l'AppHost génère une clé RSA 2048 par fournisseur, transmise comme paramètre secret `{fournisseur}-signing-key` : un fournisseur redémarré depuis le tableau de bord la retrouve, ses jetons précédents restent valides et les clés en cache des API continuent de correspondre. Nouvelle clé à chaque lancement de l'AppHost. |
 | Protection des données | Fournisseur éphémère, application `AspireIdentityServer:{name}`. |
 | Stockages | En mémoire. |
 | Health check | `/health`. |
-| Tableau de bord | Icône de fournisseur et lien « OpenID discovery ». Les secrets, clés et mots de passe générés s'appellent `{fournisseur}-{client ou utilisateur}-{secret, key ou password}` et apparaissent sous leur fournisseur. Un nom invalide ou déjà pris retombe sur un nom indexé. Ils sont régénérés à chaque lancement : aucune persistance n'est proposée. |
+| Tableau de bord | Icône de fournisseur et lien « OpenID discovery ». Depuis `11.1.0`, deux commandes, actives quand le fournisseur tourne : **Show registrations** affiche en Markdown ses clients, ressources API, scopes d'identité et utilisateurs de test, sans secret ; **Request a client token**, proposée s'il a des clients machine, demande un jeton `client_credentials` pour le client choisi, avec son authentification réelle, et l'affiche avec ses claims. L'API des commandes de ressource d'Aspire les rend aussi découvrables par d'autres clients que le tableau de bord. Les secrets, clés et mots de passe générés s'appellent `{fournisseur}-{client ou utilisateur}-{secret, key ou password}` et apparaissent sous leur fournisseur. Un nom invalide ou déjà pris retombe sur un nom indexé. Ils sont régénérés à chaque lancement : aucune persistance n'est proposée. |
 | Télémétrie | `AddIdentityServer()` appelle `WithOtlpExporter()`. Quand l'AppHost fournit un point OTLP, comme avec le tableau de bord Aspire, le fournisseur exporte ses traces (ASP.NET Core, HttpClient et sources Duende), ses métriques et ses journaux. Sans point OTLP, rien n'est configuré. Les valeurs de chaîne de requête restent masquées par l'instrumentation. |
-| Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. |
+| Interface | Razor Pages `/Account/Login`, `/Account/Logout`, `/Error`. `login_hint` pré-remplit l'utilisateur ; le mot de passe reste exigé. **Cancel** renvoie l'erreur standard `access_denied` au client. Une déconnexion qui présente un `id_token_hint` valide se fait sans confirmation et revient à `post_logout_redirect_uri`, après le chargement de l'éventuelle iframe de notification ; toute autre demande de déconnexion est confirmée par un POST. Les pages partagent une mise en page en thème clair ou sombre, selon le système. La connexion nomme l'application cliente ; la page d'erreur affiche l'erreur OAuth, sa description, le client et l'identifiant de requête. La feuille de style et l'icône, embarquées dans le runtime, sont servies par le fournisseur (`/Account/site.css`, `/Account/icon.svg`) : la CSP des pages refuse tout style ou script en ligne. |
 | Cookies | Session `aspire-idp-{name}` et `aspire-idp-{name}.session` : `Secure`, `SameSite=Lax`. Antiforgery `aspire-idp-{name}.csrf` : `Secure`. Les cookies ne sont pas isolés par port : ils partent vers les autres applications `https://localhost` du poste. `Lax` suppose des clients sur `localhost` : un client servi sous un autre nom, comme `*.dev.localhost`, n'est pas « same-site », et la surveillance de session par iframe ou `prompt=none` ne recevraient pas la session. |
 | En-têtes | Toutes les réponses : `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`. Pages `/Account/*` et `/Error` : CSP `default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'` et `Referrer-Policy: no-referrer`. |
 | Racine `/` | Redirection vers `/.well-known/openid-configuration`. |
 
-Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour la durée des refresh tokens, la fédération, CORS, la persistance ou la rotation durable de clés.
+Les mécanismes généraux de Duende ne deviennent pas des fonctionnalités configurables de ce package du seul fait de sa dépendance. Aucun paramètre public n'est exposé ici pour la fédération, la persistance ou la rotation durable de clés.
 
 ## Sources de référence
 

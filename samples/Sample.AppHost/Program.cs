@@ -62,7 +62,12 @@ var browserA = idpA.AddAuthorizationCodeClient("web")
         "orders.read"
     )
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-a")
-    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a");
+    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-a")
+    // The "par" scheme of the web sample: the same client, through pushed authorization requests.
+    .WithRedirectUri(web.GetEndpoint("https"), "/signin-par")
+    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-par")
+    // The web sample records the logout tokens posted when a provider session ends.
+    .WithBackChannelLogoutUri(web.GetEndpoint("https"), "/backchannel-logout-a");
 var browserB = idpB.AddAuthorizationCodeClient("web")
     .WithGeneratedClientSecret()
     .RequirePkce()
@@ -74,6 +79,15 @@ var publicClient = idpA.AddAuthorizationCodeClient("public-web")
     .WithScopes("openid", "profile", "orders.read")
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-public")
     .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-public");
+
+// A single-page application served by the web sample: a public client with PKCE, whose browser
+// code redeems the code and calls UserInfo across origins.
+var spa = idpA.AddAuthorizationCodeClient("spa")
+    .RequirePkce()
+    .WithScopes("openid", "profile")
+    .WithRedirectUri(web.GetEndpoint("https"), "/spa/")
+    .WithAllowedCorsOrigin(web.GetEndpoint("https"));
+web.WithIdentityClient(spa, "Spa");
 
 // The machine client keeps client_credentials and can additionally act for this local user.
 workerA.WithTokenExchangeFrom(browserA, ordersA, userClaims: ["name"]);
