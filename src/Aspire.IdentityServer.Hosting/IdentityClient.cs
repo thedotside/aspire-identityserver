@@ -51,6 +51,15 @@ public sealed class IdentityClient
     /// <summary>Whether the authorization code flow requires PKCE; always true for public clients.</summary>
     public bool UsePkce { get; private set; } = true;
 
+    /// <summary><c>authorization_code</c> for interactive clients, <c>client_credentials</c> for machine clients.</summary>
+    public string GrantType { get; }
+
+    /// <summary>
+    /// The sign-in callbacks added with <see cref="WithRedirectUri(EndpointReference, string)" /> and
+    /// <see cref="WithRedirectUri(Uri)" />, in declaration order.
+    /// </summary>
+    public IReadOnlyList<ReferenceExpression> RegisteredRedirectUris => RedirectUris.AsReadOnly();
+
     /// <summary>The scopes this client may request.</summary>
     public IReadOnlyCollection<string> Scopes => ScopeNames;
 
@@ -64,7 +73,6 @@ public sealed class IdentityClient
             is [var audience]
             ? audience
             : null;
-    internal string GrantType { get; }
     internal string ParameterPrefix { get; }
     internal HashSet<string> ScopeNames { get; } = new(StringComparer.Ordinal);
     internal List<ReferenceExpression> RedirectUris { get; } = [];

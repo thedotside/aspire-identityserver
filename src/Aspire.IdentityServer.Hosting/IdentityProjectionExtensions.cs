@@ -52,7 +52,9 @@ public static class IdentityProjectionExtensions
 {
     /// <summary>
     /// Projects a client under <c>{section}</c> with the field names of
-    /// <c>IdentityClientOptions</c>, and makes the consumer wait for the provider.
+    /// <c>IdentityClientOptions</c>, and makes the consumer wait for the provider. The fields
+    /// are chosen when the consumer starts: credentials and exchange policies declared after
+    /// this call are projected too.
     /// </summary>
     public static IResourceBuilder<T> WithIdentityClient<T>(
         this IResourceBuilder<T> consumer,
@@ -62,24 +64,7 @@ public static class IdentityProjectionExtensions
         where T : IResourceWithEnvironment, IResourceWithWaitSupport
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(section);
-        return consumer.WithIdentityClient(
-            client,
-            p =>
-            {
-                p.Authority($"{section}:Authority")
-                    .ClientId($"{section}:ClientId")
-                    .Scopes($"{section}:Scopes")
-                    .AuthenticationMethod($"{section}:AuthenticationMethod");
-                if (client.ClientSecret is not null)
-                    p.ClientSecret($"{section}:ClientSecret");
-                if (client.PrivateKeyPem is not null)
-                    p.PrivateKeyPem($"{section}:PrivateKeyPem").KeyId($"{section}:KeyId");
-                if (client.PrivateKeyBase64 is not null)
-                    p.PrivateKeyBase64($"{section}:PrivateKeyBase64").KeyId($"{section}:KeyId");
-                if (client.TokenExchangeAudience is not null)
-                    p.TokenExchangeAudience($"{section}:TokenExchangeAudience");
-            }
-        );
+        return Project(consumer, client, () => DefaultProjection(client, section));
     }
 
     /// <summary>
@@ -95,9 +80,38 @@ public static class IdentityProjectionExtensions
     {
         var projection = new IdentityClientProjection();
         configure(projection);
+        return Project(consumer, client, () => projection);
+    }
+
+    /// <summary>The fields that the client has when the consumer starts, under one section.</summary>
+    private static IdentityClientProjection DefaultProjection(IdentityClient client, string section)
+    {
+        var projection = new IdentityClientProjection()
+            .Authority($"{section}:Authority")
+            .ClientId($"{section}:ClientId")
+            .Scopes($"{section}:Scopes")
+            .AuthenticationMethod($"{section}:AuthenticationMethod");
+        if (client.ClientSecret is not null)
+            projection.ClientSecret($"{section}:ClientSecret");
+        if (client.PrivateKeyPem is not null)
+            projection.PrivateKeyPem($"{section}:PrivateKeyPem").KeyId($"{section}:KeyId");
+        if (client.PrivateKeyBase64 is not null)
+            projection.PrivateKeyBase64($"{section}:PrivateKeyBase64").KeyId($"{section}:KeyId");
+        if (client.TokenExchangeAudience is not null)
+            projection.TokenExchangeAudience($"{section}:TokenExchangeAudience");
+        return projection;
+    }
+
+    private static IResourceBuilder<T> Project<T>(
+        IResourceBuilder<T> consumer,
+        IdentityClient client,
+        Func<IdentityClientProjection> select
+    )
+        where T : IResourceWithEnvironment, IResourceWithWaitSupport
+    {
         consumer.WithEnvironment(context =>
         {
-            foreach (var (key, field) in projection.Fields)
+            foreach (var (key, field) in select().Fields)
             {
                 object? value = field switch
                 {

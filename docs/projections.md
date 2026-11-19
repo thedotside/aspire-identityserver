@@ -189,7 +189,7 @@ L'API utilise cette section pour valider les tokens entrants. La seconde section
 
 ## Ordre de déclaration et erreurs
 
-Termine l'enregistrement du client avant la projection :
+L'ordre de déclaration ne change pas la projection standard. Terminer l'enregistrement du client avant de le projeter reste le plus lisible :
 
 ```csharp
 var worker = idp.AddClientCredentialsClient("worker")
@@ -198,7 +198,7 @@ var worker = idp.AddClientCredentialsClient("worker")
 api.WithIdentityClient(worker, "Outbound:Orders");
 ```
 
-La projection standard choisit les champs de credentials au moment de son appel. Ajouter une clé après cet appel ne l'ajoute pas rétroactivement à la liste de champs. Les valeurs des champs retenus et les endpoints sont ensuite évalués au démarrage.
+La projection standard choisit ses champs au démarrage du consommateur, d'après l'état final du client : une clé, un secret ou une politique d'échange déclarés après `WithIdentityClient` sont aussi projetés. Une projection explicite, avec `IdentityClientProjection`, fixe ses champs à l'appel. Dans les deux cas, les valeurs et les endpoints sont évalués au démarrage.
 
 | Situation | Résultat |
 | --- | --- |

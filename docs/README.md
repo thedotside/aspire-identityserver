@@ -18,6 +18,7 @@ L'intégration permet de simuler plusieurs fournisseurs OAuth/OIDC indépendants
 | [Token Exchange](token-exchange.md) | Depuis `0.1.0-alpha.2` : échange utilisateur → client machine sur le même IdP et suivi du scénario à deux IdP. |
 | [Projections de configuration](projections.md) | Champs injectés, exemples JSON, variables d'environnement, mapping personnalisé et plusieurs composants. |
 | [Intégration des consommateurs](integration.md) | Lecture des options, validation JWT dans une API, handler OIDC, BFF, React et demandes de tokens. |
+| [Tests d'intégration](tests.md) | Package `Testing` : jetons d'utilisateurs de test sans navigateur, jetons machine et options résolues dans `DistributedApplicationTestingBuilder`. |
 | [Kubernetes et déploiement](kubernetes.md) | Contrat de configuration d'un consommateur, ConfigMap, Secret, YAML et limites de publication. |
 | [Référence de l'API](reference.md) | Signatures, valeurs par défaut, propriétés, validations et paramètres non exposés. |
 | [Développement et dépannage](developpement.md) | Tests, packages, CI, erreurs courantes et préparation d'une publication. |

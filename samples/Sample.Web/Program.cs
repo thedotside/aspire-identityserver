@@ -14,57 +14,35 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 var authentication = builder.Services.AddAuthentication();
-foreach (var (provider, section) in new[] { ("a", "IdpA"), ("b", "IdpB"), ("public", "Public") })
+
+// "par" signs in with the private-key client of provider A through pushed authorization requests.
+foreach (
+    var (provider, section, pushed) in new[]
+    {
+        ("a", "IdpA", false),
+        ("b", "IdpB", false),
+        ("public", "Public", false),
+        ("par", "IdpA", true),
+    }
+)
 {
-    var client = builder
-        .Configuration.GetSection($"Authentication:{section}")
-        .Get<IdentityClientOptions>()!;
     authentication
         .AddCookie($"cookie-{provider}", o => o.Cookie.Name = $"aspire-sample-{provider}")
-        .AddOpenIdConnect(
+        .AddIdentityServerOpenIdConnect(
             $"oidc-{provider}",
+            builder.Configuration.GetSection($"Authentication:{section}"),
             options =>
             {
                 options.SignInScheme = $"cookie-{provider}";
-                options.Authority = client.Authority;
-                options.ClientId = client.ClientId;
-                options.ClientSecret = client.ClientSecret;
-                options.ResponseType = "code";
-                options.UsePkce = true;
                 // Exercise signed auth_time validation in the ASP.NET Core 11 OIDC handler.
                 options.MaxAge = TimeSpan.FromMinutes(5);
-                options.SaveTokens = true;
-                options.MapInboundClaims = false;
-                options.TokenValidationParameters.NameClaimType = "name";
                 options.CallbackPath = $"/signin-{provider}";
                 options.SignedOutCallbackPath = $"/signout-callback-{provider}";
                 options.RemoteSignOutPath = $"/signout-{provider}";
-                options.PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable;
-                options.Scope.Clear();
-                foreach (
-                    var scope in client.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                )
-                    options.Scope.Add(scope);
-                if (
-                    string.Equals(
-                        client.AuthenticationMethod,
-                        "private_key_jwt",
-                        StringComparison.Ordinal
-                    )
-                )
-                {
-                    options.Events.OnAuthorizationCodeReceived = async context =>
-                    {
-                        var metadata =
-                            await context.Options.ConfigurationManager!.GetConfigurationAsync(
-                                context.HttpContext.RequestAborted
-                            );
-                        context.TokenEndpointRequest!.ClientAssertionType =
-                            PrivateKeyJwt.AssertionType;
-                        context.TokenEndpointRequest.ClientAssertion =
-                            PrivateKeyJwt.CreateAssertion(client, metadata.Issuer);
-                    };
-                }
+                // The browser tests read max_age from the authorization URL of the other schemes.
+                options.PushedAuthorizationBehavior = pushed
+                    ? PushedAuthorizationBehavior.Require
+                    : PushedAuthorizationBehavior.Disable;
             }
         );
 }
@@ -177,7 +155,7 @@ app.MapGet(
     {
         var token = antiforgery.GetAndStoreTokens(context);
         var rows = new List<string>();
-        foreach (var provider in new[] { "a", "b", "public" })
+        foreach (var provider in new[] { "a", "b", "public", "par" })
         {
             var result = await context.AuthenticateAsync($"cookie-{provider}");
             var name = HtmlEncoder.Default.Encode(result.Principal?.Identity?.Name ?? "Signed out");
@@ -194,7 +172,7 @@ app.MapGet(
         );
     }
 );
-foreach (var provider in new[] { "a", "b", "public" })
+foreach (var provider in new[] { "a", "b", "public", "par" })
 {
     app.MapGet(
         $"/login/{provider}",

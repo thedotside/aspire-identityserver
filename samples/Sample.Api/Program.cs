@@ -1,23 +1,15 @@
 using System.Text.Json;
 using Aspire.IdentityServer.Client;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 var auth = builder.Services.AddAuthentication();
 foreach (var (scheme, section) in new[] { ("a", "IdpA"), ("b", "IdpB") })
-{
-    auth.AddJwtBearer(
+    auth.AddIdentityServerJwtBearer(
         scheme,
-        options =>
-        {
-            options.Authority = builder.Configuration[$"Authentication:{section}:Authority"];
-            options.Audience = builder.Configuration[$"Authentication:{section}:Audience"];
-            options.MapInboundClaims = false;
-        }
+        builder.Configuration.GetSection($"Authentication:{section}")
     );
-}
 builder.Services.AddAuthorization();
 
 // A token request carries a one-time assertion: a retried copy would be refused as a replay.
@@ -25,6 +17,12 @@ builder.Services.AddAuthorization();
 #pragma warning disable EXTEXP0001
 builder.Services.AddHttpClient("oauth").RemoveAllResilienceHandlers();
 #pragma warning restore EXTEXP0001
+
+// The handler caches the client-credentials token and signs a new assertion for each attempt:
+// the resilience handlers of ServiceDefaults can stay on this client.
+builder
+    .Services.AddHttpClient("accounting")
+    .AddClientCredentialsHandler(builder.Configuration.GetSection("Integrations:Accounting:OAuth"));
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -48,9 +46,7 @@ foreach (var scheme in new[] { "a", "b" })
         .RequireAuthorization(
             new AuthorizationPolicyBuilder(scheme)
                 .RequireAuthenticatedUser()
-                .RequireAssertion(ctx =>
-                    ctx.User.FindAll("scope").Any(c => c.Value.Split(' ').Contains("orders.read"))
-                )
+                .RequireScope("orders.read")
                 .Build()
         );
 }
@@ -67,6 +63,22 @@ app.MapGet("/memberships/a", () => Results.Ok(new { authorized = true }))
 // Demonstrates outbound OAuth configuration inside an API. No credentials are returned to callers.
 if (app.Environment.IsDevelopment())
 {
+    // The API calls itself as a partner API, with the cached token of its accounting client.
+    app.MapGet(
+        "/outbound/accounting/orders",
+        async (
+            HttpContext context,
+            IHttpClientFactory factory,
+            CancellationToken cancellationToken
+        ) =>
+        {
+            var partner = new Uri($"{context.Request.Scheme}://{context.Request.Host}/orders/a");
+            var orders = await factory
+                .CreateClient("accounting")
+                .GetFromJsonAsync<JsonElement>(partner, cancellationToken);
+            return Results.Json(orders);
+        }
+    );
     app.MapGet(
         "/outbound/{provider}",
         async (

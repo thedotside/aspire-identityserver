@@ -1,17 +1,57 @@
 @page
 @model Aspire.IdentityServer.Server.Pages.Account.LogoutModel
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><title>Development sign out</title></head>
-<body><main>
+@{
+    ViewData["Title"] = Model.SignedOut ? "Signed out" : "Sign out";
+}
+@section Head {
+    @if (Model.AutomaticRedirect)
+    {
+        <script src="/Account/signed-out.js" defer></script>
+    }
+}
 @if (!Model.SignedOut)
 {
+    <div class="status" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 8v-2a2 2 0 0 0 -2 -2h-6a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2 -2v-2" />
+            <path d="M10 12h10" />
+            <path d="M17 9l3 3l-3 3" />
+        </svg>
+    </div>
     <h1>Sign out?</h1>
-    <form method="post"><input type="hidden" asp-for="LogoutId" /><button type="submit">Sign out</button></form>
+    <p class="lead">You will be signed out of <strong>@Provider.Name</strong> in this browser.</p>
+    <form method="post">
+        <input type="hidden" asp-for="LogoutId" />
+        <div class="actions">
+            <button class="button button-primary" type="submit">Sign out</button>
+        </div>
+    </form>
 }
 else
 {
+    <div class="status status-success" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8.5 12.5l2.5 2.5l4.5 -5" />
+        </svg>
+    </div>
     <h1>Signed out</h1>
-    @if (Model.SignOutIFrameUrl is not null) { <iframe title="Sign out notification" src="@Model.SignOutIFrameUrl" hidden></iframe> }
-    @if (Model.ReturnUrl is not null) { <a href="@Model.ReturnUrl">Return to application</a> }
+    @if (Model.AutomaticRedirect)
+    {
+        <p class="lead">You are signed out of <strong>@Provider.Name</strong>. Returning to the application…</p>
+    }
+    else
+    {
+        <p class="lead">You are signed out of <strong>@Provider.Name</strong>. You can close this tab.</p>
+    }
+    @if (Model.SignOutIFrameUrl is not null)
+    {
+        <iframe title="Sign out notification" src="@Model.SignOutIFrameUrl" hidden></iframe>
+    }
+    @if (Model.ReturnUrl is not null)
+    {
+        <div class="actions">
+            <a id="return" class="button button-primary" href="@Model.ReturnUrl">Return to application</a>
+        </div>
+    }
 }
-</main></body></html>

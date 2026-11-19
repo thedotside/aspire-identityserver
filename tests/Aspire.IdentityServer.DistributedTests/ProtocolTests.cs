@@ -7,6 +7,7 @@ using System.Text.Json;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -93,6 +94,81 @@ public sealed class ProtocolTests(AppFixture fixture)
             $"/orders/{(string.Equals(provider, "a", StringComparison.Ordinal) ? "b" : "a")}"
         );
         await Assert.That(rejected.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    [Arguments("worker")]
+    [Arguments("device-secret")]
+    public async Task Client_credentials_handler_calls_the_api_and_reuses_its_token(string clientId)
+    {
+        var client = await fixture.Client("idp-a", clientId);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>(StringComparer.Ordinal)
+                {
+                    ["Machine:Authority"] = client.Authority,
+                    ["Machine:ClientId"] = client.ClientId,
+                    ["Machine:AuthenticationMethod"] = client.AuthenticationMethod,
+                    ["Machine:ClientSecret"] = client.ClientSecret,
+                    ["Machine:PrivateKeyPem"] = client.PrivateKeyPem,
+                    ["Machine:PrivateKeyBase64"] = client.PrivateKeyBase64,
+                    ["Machine:KeyId"] = client.KeyId,
+                    ["Machine:Scopes"] = client.Scopes,
+                }
+            )
+            .Build();
+        var apiAddress = fixture.App.GetEndpoint("api", "https");
+        var tokenRequests = new CountingHandler();
+        var services = new ServiceCollection();
+        services
+            .AddHttpClient("orders", http => http.BaseAddress = apiAddress)
+            .AddClientCredentialsHandler(
+                configuration.GetSection("Machine"),
+                options =>
+                {
+                    options.Scope = "orders.read";
+                    options.AllowedOrigins.Add(apiAddress);
+                }
+            );
+        services
+            .AddHttpClient(TokenExchangeHttpClientExtensions.BackchannelClientName)
+            .AddHttpMessageHandler(() => tokenRequests);
+        await using var provider = services.BuildServiceProvider(validateScopes: true);
+        using var orders = provider.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
+        for (var call = 0; call < 2; call++)
+        {
+            var payload = await orders.GetFromJsonAsync<JsonElement>("/orders/a");
+            await Assert.That(payload.GetProperty("client").GetString()).IsEqualTo(clientId);
+        }
+        await Assert.That(tokenRequests.Posts).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task The_sample_api_calls_its_partner_with_the_client_credentials_handler()
+    {
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        for (var call = 0; call < 2; call++)
+        {
+            var orders = await api.GetFromJsonAsync<JsonElement>("/outbound/accounting/orders");
+            await Assert.That(orders.GetProperty("client").GetString()).IsEqualTo("worker");
+            await Assert.That(orders.GetProperty("subject").GetString()).IsNull();
+        }
+    }
+
+    private sealed class CountingHandler : DelegatingHandler
+    {
+        private int posts;
+        public int Posts => posts;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        )
+        {
+            if (request.Method == HttpMethod.Post)
+                Interlocked.Increment(ref posts);
+            return base.SendAsync(request, cancellationToken);
+        }
     }
 
     [Test]

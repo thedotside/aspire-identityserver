@@ -1019,6 +1019,13 @@
           "OpenTelemetry.Instrumentation.Http": "[1.20.1, )"
         }
       },
+      "TheDotSide.Aspire.IdentityServer.Testing": {
+        "type": "Project",
+        "dependencies": {
+          "TheDotSide.Aspire.IdentityServer.Client": "[11.1.0, )",
+          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.1.0, )"
+        }
+      },
       "Aspire.Hosting": {
         "type": "CentralTransitive",
         "requested": "[13.6.5, )",
@@ -2055,6 +2062,13 @@
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.AspNetCore": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.Http": "[1.20.1, )"
+        }
+      },
+      "TheDotSide.Aspire.IdentityServer.Testing": {
+        "type": "Project",
+        "dependencies": {
+          "TheDotSide.Aspire.IdentityServer.Client": "[11.1.0, )",
+          "TheDotSide.Aspire.IdentityServer.Hosting": "[11.1.0, )"
         }
       },
       "Aspire.Hosting": {
