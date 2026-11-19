@@ -194,11 +194,10 @@ public sealed class BrowserTests(AppFixture fixture)
         await Login(page);
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert.That(await page.Locator($"#user-{provider}").InnerTextAsync()).IsEqualTo(name);
+        // The application sends its ID token: like a production provider, the provider signs
+        // out without asking and returns to the registered post-logout address.
         await page.GetByRole(AriaRole.Button, new() { Name = $"Sign out {provider}", Exact = true })
             .ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
-            .ClickAsync();
-        await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert
             .That(await page.Locator($"#user-{provider}").InnerTextAsync())
@@ -224,12 +223,103 @@ public sealed class BrowserTests(AppFixture fixture)
         await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
         await page.GetByRole(AriaRole.Button, new() { Name = "Sign out a", Exact = true })
             .ClickAsync();
-        await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
-            .ClickAsync();
-        await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" }).ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
         await Assert.That(await page.Locator("#user-a").InnerTextAsync()).IsEqualTo("Signed out");
         await Assert.That(await page.Locator("#user-b").InnerTextAsync()).IsEqualTo("Alice B");
+    }
+
+    [Test]
+    public async Task Sign_out_without_an_id_token_hint_asks_for_confirmation()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(origin + "/login/a");
+        await Login(page);
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        // Any page can send an unauthenticated end-session request: the user confirms it.
+        var provider = fixture.App.GetEndpoint("idp-a", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(provider + "/connect/endsession");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true })
+            .ClickAsync();
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Signed out" }))
+            .ToBeVisibleAsync();
+        await page.GotoAsync(origin + "/login/a");
+        await Assertions.Expect(page.GetByLabel("Username")).ToBeVisibleAsync();
+    }
+
+    [Test]
+    public async Task Login_hint_prefills_the_username()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await page.GotoAsync(
+            PublicClientAuthorizeUrl(
+                "hint-state",
+                new Dictionary<string, string?>(StringComparer.Ordinal) { ["login_hint"] = "bob" }
+            )
+        );
+        await Assertions.Expect(page.GetByLabel("Username")).ToHaveValueAsync("bob");
+        await Assertions.Expect(page.GetByLabel("Password")).ToHaveValueAsync("");
+    }
+
+    [Test]
+    public async Task Cancelling_sign_in_returns_access_denied_to_the_client()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var redirect =
+            fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/') + "/signin-public";
+        await page.RouteAsync(
+            "**/signin-public?**",
+            route =>
+                route.FulfillAsync(new() { ContentType = "text/plain", Body = "Callback captured" })
+        );
+        await page.GotoAsync(PublicClientAuthorizeUrl("cancel-state"));
+        await page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions
+            .Expect(page)
+            .ToHaveURLAsync(
+                new Regex(
+                    Regex.Escape(redirect) + "\\?",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                )
+            );
+        var query = QueryHelpers.ParseQuery(new Uri(page.Url).Query);
+        await Assert.That(query["error"].ToString()).IsEqualTo("access_denied");
+        await Assert.That(query["state"].ToString()).IsEqualTo("cancel-state");
+        await Assert.That(query.ContainsKey("code")).IsFalse();
+    }
+
+    /// <summary>An authorization request of the public client, with PKCE.</summary>
+    private string PublicClientAuthorizeUrl(
+        string state,
+        Dictionary<string, string?>? extraParameters = null
+    )
+    {
+        var redirect =
+            fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/') + "/signin-public";
+        var issuer = fixture.App.GetEndpoint("idp-a", "https").ToString().TrimEnd('/');
+        var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var parameters = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["client_id"] = "public-web",
+            ["response_type"] = "code",
+            ["scope"] = "openid profile",
+            ["redirect_uri"] = redirect,
+            ["code_challenge"] = WebEncoders.Base64UrlEncode(
+                SHA256.HashData(Encoding.ASCII.GetBytes(verifier))
+            ),
+            ["code_challenge_method"] = "S256",
+            ["state"] = state,
+            ["nonce"] = Guid.NewGuid().ToString("N"),
+        };
+        if (extraParameters is not null)
+            foreach (var (key, value) in extraParameters)
+                parameters[key] = value;
+        return QueryHelpers.AddQueryString(issuer + "/connect/authorize", parameters);
     }
 
     [Test]

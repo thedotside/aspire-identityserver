@@ -17,6 +17,12 @@ builder.Services.AddAuthorization();
 #pragma warning disable EXTEXP0001
 builder.Services.AddHttpClient("oauth").RemoveAllResilienceHandlers();
 #pragma warning restore EXTEXP0001
+
+// The handler caches the client-credentials token and signs a new assertion for each attempt:
+// the resilience handlers of ServiceDefaults can stay on this client.
+builder
+    .Services.AddHttpClient("accounting")
+    .AddClientCredentialsHandler(builder.Configuration.GetSection("Integrations:Accounting:OAuth"));
 var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -57,6 +63,22 @@ app.MapGet("/memberships/a", () => Results.Ok(new { authorized = true }))
 // Demonstrates outbound OAuth configuration inside an API. No credentials are returned to callers.
 if (app.Environment.IsDevelopment())
 {
+    // The API calls itself as a partner API, with the cached token of its accounting client.
+    app.MapGet(
+        "/outbound/accounting/orders",
+        async (
+            HttpContext context,
+            IHttpClientFactory factory,
+            CancellationToken cancellationToken
+        ) =>
+        {
+            var partner = new Uri($"{context.Request.Scheme}://{context.Request.Host}/orders/a");
+            var orders = await factory
+                .CreateClient("accounting")
+                .GetFromJsonAsync<JsonElement>(partner, cancellationToken);
+            return Results.Json(orders);
+        }
+    );
     app.MapGet(
         "/outbound/{provider}",
         async (
