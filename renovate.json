@@ -34,8 +34,32 @@
       "allowedVersions": "/^11\\./"
     },
     {
+      "description": "Like ASP.NET Core, the Microsoft.Extensions references conditioned per framework keep their family: the net10.0 entries stay on 10.x.",
+      "matchPackageNames": ["/^Microsoft\\.Extensions\\./"],
+      "matchCurrentVersion": "/^10\\.0\\./",
+      "allowedVersions": "/^10\\./"
+    },
+    {
+      "matchPackageNames": ["/^Microsoft\\.Extensions\\./"],
+      "matchCurrentVersion": "/^11\\./",
+      "allowedVersions": "/^11\\./"
+    },
+    {
+      "description": "global.json keeps the SDK 11 family.",
       "matchDepTypes": ["dotnet-sdk"],
       "allowedVersions": "/^11\\./"
+    },
+    {
+      "description": "The pipelines also install SDK 10 for the net10.0 tests and package consumers: keep that family.",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["dotnet-sdk"],
+      "allowedVersions": "/^10\\./"
+    },
+    {
+      "description": "The provider's OpenTelemetry packages flow into every AppHost: raise them deliberately, against the OpenTelemetry versions that Aspire.Hosting requires.",
+      "matchPackageNames": ["/^OpenTelemetry\\./"],
+      "groupName": "OpenTelemetry",
+      "dependencyDashboardApproval": true
     },
     {
       "matchPackageNames": ["/^@commitlint\\//"],
