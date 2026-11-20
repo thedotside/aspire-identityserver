@@ -26,7 +26,7 @@ The documentation lives in the repository's root `docs/` directory, which requir
 
 ## Quick example
 
-In an AppHost referencing the `TheDotSide.Aspire.IdentityServer.Hosting` package, started in `Development` or `Testing` (its launch profile already does it):
+Start an AppHost in `Development` or `Testing` with `TheDotSide.Aspire.IdentityServer.Hosting` and `Aspire.Hosting.Dotnet` referenced for this example.
 
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
@@ -36,7 +36,7 @@ var worker = idp.AddClientCredentialsClient("worker")
     .WithGeneratedPrivateKeyJwt()
     .WithScopes("orders.read");
 
-var api = builder.AddProject<Projects.Orders_Api>("api")
+var api = builder.AddDotnetProject("api", "../Orders.Api/Orders.Api.csproj")
     // Inbound validation: Authentication:Inbound:Authority and :Audience.
     .WithIdentityApiResource(orders, "Authentication:Inbound")
     // Outbound client: Authority, ClientId, PrivateKeyPem, KeyId, Scopes...
@@ -69,7 +69,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | `TheDotSide.Aspire.IdentityServer.Authentication` | Optional ASP.NET Core helpers: `AddIdentityServerJwtBearer`, `AddIdentityServerOpenIdConnect` (PKCE, secret or `private_key_jwt`, PAR included) and `RequireScope`. |
 | `TheDotSide.Aspire.IdentityServer.Testing` | Optional integration-test helpers: user tokens through the real sign-in without a browser, client-credentials tokens and resolved client options. |
 
-Version: `11.1.0`. Targets .NET 10 and .NET 11, with Aspire 13.6.5 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for NuGet and local packages.
+Version: `11.2.0` (in development). Targets .NET 10 and .NET 11, with Aspire 17.0.0 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for published and local packages.
 
 See the [11.1.0 changelog](CHANGELOG.md#1110---2026-11-20) for the new integration features. Upgrade Hosting, Runtime and the optional Client, Authentication and Testing packages together. The major number identifies the .NET release family. See [compatibility and migration](docs/compatibilite-dotnet.md) for supported frameworks and Duende's support policy.
 

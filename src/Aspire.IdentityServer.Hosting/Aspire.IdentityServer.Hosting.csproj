@@ -3,7 +3,7 @@
     <IsPackable>true</IsPackable>
     <!-- API compatibility against the last published version; intended breaks are suppressed. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>11.0.0</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>11.1.0</PackageValidationBaselineVersion>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

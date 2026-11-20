@@ -3,9 +3,10 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting" Version="13.6.5" />
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.6.5" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Dotnet" Version="17.0.0" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="17.0.0" />
     <PackageVersion Include="Duende.IdentityServer" Version="8.0.10" />
     <PackageVersion
       Include="Microsoft.AspNetCore.Authentication.OpenIdConnect"
@@ -52,8 +53,8 @@
     />
     <PackageVersion Include="Microsoft.Playwright" Version="1.65.1" />
     <!--
-      The provider runtime brings these versions into every AppHost. Aspire.Hosting 13.6.5 requires
-      OpenTelemetry 1.17.0 or later, so 1.20.1 raises what AppHosts resolve: Renovate asks for
+      The provider runtime brings these versions into every AppHost. Aspire.Hosting 17.0.0 requires
+      OpenTelemetry 1.18.0 or later, so 1.20.1 raises what AppHosts resolve: Renovate asks for
       approval before any further raise.
     -->
 

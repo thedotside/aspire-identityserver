@@ -6,7 +6,7 @@
 
 - Pour construire le dépôt : SDK .NET 11, `11.0.100` avec `rollForward: latestFeature` dans [global.json](../global.json), et runtime ASP.NET Core .NET 10 pour exécuter aussi les tests `net10.0`.
 - Pour consommer les packages : SDK 10 avec une application `net10.0`, ou SDK 11 avec une application `net11.0`. Les deux cibles sont conservées dans les mêmes packages ; voir [la compatibilité](compatibilite-dotnet.md).
-- Aspire `13.6.5` ou ultérieur : c'est le plancher du package Hosting.
+- Aspire `17.0.0` ou ultérieur pour les packages en développement, et Aspire `13.6.5` au minimum pour la version publiée 11.1.0.
 - PowerShell 7 pour les scripts `eng/*.ps1`.
 - Certificat HTTPS de développement approuvé sur la machine.
 - Chromium installé par Playwright pour exécuter les tests navigateur.
@@ -44,7 +44,7 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Installe la version `11.1.0` depuis nuget.org avec cette commande.
+La version publiée `11.1.0` utilise le modèle AppHost d'Aspire 13.6.5. Pour cette version, consulte la [documentation du tag 11.1.0](https://github.com/thedotside/aspire-identityserver/tree/11.1.0/docs).
 
 ```powershell
 dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.1.0 --source https://api.nuget.org/v3/index.json
@@ -52,7 +52,7 @@ dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer
 
 `Hosting` installe `Runtime` comme dépendance. Installe les packages facultatifs à la même version. Utilise `Client` dans l'application consommatrice, `Authentication` pour [configurer JWT bearer et OpenID Connect](integration.md), et `Testing` dans les [tests d'intégration](tests.md). Depuis `10.0.0` ou `11.0.0`, mets `Hosting` et `Runtime` à jour ensemble pour passer au contrat 4. Tu peux conserver `net10.0` ou choisir `net11.0` avec le SDK correspondant. La [publication par tag](publication.md) explique comment vérifier que la version est disponible.
 
-Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
+Pour essayer `11.2.0` avec Aspire 17, construis les packages de cette branche et installe-les depuis le dossier local.
 
 Depuis ce dépôt :
 
@@ -64,13 +64,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.1.0
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.2.0
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.1.0
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.2.0
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -81,7 +81,6 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="Aspire.AppHost.Sdk" Version="13.6.5" />
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <OutputType>Exe</OutputType>
@@ -91,13 +90,13 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
     <AspireUseCliBundle>true</AspireUseCliBundle>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.5" />
-    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.1.0" />
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="17.0.0" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.2.0" />
   </ItemGroup>
 </Project>
 ```
 
-`AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Les projets API/web conservent leurs références normales.
+`AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Si l'AppHost orchestre aussi des projets .NET, ajoute `Aspire.Hosting.Dotnet` 17.0.0 pour les déclarer avec `AddDotnetProject`. Voir le [guide de migration Aspire](https://aspire.dev/integrations/dotnet/migrate-dotnet-project-resource/).
 
 Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. NuGet sélectionne l'assembly correspondant au framework du consommateur.
 
