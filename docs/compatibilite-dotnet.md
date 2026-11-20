@@ -69,4 +69,4 @@ Sur un poste où `dotnet --version` affiche 11 mais le build mentionne un ancien
 
 Avec les packages stables `11.0.0`, garde `net10.0` pour rester sur .NET 10 ou choisis `net11.0` avec le SDK correspondant. Aligne les packages IdentityServer. L'API publique, les scopes, les sections projetées et le contrat 3 restent identiques ; aucune migration de données n'est nécessaire pour ce fournisseur en mémoire.
 
-Suis le [guide d'installation](demarrage.md#installer-dans-une-autre-solution) pour installer `11.0.0` depuis NuGet. La version `10.0.0` reste une version stable ciblant .NET 10 ; passer à la famille 11 n'oblige pas à changer le framework de l'application.
+Pour installer `11.1.0` depuis NuGet, suis le [guide d'installation](demarrage.md#installer-dans-une-autre-solution). Cette version passe au contrat 4. Mets Hosting et Runtime à jour ensemble. Tu peux conserver le framework de ton application.

@@ -71,7 +71,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 
 Version: `11.1.0`. Targets .NET 10 and .NET 11, with Aspire 13.6.5 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for NuGet and local packages.
 
-This is the next feature version in development; 11.0.x is reserved for fixes. The latest stable release is [11.0.0](https://github.com/thedotside/aspire-identityserver/releases/tag/11.0.0), with explicit assets for both frameworks. Upgrade Hosting, Runtime and the optional Client, Authentication and Testing helpers together. The major number identifies the .NET release family; see [compatibility and migration](docs/compatibilite-dotnet.md) for the exact scope and the upstream Duende support policy.
+See the [11.1.0 changelog](CHANGELOG.md#1110---2026-11-20) for the new integration features. Upgrade Hosting, Runtime and the optional Client, Authentication and Testing packages together. The major number identifies the .NET release family. See [compatibility and migration](docs/compatibilite-dotnet.md) for supported frameworks and Duende's support policy.
 
 Local development/testing only: the AppHost must run in `Development` or `Testing`, state resets on restart and AppHost publication is rejected. A dedicated Duende BFF adapter and Kubernetes deployment of the provider are outside this integration's scope. Performance against Keycloak has not been benchmarked.
 
