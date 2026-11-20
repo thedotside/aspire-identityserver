@@ -16,6 +16,7 @@
 - Clients gain `WithAccessTokenLifetime` and `WithRefreshTokenLifetime` (refresh lifetimes require `offline_access`), `WithAllowedCorsOrigin` for single-page applications, literal `WithRedirectUri(Uri)`/`WithPostLogoutRedirectUri(Uri)` for tools and native applications (HTTPS, HTTP loopback or RFC 8252 private-use schemes), and `WithBackChannelLogoutUri`/`WithFrontChannelLogoutUri`.
 - The AppHost generates each provider's signing key as the secret parameter `{provider}-signing-key`: a provider restarted from the dashboard keeps it, so earlier tokens stay valid and consumers' cached keys keep matching.
 - The web sample adds a dependency-free single-page application at `/spa/` (code redemption and UserInfo through CORS) and records back-channel logout tokens.
+- Dashboard commands on each provider: **Show registrations** lists its clients, API resources, identity scopes and test users without secrets, and **Request a client token** requests and displays a client-credentials token, with its claims, for a chosen machine client. Aspire's resource command API makes them discoverable by other clients too.
 
 ### Breaking changes
 
