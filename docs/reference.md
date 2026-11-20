@@ -172,6 +172,16 @@ Le jeton est mis en cache par client nommé et par scope ; des requêtes simulta
 
 `TokenEndpointException`, dérivée d'`HttpRequestException`, porte le statut HTTP, `Error` (par exemple `invalid_scope`, `invalid_target`) et `ErrorDescription` renvoyés par le token endpoint, pour les deux handlers.
 
+## Package Authentication
+
+Extensions ASP.NET Core du package facultatif `TheDotSide.Aspire.IdentityServer.Authentication`, dans l'espace de noms `Microsoft.Extensions.DependencyInjection` (et `Microsoft.AspNetCore.Authorization` pour `RequireScope`). Voir [l'intégration](integration.md).
+
+| Membre | Comportement |
+| --- | --- |
+| `AuthenticationBuilder.AddIdentityServerJwtBearer(string authenticationScheme, IConfigurationSection apiConfiguration, Action<JwtBearerOptions>? configure = null)` | Lit `Authority` et `Audience` projetés par `WithIdentityApiResource` ; `MapInboundClaims = false`, claims `name` et `role`. Valeur absente : `InvalidOperationException` qui nomme la clé. `configure` s'applique ensuite. |
+| `AuthenticationBuilder.AddIdentityServerOpenIdConnect(string authenticationScheme, IConfigurationSection clientConfiguration, Action<OpenIdConnectOptions>? configure = null)` | Lit la section projetée par `WithIdentityClient` : authority, client ID, scopes, secret pour `client_secret_post` ; `code`, PKCE, `SaveTokens`, noms de claims JWT. Pour `private_key_jwt`, signe une assertion neuve (audience = issuer découvert) dans `OnAuthorizationCodeReceived` et `OnPushAuthorization`, après les événements de `configure`. |
+| `AuthorizationPolicyBuilder.RequireScope(params string[] scopes)` | Exige au moins un des scopes dans le claim `scope` séparé par des espaces. |
+
 ## Package Testing
 
 Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Testing`, pour une application démarrée. Voir [les tests d'intégration](tests.md).

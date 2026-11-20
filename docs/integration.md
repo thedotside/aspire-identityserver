@@ -12,26 +12,19 @@ Dans l'AppHost, pour une ressource `orders` et un projet `api` existants :
 api.WithIdentityApiResource(orders, "Authentication:Inbound");
 ```
 
-Dans l'API référençant `Microsoft.AspNetCore.Authentication.JwtBearer`, ce `Program.cs` illustre le comportement du sample avec un fournisseur :
+Dans l'API, le package facultatif `TheDotSide.Aspire.IdentityServer.Authentication` lit cette section :
 
 ```csharp
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.Authority = builder.Configuration["Authentication:Inbound:Authority"];
-        options.Audience = builder.Configuration["Authentication:Inbound:Audience"];
-        options.MapInboundClaims = false;
-    });
-
+builder.Services.AddAuthentication()
+    .AddIdentityServerJwtBearer("Bearer", builder.Configuration.GetSection("Authentication:Inbound"));
 builder.Services.AddAuthorization(options =>
     options.AddPolicy("orders.read", policy => policy
+        .AddAuthenticationSchemes("Bearer")
         .RequireAuthenticatedUser()
-        .RequireAssertion(context => context.User.FindAll("scope")
-            .Any(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Contains("orders.read")))));
+        .RequireScope("orders.read")));
 
 var app = builder.Build();
 app.UseAuthentication();
@@ -41,74 +34,37 @@ app.MapGet("/orders", () => new[] { "order-001" })
 app.Run();
 ```
 
-Le handler vérifie notamment signature, issuer, audience et expiration avec les métadonnées du fournisseur. La policy applique le scope de lecture. Une opération d'écriture doit demander une policy distincte pour `orders.write`.
+`AddIdentityServerJwtBearer` fixe `Authority` et `Audience` depuis la section, garde les noms de claims JWT (`MapInboundClaims = false`) et prend `name` comme claim de nom. Le handler vérifie notamment signature, issuer, audience et expiration avec les métadonnées du fournisseur. Le fournisseur émet `scope` sous forme d'une chaîne séparée par des espaces (RFC 9068) : `RequireScope` exige au moins un des scopes cités, ce que `RequireClaim` ne sait pas faire. Une opération d'écriture doit demander une policy distincte pour `orders.write`.
 
-Pour deux IDP, enregistre deux schémas JWT avec leurs autorités et audiences propres, puis sélectionne le schéma dans les policies. [Sample.Api](../samples/Sample.Api/Program.cs) fournit cette configuration ; n'agrège pas les deux autorités dans une validation permissive.
+Sans ce package, configure `AddJwtBearer` avec `Authority = section["Authority"]`, `Audience = section["Audience"]` et `MapInboundClaims = false`, puis découpe le claim `scope` dans une `RequireAssertion`.
+
+Pour deux IDP, enregistre deux schémas avec leurs sections propres, puis sélectionne le schéma dans les policies. [Sample.Api](../samples/Sample.Api/Program.cs) fournit cette configuration ; n'agrège pas les deux autorités dans une validation permissive.
 
 ## Application web : authorization code et PKCE
 
-L'AppHost déclare le client, ses redirections et la projection selon [le guide clients](clients.md). Le consommateur référence `Microsoft.AspNetCore.Authentication.OpenIdConnect` et, pour cet exemple, `TheDotSide.Aspire.IdentityServer.Client`.
-
-Ce `Program.cs` adapte le handler du sample pour la section `Authentication:Corporate` et les callbacks `/signin-oidc`, `/signout-callback-oidc` :
+L'AppHost déclare le client, ses redirections et la projection selon [le guide clients](clients.md). L'application lit la section projetée avec le package `Authentication` :
 
 ```csharp
-using Aspire.IdentityServer.Client;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-
-var builder = WebApplication.CreateBuilder(args);
-var client = builder.Configuration.GetSection("Authentication:Corporate")
-    .Get<IdentityClientOptions>()
-    ?? throw new InvalidOperationException("Missing OAuth client configuration.");
-
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = "web-cookie";
         options.DefaultChallengeScheme = "web-oidc";
     })
     .AddCookie("web-cookie", options => options.Cookie.Name = "orders-web")
-    .AddOpenIdConnect("web-oidc", options =>
-    {
-        options.SignInScheme = "web-cookie";
-        options.Authority = client.Authority;
-        options.ClientId = client.ClientId;
-        options.ClientSecret = client.ClientSecret;
-        options.ResponseType = "code";
-        options.UsePkce = true;
-        options.SaveTokens = true;
-        options.MapInboundClaims = false;
-        options.TokenValidationParameters.NameClaimType = "name";
-        options.CallbackPath = "/signin-oidc";
-        options.SignedOutCallbackPath = "/signout-callback-oidc";
-        options.PushedAuthorizationBehavior = PushedAuthorizationBehavior.Disable;
-        options.Scope.Clear();
-        foreach (var scope in client.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            options.Scope.Add(scope);
-
-        if (client.AuthenticationMethod == "private_key_jwt")
+    .AddIdentityServerOpenIdConnect(
+        "web-oidc",
+        builder.Configuration.GetSection("Authentication:Corporate"),
+        options =>
         {
-            options.Events.OnAuthorizationCodeReceived = async context =>
-            {
-                var metadata = await context.Options.ConfigurationManager!
-                    .GetConfigurationAsync(context.HttpContext.RequestAborted);
-                context.TokenEndpointRequest!.ClientAssertionType = PrivateKeyJwt.AssertionType;
-                context.TokenEndpointRequest.ClientAssertion =
-                    PrivateKeyJwt.CreateAssertion(client, metadata.Issuer);
-            };
-        }
-    });
-builder.Services.AddAuthorization();
-var app = builder.Build();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapGet("/", (HttpContext context) => new { name = context.User.Identity?.Name })
-    .RequireAuthorization();
-app.Run();
+            options.SignInScheme = "web-cookie";
+            options.CallbackPath = "/signin-oidc";
+            options.SignedOutCallbackPath = "/signout-callback-oidc";
+        });
 ```
 
-Le handler déclenche la redirection et traite le callback. Avec un client secret, il utilise le secret projeté. Avec un client public, celui-ci est absent et PKCE reste activé. Avec `private_key_jwt`, l'événement fournit une assertion fraîche lors de l'échange du code.
+`AddIdentityServerOpenIdConnect` fixe l'authority, le client ID, les scopes projetés, `ResponseType = code`, PKCE, `SaveTokens`, les noms de claims JWT et `name` comme claim de nom. Un client `client_secret_post` envoie son secret. Un client `private_key_jwt` signe une assertion neuve, dont l'audience est l'issuer découvert, pour l'échange du code **et pour la requête PAR** : PAR peut rester activé, comme le fait le handler ASP.NET Core par défaut quand le fournisseur l'annonce. Le callback `configure` s'applique après ces valeurs, pour les chemins, cookies ou `MaxAge` ; les événements qu'il définit sont conservés. [Sample.Web](../samples/Sample.Web/Program.cs) utilise ce helper pour ses quatre schémas, dont `par`, qui exige PAR avec le client à clé privée.
 
-PAR est désactivé dans cet exemple, comme dans le sample. Si ta bibliothèque utilise PAR, son appel doit aussi être authentifié correctement ; la projection d'une clé ne configure pas ce comportement.
+Sans ce package, configure `AddOpenIdConnect` avec les mêmes valeurs. Pour `private_key_jwt`, renseigne `ClientAssertionType` et `ClientAssertion` (avec `PrivateKeyJwt.CreateAssertion(client, issuer)`) dans `OnAuthorizationCodeReceived`, et dans `OnPushAuthorization` suivi de `HandleClientAuthentication()`, ou désactive PAR.
 
 ## Plusieurs connexions et déconnexion
 

@@ -130,6 +130,7 @@ try {
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.Testing" Version="$aspire" />
     <PackageReference Include="TheDotSide.Aspire.IdentityServer.Testing" Version="$Version" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Authentication" Version="$Version" />
     <ProjectReference Include="$consumer/Consumer.csproj" />
   </ItemGroup>
 </Project>
@@ -137,6 +138,11 @@ try {
 @'
 using Aspire.Hosting;
 using Aspire.Hosting.Testing;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 await using var builder = await DistributedApplicationTestingBuilder.CreateAsync<Projects.Consumer>(["DcpPublisher:RandomizePorts=true"]);
 await using var app = await builder.BuildAsync();
 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
@@ -148,7 +154,24 @@ discovery.EnsureSuccessStatusCode();
 var machine = await app.GetClientCredentialsTokensAsync("package-idp", "package-generated", cancellationToken: timeout.Token);
 var user = await app.GetUserTokensAsync("package-idp", "package-browser", "package-user", cancellationToken: timeout.Token);
 if (machine.Scope != "read" || string.IsNullOrWhiteSpace(user.AccessToken) || string.IsNullOrWhiteSpace(user.IdToken)) throw new Exception("The Testing package did not obtain the expected tokens.");
-Console.WriteLine("PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder and obtained client and user tokens with the Testing package.");
+// An API built with the Authentication package validates both tokens against the packaged provider.
+var authority = (await app.GetIdentityClientOptionsAsync("package-idp", "package-generated", timeout.Token)).Authority;
+var settings = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Inbound:Authority"] = authority, ["Inbound:Audience"] = "package-api" }).Build();
+var services = new ServiceCollection().AddLogging();
+services.AddAuthentication().AddIdentityServerJwtBearer("api", settings.GetSection("Inbound"));
+await using var provider = services.BuildServiceProvider();
+var bearer = provider.GetRequiredService<IOptionsMonitor<JwtBearerOptions>>().Get("api");
+var metadata = await bearer.ConfigurationManager!.GetConfigurationAsync(timeout.Token);
+var validation = bearer.TokenValidationParameters.Clone();
+validation.ValidIssuer = metadata.Issuer;
+validation.ValidAudience = bearer.Audience;
+validation.IssuerSigningKeys = metadata.SigningKeys;
+foreach (var token in new[] { machine.AccessToken, user.AccessToken })
+{
+    var result = await new JsonWebTokenHandler().ValidateTokenAsync(token, validation);
+    if (!result.IsValid) throw new Exception("The Authentication package refused a token of the provider.", result.Exception);
+}
+Console.WriteLine("PACKAGE_TEST_CONSUMER_OK: a test project started the packaged provider through DistributedApplicationTestingBuilder, obtained client and user tokens with the Testing package and validated them with the Authentication package.");
 '@ | Set-Content (Join-Path $tests 'Program.cs')
     # The AppHost is already built: rebuilding it from this restore loses its reference assembly.
     dotnet build (Join-Path $tests 'ConsumerTests.csproj') --packages (Join-Path $consumer 'packages') -p:BuildProjectReferences=false
