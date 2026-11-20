@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 
 namespace Aspire.IdentityServer.Client;
@@ -41,7 +39,10 @@ public sealed class TokenExchangeHandlerOptions
 /// <summary>Adds token exchange to named <see cref="HttpClient" /> instances.</summary>
 public static class TokenExchangeHttpClientExtensions
 {
-    /// <summary>The independent client used for discovery and token requests, without this handler.</summary>
+    /// <summary>
+    /// The independent client used for discovery and token requests by the token-exchange and
+    /// client-credentials handlers, which it never carries itself.
+    /// </summary>
     public const string BackchannelClientName =
         "TheDotSide.IdentityServer.TokenExchange.Backchannel";
 
@@ -67,20 +68,7 @@ public static class TokenExchangeHttpClientExtensions
                 "BackchannelTimeout must be positive."
             );
         builder.Services.AddOptions<IdentityClientOptions>(builder.Name).Bind(clientConfiguration);
-        // The shared backchannel is configured once, whatever the number of exchange handlers.
-        if (!builder.Services.Any(d => d.ServiceType == typeof(TokenExchangeMetadata)))
-        {
-            builder.Services.AddSingleton(services => new TokenExchangeMetadata(
-                services.GetService<TimeProvider>() ?? TimeProvider.System
-            ));
-            builder.Services.AddHttpClient(BackchannelClientName);
-            builder.Services.TryAddEnumerable(
-                ServiceDescriptor.Singleton<
-                    IHttpMessageHandlerBuilderFilter,
-                    FreshClientAssertionFilter
-                >()
-            );
-        }
+        TokenBackchannel.Register(builder.Services);
         return builder.AddHttpMessageHandler(services => new TokenExchangeHandler(
             services.GetRequiredService<IHttpClientFactory>(),
             services.GetRequiredService<IOptionsMonitor<IdentityClientOptions>>(),

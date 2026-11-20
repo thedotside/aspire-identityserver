@@ -93,6 +93,8 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Issuers et clés de signature différents entre IDP | [ProtocolTests](../tests/Aspire.IdentityServer.DistributedTests/ProtocolTests.cs). |
 | Tokens machine, audiences et scopes validés par l'API | ProtocolTests. |
 | Plusieurs composants OAuth sortants dans une API | ProtocolTests. |
+| Handler `client_credentials` contre le vrai fournisseur (clé et secret), jeton réutilisé, appel partenaire de Sample.Api | ProtocolTests. |
+| Cache, demandes simultanées, assertion neuve par tentative, 401, erreurs OAuth et origines du handler `client_credentials` | [ClientCredentialsHandlerTests](../tests/Aspire.IdentityServer.UnitTests/ClientCredentialsHandlerTests.cs). |
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |

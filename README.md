@@ -56,7 +56,7 @@ var client = builder.Configuration.GetSection("Integrations:Orders:OAuth").Get<I
 var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 ```
 
-`AddTokenExchangeHandler` adds RFC 8693 token exchange to a named `HttpClient`.
+`AddClientCredentialsHandler` adds cached client-credentials tokens to a named `HttpClient`, and `AddTokenExchangeHandler` RFC 8693 token exchange; token endpoint errors surface as `TokenEndpointException` with their OAuth `error`.
 
 ## Packages and requirements
 
@@ -64,7 +64,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | --- | --- |
 | `TheDotSide.Aspire.IdentityServer.Hosting` | AppHost API, secret parameters and projections. |
 | `TheDotSide.Aspire.IdentityServer.Runtime` | Provider host, installed transitively by Hosting. |
-| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration, assertion helpers and token-exchange handler for named HTTP clients. |
+| `TheDotSide.Aspire.IdentityServer.Client` | Optional configuration, assertion helpers, and client-credentials and token-exchange handlers for named HTTP clients. |
 
 Version: `11.1.0`. Targets .NET 10 and .NET 11, with Aspire 13.6.5 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for NuGet and local packages.
 

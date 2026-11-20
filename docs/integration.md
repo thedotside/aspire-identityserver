@@ -120,7 +120,21 @@ Ne remplace pas ces formulaires par un simple GET modifiant la session. La versi
 
 ## Client machine : demander un token
 
-Projette d'abord le client vers le composant sortant, par exemple `Integrations:Accounting:OAuth`. Dans un consommateur référençant le helper, la méthode suivante reprend l'échange utilisé par le sample et le smoke test. Elle suppose un `HttpClient` configuré normalement et des options liées à cette section :
+Projette d'abord le client vers le composant sortant, par exemple `Integrations:Accounting:OAuth`. Dans un consommateur référençant le package `Client`, `AddClientCredentialsHandler` ajoute le jeton à chaque requête d'un `HttpClient` nommé :
+
+```csharp
+using Aspire.IdentityServer.Client;
+
+builder.Services.AddHttpClient("accounting", http =>
+        http.BaseAddress = new Uri("https://accounting.example"))
+    .AddClientCredentialsHandler(
+        builder.Configuration.GetSection("Integrations:Accounting:OAuth"),
+        options => options.AllowedOrigins.Add(new Uri("https://accounting.example")));
+```
+
+Le handler découvre le token endpoint et l'issuer, authentifie le client par sa clé privée ou son secret, puis met le jeton en cache jusqu'à 30 secondes avant son expiration. Des requêtes simultanées partagent une seule demande de jeton, et chaque tentative de cette demande porte une assertion neuve : les handlers de résilience des ServiceDefaults peuvent rester en place. Une réponse 401 de l'API écarte le jeton, par exemple après le redémarrage du fournisseur avec une nouvelle clé de signature ; la requête suivante en obtient un autre. `AllowedOrigins` limite les adresses qui reçoivent le jeton. Une erreur du token endpoint lève `TokenEndpointException`, avec son code OAuth (`invalid_client`, `invalid_scope`…) et sa description. [Sample.Api](../samples/Sample.Api/Program.cs) l'utilise pour appeler une API partenaire.
+
+Pour une autre bibliothèque HTTP, `ClientCredentials.CreateRequest` construit seulement la requête, avec des credentials neufs, à partir du token endpoint et de l'issuer découverts :
 
 ```csharp
 using System.Net.Http.Json;
@@ -132,32 +146,11 @@ static async Task<string> RequestTokenAsync(
 {
     var metadata = await http.GetFromJsonAsync<JsonElement>(
         $"{client.Authority}/.well-known/openid-configuration", cancellationToken);
-    var endpoint = metadata.GetProperty("token_endpoint").GetString()!;
-    var issuer = metadata.GetProperty("issuer").GetString()!;
-    var fields = new Dictionary<string, string>
-    {
-        ["grant_type"] = "client_credentials",
-        ["client_id"] = client.ClientId,
-        ["scope"] = client.Scopes
-    };
-
-    if (client.AuthenticationMethod == "private_key_jwt")
-    {
-        fields["client_assertion_type"] = PrivateKeyJwt.AssertionType;
-        fields["client_assertion"] = PrivateKeyJwt.CreateAssertion(client, issuer);
-    }
-    else if (client.AuthenticationMethod == "client_secret_post")
-    {
-        fields["client_secret"] = client.ClientSecret
-            ?? throw new InvalidOperationException("Missing client secret.");
-    }
-    else
-    {
-        throw new InvalidOperationException("Machine clients require authentication.");
-    }
-
-    using var response = await http.PostAsync(
-        endpoint, new FormUrlEncodedContent(fields), cancellationToken);
+    using var request = ClientCredentials.CreateRequest(
+        client,
+        metadata.GetProperty("token_endpoint").GetString()!,
+        issuer: metadata.GetProperty("issuer").GetString());
+    using var response = await http.SendAsync(request, cancellationToken);
     response.EnsureSuccessStatusCode();
     var result = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken);
     return result.GetProperty("access_token").GetString()
@@ -165,9 +158,7 @@ static async Task<string> RequestTokenAsync(
 }
 ```
 
-Transmets ensuite le token dans l'en-tête `Authorization: Bearer` de l'appel API. L'audience de l'assertion est ici `endpoint` ; l'audience du token d'accès découle des scopes et ressources enregistrés.
-
-Cet extrait ne fournit pas de cache de métadonnées, de cache de tokens ou de stratégie de renouvellement. Le helper crée seulement une assertion. Un token d'accès peut être réutilisé pendant sa validité ; une assertion doit être recréée pour chaque demande de token.
+Cet extrait ne met ni les métadonnées ni le jeton en cache. Une assertion `private_key_jwt` sert une seule fois : sans le backchannel du handler, une nouvelle tentative doit recréer la requête plutôt que la rejouer.
 
 ## Duende BFF et gestion des tokens
 

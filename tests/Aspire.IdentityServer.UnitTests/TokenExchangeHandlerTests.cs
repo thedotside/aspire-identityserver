@@ -73,6 +73,21 @@ public sealed class TokenExchangeHandlerTests
         await Assert.That(allowed.StatusCode).IsEqualTo(HttpStatusCode.OK);
     }
 
+    [Test]
+    public async Task Exchange_errors_surface_the_oauth_error()
+    {
+        var provider = new FakeProvider { Error = "invalid_target" };
+        var api = new FakeApi();
+        await using var services = Build(provider, api);
+        using var orders = services.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
+        var error = await Assert.ThrowsExactlyAsync<TokenEndpointException>(() =>
+            orders.SendAsync(UserRequest("https://api.test/orders"))
+        );
+        await Assert.That(error!.Error).IsEqualTo("invalid_target");
+        await Assert.That(error.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        await Assert.That(api.Authorizations).IsEmpty();
+    }
+
     private static HttpRequestMessage UserRequest(string address)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, address);
@@ -158,6 +173,7 @@ public sealed class TokenExchangeHandlerTests
         private int discoveries;
         public int FailedAttempts { get; init; }
         public TimeSpan Delay { get; init; }
+        public string? Error { get; init; }
         public int Discoveries => discoveries;
         public List<string> Assertions { get; } = [];
 
@@ -194,6 +210,11 @@ public sealed class TokenExchangeHandlerTests
             }
             if (attempt <= FailedAttempts)
                 return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            if (Error is not null)
+                return new HttpResponseMessage(HttpStatusCode.BadRequest)
+                {
+                    Content = JsonContent.Create(new { error = Error }),
+                };
             return Json(
                 new
                 {
