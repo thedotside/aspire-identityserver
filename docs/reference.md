@@ -53,7 +53,7 @@ Chaque méthode retourne le même `IdentityClient`.
 | Méthode | Effet / défaut |
 | --- | --- |
 | `WithScopes(params string[] scopes)` | Ajoute les scopes autorisés, cumul et déduplication exacte. Aucune valeur par défaut. Un client interactif peut aussi déclarer les scopes d'identité et `offline_access`. |
-| `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, params string[] userClaims)` | Depuis `0.1.0-alpha.2` : active l'échange pour un client machine, une source Authorization Code et une API du même IdP. `sub` conservé ; autres claims explicitement sélectionnés. Voir [Token Exchange](token-exchange.md). |
+| `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, params string[] userClaims)` | Depuis `0.1.0-alpha.2` : active l'échange pour un client machine, une source Authorization Code et une API du même IdP. `sub` conservé ; autres claims explicitement sélectionnés. Depuis `11.1.0`, la source peut appartenir à un autre IdP : confiance directionnelle, sujet local `{IdP source}|{sub}`. Voir [Token Exchange](token-exchange.md#entre-deux-idp). |
 | `WithTokenExchangeFrom(IdentityClient subjectClient, IdentityApiResource api, TokenExchangeScopes scopes, params string[] userClaims)` | Depuis `0.1.0-alpha.4` : choisit la règle de scopes. `FromSubjectToken`, par défaut, réduit le jeton utilisateur ; `FromMachineClient` accorde les scopes de l'API autorisés au client machine, demandés explicitement. Voir [la délégation](token-exchange.md#scopes-choisis-par-le-client-machine). |
 | `RequirePkce(bool required = true)` | Clients authorization code uniquement. `UsePkce` vaut déjà `true` par défaut. |
 | `WithGeneratedClientSecret()` | Secret aléatoire de 32 octets en Base64, une fois à l'enregistrement. |

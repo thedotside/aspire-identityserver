@@ -50,6 +50,23 @@ internal static class ServerProgram
         if (
             config
                 .Clients.SelectMany(c => c.TokenExchanges)
+                .Any(p =>
+                    p.SubjectIssuer is not null
+                    && (
+                        !Uri.TryCreate(p.SubjectIssuer, UriKind.Absolute, out var trusted)
+                        || !string.Equals(trusted.Scheme, "https", StringComparison.Ordinal)
+                        || !trusted.IsLoopback
+                        || string.IsNullOrWhiteSpace(p.SubjectProvider)
+                        || string.Equals(p.SubjectIssuer, config.Issuer, StringComparison.Ordinal)
+                    )
+                )
+        )
+            throw new InvalidOperationException(
+                "A trusted provider of a token exchange needs another loopback HTTPS issuer and its name."
+            );
+        if (
+            config
+                .Clients.SelectMany(c => c.TokenExchanges)
                 .Any(p => p.Scopes is not ("FromSubjectToken" or "FromMachineClient"))
         )
             throw new InvalidOperationException(
@@ -92,6 +109,9 @@ internal static class ServerProgram
         });
         builder.Services.AddSingleton(config);
         builder.Services.AddSingleton(TimeProvider.System);
+        // Discovery and keys of the providers that token-exchange policies trust.
+        builder.Services.AddHttpClient(ForeignIssuerKeys.ClientName);
+        builder.Services.AddSingleton<ForeignIssuerKeys>();
         builder
             .Services.AddIdentityServer(options =>
             {

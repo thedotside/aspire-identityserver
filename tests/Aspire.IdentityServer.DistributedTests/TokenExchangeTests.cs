@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
@@ -684,6 +685,177 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         );
         await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
         await Assert.That(await ProtocolTests.Error(response)).IsEqualTo(error);
+    }
+
+    [Test]
+    public async Task A_user_token_of_another_provider_is_exchanged_only_through_explicit_trust()
+    {
+        var sourceToken = (await UserTokens("b")).GetProperty("access_token").GetString()!;
+        var partner = await fixture.Client("idp-a", "partner");
+        using var response = await Exchange(partner, sourceToken);
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        await Assert.That(payload.TryGetProperty("refresh_token", out _)).IsFalse();
+        var token = payload.GetProperty("access_token").GetString()!;
+        var jwt = new JsonWebToken(token);
+        var source = new JsonWebToken(sourceToken);
+        await Assert.That(jwt.Issuer).IsEqualTo(partner.Authority);
+        await Assert.That(jwt.Audiences.ToArray()).IsEquivalentTo(["orders-api-a"]);
+        await Assert.That(ProtocolTests.ScopeClaim(jwt)).IsEqualTo("orders.read");
+        // A stable local identity built from the source provider and subject: the alice of
+        // provider B is never the alice of provider A.
+        await Assert.That(jwt.Subject).IsEqualTo("idp-b|idp-b:alice");
+        await Assert.That(jwt.Subject).IsNotEqualTo("idp-a:alice");
+        await Assert.That(jwt.GetClaim("idp").Value).IsEqualTo("idp-b");
+        await Assert.That(jwt.GetClaim("name").Value).IsEqualTo("Alice B");
+        await Assert.That(Values(jwt, "amr")).IsEquivalentTo(Values(source, "amr"));
+        await Assert.That(jwt.ValidTo).IsLessThanOrEqualTo(source.ValidTo);
+        using (var actor = JsonDocument.Parse(jwt.GetClaim("act").Value))
+            await Assert
+                .That(actor.RootElement.GetProperty("sub").GetString())
+                .IsEqualTo("partner");
+        using var api = fixture.App.CreateHttpClient("api", "https");
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        var orders = await api.GetFromJsonAsync<JsonElement>("/orders/a");
+        await Assert.That(orders.GetProperty("subject").GetString()).IsEqualTo("idp-b|idp-b:alice");
+        // Provider A's API still refuses the token of provider B itself.
+        api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            sourceToken
+        );
+        using var refused = await api.GetAsync("/orders/a");
+        await Assert.That(refused.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+    }
+
+    [Test]
+    [Arguments("reverse", null)]
+    [Arguments("same-provider", "invalid_grant")]
+    [Arguments("machine", "invalid_grant")]
+    [Arguments("audience", "invalid_target")]
+    [Arguments("scope", "invalid_scope")]
+    [Arguments("tampered", "invalid_grant")]
+    [Arguments("unknown-key", "invalid_grant")]
+    public async Task Cross_provider_exchanges_refuse_what_the_trust_does_not_cover(
+        string change,
+        string? expected
+    )
+    {
+        var partner = await fixture.Client("idp-a", "partner");
+        HttpResponseMessage response;
+        switch (change)
+        {
+            case "reverse":
+                // Provider B does not trust provider A in return.
+                var tokenA = (await UserTokens("a")).GetProperty("access_token").GetString()!;
+                response = await Exchange(
+                    await fixture.Client("idp-b", "worker"),
+                    tokenA,
+                    "orders-api-b"
+                );
+                break;
+            case "same-provider":
+                // The partner trusts provider B's web client, not provider A's client of the same name.
+                var ownToken = (await UserTokens("a")).GetProperty("access_token").GetString()!;
+                response = await Exchange(partner, ownToken);
+                break;
+            case "machine":
+                var worker = await fixture.Client("idp-b", "worker");
+                using (var http = fixture.App.CreateHttpClient("idp-b", "https"))
+                using (
+                    var machine = await http.PostAsync(
+                        "/connect/token",
+                        new FormUrlEncodedContent(ProtocolTests.Fields(worker))
+                    )
+                )
+                {
+                    var machineToken = (await machine.Content.ReadFromJsonAsync<JsonElement>())
+                        .GetProperty("access_token")
+                        .GetString()!;
+                    response = await Exchange(partner, machineToken);
+                }
+                break;
+            case "audience":
+                response = await Exchange(partner, await SourceToken(), "unrelated-api");
+                break;
+            case "scope":
+                response = await Exchange(partner, await SourceToken(), scope: "orders.write");
+                break;
+            case "tampered":
+                var parts = (await SourceToken()).Split('.');
+                var claims = JsonNode.Parse(Base64UrlEncoder.Decode(parts[1]))!.AsObject();
+                claims["sub"] = "idp-b:bob";
+                response = await Exchange(
+                    partner,
+                    $"{parts[0]}.{Base64UrlEncoder.Encode(claims.ToJsonString())}.{parts[2]}"
+                );
+                break;
+            default:
+                response = await Exchange(partner, ForgedSourceToken());
+                break;
+        }
+        using (response)
+        {
+            await Assert.That(response.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+            if (expected is not null)
+                await Assert.That(await ProtocolTests.Error(response)).IsEqualTo(expected);
+        }
+    }
+
+    private async Task<string> SourceToken() =>
+        (await UserTokens("b")).GetProperty("access_token").GetString()!;
+
+    /// <summary>A well-formed token of provider B's issuer, signed by a key it never published.</summary>
+    private string ForgedSourceToken()
+    {
+        using var rsa = RSA.Create(2048);
+        var now = DateTime.UtcNow;
+        return new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                TokenType = "at+jwt",
+                Issuer = fixture.App.GetEndpoint("idp-b", "https").ToString().TrimEnd('/'),
+                IssuedAt = now,
+                NotBefore = now,
+                Expires = now.AddMinutes(5),
+                Claims = new Dictionary<string, object>(StringComparer.Ordinal)
+                {
+                    ["sub"] = "idp-b:alice",
+                    ["client_id"] = "web",
+                    ["scope"] = "openid profile orders.read",
+                    ["auth_time"] = new DateTimeOffset(now).ToUnixTimeSeconds(),
+                    ["amr"] = new[] { "pwd" },
+                    ["idp"] = "local",
+                },
+                SigningCredentials = new SigningCredentials(
+                    new RsaSecurityKey(rsa) { KeyId = "unknown-key" },
+                    SecurityAlgorithms.RsaSha256
+                ),
+            }
+        );
+    }
+
+    private async Task<HttpResponseMessage> Exchange(
+        IdentityClientOptions client,
+        string subjectToken,
+        string? audience = null,
+        string scope = "orders.read"
+    )
+    {
+        var provider = client.Authority.Contains(
+            fixture.App.GetEndpoint("idp-b", "https").Authority,
+            StringComparison.Ordinal
+        )
+            ? "idp-b"
+            : "idp-a";
+        using var http = fixture.App.CreateHttpClient(provider, "https");
+        using var request = TokenExchange.CreateRequest(
+            client,
+            client.Authority + "/connect/token",
+            subjectToken,
+            audience ?? "orders-api-a",
+            scope
+        );
+        return await http.SendAsync(request);
     }
 
     private async Task<JsonElement> UserTokens(

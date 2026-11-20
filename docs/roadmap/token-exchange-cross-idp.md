@@ -1,6 +1,6 @@
 # Phase 2 : Token Exchange entre deux IdP
 
-Statut : à implémenter après validation et fusion du Token Exchange avec un seul IdP. Cette page trace une évolution ; elle ne décrit pas une fonctionnalité disponible.
+Statut : implémenté pour `11.1.0`, en relecture. Le guide [Token Exchange](../token-exchange.md#entre-deux-idp) décrit le fonctionnement ; cette page garde les décisions et l'état des critères.
 
 Suivi GitHub : [issue #4](https://github.com/thedotside/aspire-identityserver/issues/4).
 
@@ -25,13 +25,13 @@ La configuration doit rester aussi simple que le parcours local : des référenc
 
 ## Critères d'acceptation
 
-- [ ] La phase 1 est fusionnée, sa CI est verte et son API AppHost est validée.
-- [ ] Un seul AppHost réel héberge deux IdP indépendants et l'API IdP1 ; les tests utilisent des contextes navigateur isolés.
-- [ ] Un jeton utilisateur IdP2 est accepté par l'échange IdP1 seulement après déclaration explicite de confiance.
-- [ ] Le jeton échangé a un issuer et une signature IdP1, l'audience attendue, les scopes mappés autorisés et les claims sélectionnés.
-- [ ] L'API IdP1 accepte ce jeton et refuse directement le jeton IdP2.
-- [ ] Les mêmes identifiants de sujet sur les deux IdP ne provoquent aucune collision.
-- [ ] Confiance inverse, IdP3 non déclaré, mauvais client source, mauvaise audience, signature/algorithme/type erronés, expiration et escalade de scopes sont refusés.
-- [ ] Le renouvellement des clés et une clé inconnue sont testés sans validation permissive ni TLS désactivé.
-- [ ] La documentation couvre la déclaration AppHost, les projections, les requêtes et les limites.
-- [ ] Build, tests, vrais packages et consommateur isolé passent ; la phase 1 reste inchangée pour ses consommateurs.
+- [x] La phase 1 est fusionnée, sa CI est verte et son API AppHost est validée (stable depuis `10.0.0`).
+- [x] Un seul AppHost réel héberge deux IdP indépendants et l'API IdP1 ; les tests utilisent des contextes navigateur isolés.
+- [x] Un jeton utilisateur IdP2 est accepté par l'échange IdP1 seulement après déclaration explicite de confiance.
+- [x] Le jeton échangé a un issuer et une signature IdP1, l'audience attendue, les scopes mappés autorisés et les claims sélectionnés.
+- [x] L'API IdP1 accepte ce jeton et refuse directement le jeton IdP2.
+- [x] Les mêmes identifiants de sujet sur les deux IdP ne provoquent aucune collision.
+- [ ] Confiance inverse, IdP3 non déclaré, mauvais client source, mauvaise audience, signature/algorithme/type erronés, expiration et escalade de scopes sont refusés. Testés : confiance inverse, client de même nom d'un autre IdP, jeton machine, audience, escalade de scope, jeton modifié, clé jamais publiée. Couverts par la validation sans test dédié : algorithme et type autres que RS256/`at+jwt`, expiration, IdP3 (toute autre valeur d'issuer est refusée faute de politique).
+- [ ] Le renouvellement des clés et une clé inconnue sont testés sans validation permissive ni TLS désactivé. Testé : clé inconnue refusée après rafraîchissement borné. Non testé : rotation effective d'une clé de l'IdP2.
+- [x] La documentation couvre la déclaration AppHost, les projections, les requêtes et les limites.
+- [x] Build, tests, vrais packages et consommateur isolé passent en local ; la phase 1 reste inchangée pour ses consommateurs.

@@ -105,19 +105,15 @@ public sealed class ProjectionTests
     }
 
     [Test]
-    public async Task Token_exchange_rejects_cross_provider_policies_and_wrong_client_types()
+    public async Task Token_exchange_keeps_the_target_api_local_and_refuses_wrong_client_types()
     {
         var builder = TestApp.CreateBuilder();
         var a = builder.AddIdentityServer("a");
         var b = builder.AddIdentityServer("b");
         var browserA = a.AddAuthorizationCodeClient("web");
-        var browserB = b.AddAuthorizationCodeClient("web");
         var machine = a.AddClientCredentialsClient("device");
         var apiA = a.AddApiResource("orders");
         var apiB = b.AddApiResource("orders");
-        await Assert
-            .That(() => machine.WithTokenExchangeFrom(browserB, apiA))
-            .ThrowsExactly<ArgumentException>();
         await Assert
             .That(() => machine.WithTokenExchangeFrom(browserA, apiB))
             .ThrowsExactly<ArgumentException>();
@@ -127,6 +123,35 @@ public sealed class ProjectionTests
         await Assert
             .That(() => browserA.WithTokenExchangeFrom(browserA, apiA))
             .ThrowsExactly<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task A_cross_provider_policy_declares_the_trusted_issuer_to_the_target_provider()
+    {
+        var builder = TestApp.CreateBuilder();
+        var a = builder.AddIdentityServer("a");
+        var b = builder.AddIdentityServer("b");
+        var orders = a.AddApiResource("orders").WithScopes("read");
+        var browserB = b.AddAuthorizationCodeClient("web")
+            .WithScopes("openid", "read")
+            .WithRedirectUri(b.GetEndpoint("https"), "/callback");
+        b.AddApiResource("orders-b").WithScopes("read");
+        var partner = a.AddClientCredentialsClient("partner")
+            .WithGeneratedClientSecret()
+            .WithScopes("read")
+            .WithTokenExchangeFrom(browserB, orders, "name");
+        var values = await Evaluate(a);
+        var prefix = "IdentityServer__Clients__0__TokenExchanges__0";
+        await Assert.That(values[$"{prefix}__SubjectClientId"]).IsEqualTo("web");
+        await Assert.That(values[$"{prefix}__SubjectProvider"]).IsEqualTo("b");
+        var issuer = (EndpointReference)values[$"{prefix}__SubjectIssuer"];
+        await Assert.That(issuer.Resource.Name).IsEqualTo("b");
+        // The trust is directional: provider B receives no policy of provider A.
+        var valuesB = await Evaluate(b);
+        await Assert
+            .That(valuesB.Keys.Any(k => k.Contains("TokenExchanges", StringComparison.Ordinal)))
+            .IsFalse();
+        await Assert.That(partner.TokenExchangeAudience).IsEqualTo("orders");
     }
 
     [Test]

@@ -115,6 +115,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Scopes d'identité sélectionnant les claims de l'access token de connexion | TokenExchangeTests. |
 | `max_age` et `auth_time` signé avec le handler OIDC de .NET 10 et .NET 11 | BrowserTests. |
 | Champs de la projection standard choisis au démarrage, quel que soit l'ordre de déclaration | ProjectionTests. |
+| Échange entre deux IdP : confiance explicite, sujet sans collision, API cible ; refus de la confiance inverse, d'un client source d'un autre IdP, d'un jeton machine, d'une audience ou d'un scope hors politique, d'un jeton modifié et d'une clé jamais publiée | TokenExchangeTests. |
 
 La validation locale consignée le **18 novembre 2026**, sur macOS arm64 avec les SDK 11.0.100 et 10.0.404, a produit **408 tests réussis, zéro échec** sur `net10.0` et `net11.0` : 242 unitaires et 166 distribués, navigateur compris, puis le pack et le smoke test des deux consommateurs pour chaque framework. Ce résultat est historique ; exécute les commandes ci-dessus pour une nouvelle révision. Il ne prouve pas la compatibilité d'un BFF tiers, d'un cluster ni des autres systèmes, que seule la CI couvre.
 
