@@ -11,7 +11,8 @@
         <div asp-validation-summary="All" role="alert"></div>
         <p><label asp-for="Username"></label> <input asp-for="Username" autocomplete="username" required autofocus /></p>
         <p><label asp-for="Password"></label> <input asp-for="Password" type="password" autocomplete="current-password" required /></p>
-        <button type="submit">Sign in</button>
+        <button type="submit" name="Button" value="login">Sign in</button>
+        <button type="submit" name="Button" value="cancel" formnovalidate>Cancel</button>
     </form>
 </main>
 </body></html>

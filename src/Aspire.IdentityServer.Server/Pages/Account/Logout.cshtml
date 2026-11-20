@@ -1,7 +1,9 @@
 @page
 @model Aspire.IdentityServer.Server.Pages.Account.LogoutModel
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8" /><title>Development sign out</title></head>
+<html lang="en"><head><meta charset="utf-8" /><title>Development sign out</title>
+@if (Model.AutomaticRedirect) { <script src="/Account/signed-out.js" defer></script> }
+</head>
 <body><main>
 @if (!Model.SignedOut)
 {
@@ -12,6 +14,6 @@ else
 {
     <h1>Signed out</h1>
     @if (Model.SignOutIFrameUrl is not null) { <iframe title="Sign out notification" src="@Model.SignOutIFrameUrl" hidden></iframe> }
-    @if (Model.ReturnUrl is not null) { <a href="@Model.ReturnUrl">Return to application</a> }
+    @if (Model.ReturnUrl is not null) { <a id="return" href="@Model.ReturnUrl">Return to application</a> }
 }
 </main></body></html>

@@ -96,6 +96,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
+| Déconnexion directe avec `id_token_hint`, confirmation sans ce jeton, `login_hint` et annulation `access_denied` | BrowserTests. |
 | Sessions A/B coexistantes et indépendantes | BrowserTests. |
 | Vérificateur PKCE absent ou incorrect | BrowserTests. |
 | Clés privées conservées comme références secrètes et absentes de la configuration IDP | [ProjectionTests](../tests/Aspire.IdentityServer.UnitTests/ProjectionTests.cs). |
@@ -115,7 +116,7 @@ pwsh eng/pack.ps1
 pwsh eng/package-smoke.ps1
 ```
 
-`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Après chaque publication, la version de référence passe à la version publiée.
+`pack.ps1` construit en Release les trois archives et leurs symboles `.snupkg` dans `artifacts/packages`, et vérifie qu'elles ne contiennent pas d'assemblies tierces. Hosting et Client embarquent leur documentation XML pour l'IntelliSense des consommateurs. La validation de package compare chaque API à la référence stable `11.0.0` (`PackageValidationBaselineVersion`) : une rupture non voulue fait échouer le pack. Les anciennes exceptions de compatibilité des premières alphas ont été retirées pour la version stable. Le package Runtime en déclare de nouveau dans [CompatibilitySuppressions.xml](../src/Aspire.IdentityServer.Server/CompatibilitySuppressions.xml) : Razor Pages impose des modèles de pages publics, qui ne constituent pas une API pour les consommateurs, et `11.1.0` a rendu asynchrones les handlers de connexion et de déconnexion. Après chaque publication, la version de référence passe à la version publiée.
 
 Deux pratiques restent à décider : une SBOM (`Microsoft.Sbom.Targets`, nouvel outil à inscrire d'abord dans les ADR selon OUT-26) et une attestation de provenance, que GitHub n'émet pas pour un dépôt privé du plan gratuit. Les dépendances sont des références NuGet normales, restaurées depuis leurs packages d'origine.
 

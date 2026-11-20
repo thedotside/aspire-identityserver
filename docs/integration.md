@@ -114,7 +114,7 @@ PAR est désactivé dans cet exemple, comme dans le sample. Si ta bibliothèque 
 
 Pour chaque fournisseur web, configure des noms de schémas, cookies, callbacks de connexion, callbacks de déconnexion et chemins de déconnexion distante distincts. [Sample.Web](../samples/Sample.Web/Program.cs) montre les schémas `oidc-a`, `oidc-b`, `oidc-public` et leurs cookies.
 
-Le sample expose des routes de connexion et des formulaires POST de déconnexion protégés par antiforgery. Il déconnecte le schéma OIDC puis le cookie applicatif correspondant. La page de déconnexion de l'IDP traite elle aussi un POST. Les tests navigateur couvrent la coexistence des sessions A/B et la déconnexion indépendante.
+Le sample expose des routes de connexion et des formulaires POST de déconnexion protégés par antiforgery. Il déconnecte le schéma OIDC puis le cookie applicatif correspondant. Comme un fournisseur de production, l'IDP déconnecte sans confirmation une application qui présente son `id_token_hint`, ce que fait le handler ASP.NET Core avec `SaveTokens = true`, puis revient à son `post_logout_redirect_uri`. Une demande sans ce jeton est confirmée par un POST sur la page de déconnexion de l'IDP. Les tests navigateur couvrent la coexistence des sessions A/B, la déconnexion indépendante, la confirmation, `login_hint` et l'annulation (`access_denied`).
 
 Ne remplace pas ces formulaires par un simple GET modifiant la session. La version à un fournisseur ci-dessus illustre uniquement la connexion et l'accès protégé ; pour le parcours complet de déconnexion, reprends le sample.
 
