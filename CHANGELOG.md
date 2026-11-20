@@ -10,6 +10,8 @@
 - The provider pages share a modern layout with light and dark themes following the system. The sign-in page names the requesting application; the error page shows the OAuth error, its description, the client and the request id. Their stylesheet and icon are embedded in the Runtime and served from the provider's origin, as the pages' CSP refuses inline styles and scripts.
 - Client: `AddClientCredentialsHandler` sends client-credentials tokens on a named `HttpClient`, cached per client and scope until shortly before they expire, shared by concurrent requests and dropped when a resource answers 401. Each token request attempt carries a new assertion, so resilience handlers can stay in place. `ClientCredentials.CreateRequest` builds the request alone for other HTTP stacks; Sample.Api calls a partner API with the handler.
 - Client: token endpoint errors of both handlers raise `TokenEndpointException`, an `HttpRequestException` carrying the OAuth `error` and `error_description` instead of a bare status code.
+- New optional package `TheDotSide.Aspire.IdentityServer.Testing`: `GetUserTokensAsync` signs a test user in through the provider's authorization code + PKCE flow and sign-in form without a browser, `GetClientCredentialsTokensAsync` requests machine tokens, and `GetIdentityClientOptionsAsync` resolves a client's settings and credentials, on a started `DistributedApplication`. Publishing pushes it after Hosting and Client; the package smoke test uses it from an isolated test project.
+- Hosting exposes `IdentityServerResource.RegisteredUsers`, `IdentityClient.GrantType` and `IdentityClient.RegisteredRedirectUris`.
 
 ## 11.0.0 - 2026-11-12
 

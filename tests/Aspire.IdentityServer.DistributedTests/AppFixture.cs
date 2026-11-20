@@ -207,32 +207,9 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
     /// <summary>A new isolated browser context; TLS errors are never ignored.</summary>
     public Task<BrowserSession> NewBrowserSessionAsync() => BrowserSession.StartAsync(Browser);
 
-    public async Task<IdentityClientOptions> Client(string server, string clientId)
-    {
-        var registration = Servers
-            .Single(s => string.Equals(s.Name, server, StringComparison.Ordinal))
-            .RegisteredClients.Single(c =>
-                string.Equals(c.ClientId, clientId, StringComparison.Ordinal)
-            );
-        return new IdentityClientOptions
-        {
-            Authority = registration.Authority.Url,
-            ClientId = registration.ClientId,
-            AuthenticationMethod = registration.AuthenticationMethod,
-            PrivateKeyPem = registration.PrivateKeyPem is { } key
-                ? await key.Resource.GetValueAsync(default)
-                : null,
-            PrivateKeyBase64 = registration.PrivateKeyBase64 is { } base64Key
-                ? await base64Key.Resource.GetValueAsync(default)
-                : null,
-            ClientSecret = registration.ClientSecret is { } secret
-                ? await secret.Resource.GetValueAsync(default)
-                : null,
-            KeyId = registration.KeyId,
-            Scopes = string.Join(' ', registration.Scopes),
-            TokenExchangeAudience = registration.TokenExchangeAudience,
-        };
-    }
+    /// <summary>A registered client with resolved credentials, through the Testing package.</summary>
+    public Task<IdentityClientOptions> Client(string server, string clientId) =>
+        App.GetIdentityClientOptionsAsync(server, clientId);
 
     public async ValueTask DisposeAsync()
     {

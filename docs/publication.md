@@ -2,7 +2,7 @@
 
 [Documentation](README.md) · [Développement](developpement.md) · [Installation](demarrage.md)
 
-Un tag SemVer sans préfixe déclenche la publication des trois packages sous l'organisation NuGet **TheDotSide**. Par exemple, `11.0.0` publie la version NuGet stable `11.0.0` ; un suffixe comme `-rc.1` désigne une préversion.
+Un tag SemVer sans préfixe déclenche la publication des quatre packages sous l'organisation NuGet **TheDotSide**. Par exemple, `11.0.0` publie la version NuGet stable `11.0.0` ; un suffixe comme `-rc.1` désigne une préversion.
 
 ## Versions stables et compatibilité
 
@@ -31,16 +31,16 @@ Juste après la publication, passe `Version` de [Directory.Build.props](../Direc
 
 Choisis un nouveau numéro à chaque publication. Les tags acceptent `X.Y.Z` et `X.Y.Z-prerelease`, sans `v`, sans zéros de tête dans les nombres et sans métadonnées `+build`. Les préversions peuvent contenir plusieurs identifiants, comme `0.2.0-rc.1`.
 
-Le tag doit pointer vers un commit appartenant à l'historique de `main`. Le pipeline contrôle cette condition avant le build. La version du tag est injectée dans le build, dans les trois packages et dans les tests de consommation ; elle remplace la version locale de `Directory.Build.props` pour cette exécution. Il n'est donc pas nécessaire de modifier les versions des scripts avant chaque tag.
+Le tag doit pointer vers un commit appartenant à l'historique de `main`. Le pipeline contrôle cette condition avant le build. La version du tag est injectée dans le build, dans les quatre packages et dans les tests de consommation ; elle remplace la version locale de `Directory.Build.props` pour cette exécution. Il n'est donc pas nécessaire de modifier les versions des scripts avant chaque tag.
 
 ## Chaîne de validation et de publication
 
 Le déclencheur GitHub est dans [.github/workflows/publish.yml](../.github/workflows/publish.yml). Les étapes sont sourcées dans [pipelines/build](../pipelines/build/action.yml) et [pipelines/publish](../pipelines/publish/action.yml).
 
 1. Le job `verify` vérifie le tag et son rattachement à `main`, restaure .NET et les dépendances, contrôle CSharpier, compile et exécute les tests de protocoles et navigateur.
-2. Il construit les trois archives et les consomme dans un AppHost temporaire avec un cache NuGet isolé. Les archives vérifiées sont conservées dans l'artefact `packages-and-test-results`.
+2. Il construit les quatre archives et les consomme dans un AppHost temporaire avec un cache NuGet isolé. Les archives vérifiées sont conservées dans l'artefact `packages-and-test-results`.
 3. Le job `publish` démarre uniquement si `verify` réussit. Il récupère ces mêmes archives, vérifie leurs identifiants, versions et révision source, puis demande un jeton NuGet temporaire via OIDC.
-4. Il publie `Runtime`, `Client`, puis `Hosting`, chacun avec son paquet de symboles `.snupkg`. Seules les trois archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
+4. Il publie `Runtime`, `Client`, `Hosting`, puis `Testing`, qui dépend des deux précédents, chacun avec son paquet de symboles `.snupkg`. Seules les quatre archives nommées explicitement sont envoyées ; les résultats de tests ne sont pas publiés sur NuGet.
 5. Il attend leur indexation pendant au plus quinze minutes, puis restaure les packages uniquement depuis nuget.org dans des consommateurs indépendants avec SDK 10/.NET 10 et SDK 11/.NET 11. Chaque consommateur démarre le fournisseur et obtient un token réel avec `private_key_jwt`. Le job de publication dispose de vingt-cinq minutes pour couvrir l'indexation et ces vérifications.
 
 Une publication réussie atteste donc la validation des packages et leur consommation depuis le registre. La validation de publication s'exécute sur Windows ; la CI des PR couvre aussi Linux.

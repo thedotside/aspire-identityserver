@@ -36,7 +36,7 @@ runs:
         if (!$env:NUGET_USER) { throw 'Configure the NUGET_USER repository variable.' }
         if ($env:GITHUB_REF_TYPE -ne 'tag' -or $env:RELEASE_VERSION -ne $env:GITHUB_REF_NAME) { throw 'The release version must match the Git tag.' }
         Add-Type -AssemblyName System.IO.Compression.FileSystem
-        foreach ($name in @('Runtime', 'Client', 'Hosting')) {
+        foreach ($name in @('Runtime', 'Client', 'Hosting', 'Testing')) {
           $id = "TheDotSide.Aspire.IdentityServer.$name"
           $path = "artifacts/release/packages/$id.$env:RELEASE_VERSION.nupkg"
           $archive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path (Get-Location) $path))
@@ -55,13 +55,14 @@ runs:
       uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
       with:
         user: ${{ inputs.user }}
-    - name: Push the three packages
+    - name: Push the four packages
       shell: pwsh
       env:
         RELEASE_VERSION: ${{ inputs.version }}
         NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
       run: |
-        foreach ($name in @('Runtime', 'Client', 'Hosting')) {
+        # Testing depends on Hosting and Client: it goes last.
+        foreach ($name in @('Runtime', 'Client', 'Hosting', 'Testing')) {
           $package = "artifacts/release/packages/TheDotSide.Aspire.IdentityServer.$name.$env:RELEASE_VERSION.nupkg"
           # The .snupkg next to each archive is pushed with it, to the NuGet symbol server.
           dotnet nuget push $package --api-key $env:NUGET_API_KEY --source https://api.nuget.org/v3/index.json --skip-duplicate
@@ -72,7 +73,7 @@ runs:
       env:
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
-        $pending = @('runtime', 'client', 'hosting')
+        $pending = @('runtime', 'client', 'hosting', 'testing')
         for ($attempt = 0; $attempt -lt 90 -and $pending.Count; $attempt++) {
           $pending = @($pending | Where-Object {
             $url = "https://api.nuget.org/v3-flatcontainer/thedotside.aspire.identityserver.$_/index.json"
