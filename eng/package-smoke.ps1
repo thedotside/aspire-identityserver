@@ -34,7 +34,6 @@ $localSource = if ($FromNuGet) { '' } else { "<add key=`"local`" value=`"$escape
     Set-Content (Join-Path $consumer 'Directory.Packages.props')
 @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <Sdk Name="Aspire.AppHost.Sdk" Version="$aspire" />
   <PropertyGroup><TargetFramework>$TargetFramework</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><IsAspireHost>true</IsAspireHost><AspireUseCliBundle>true</AspireUseCliBundle></PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="$aspire" />

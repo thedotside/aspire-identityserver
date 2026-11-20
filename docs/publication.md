@@ -88,7 +88,7 @@ Packages NuGet de la version `11.1.0`.
 - [Authentication](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Authentication/11.1.0)
 - [Testing](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Testing/11.1.0)
 
-Pour relancer la vérification sans source locale :
+Pour relancer la vérification sans source locale, utilise `eng/package-smoke.ps1` depuis une copie de travail du tag `11.1.0` afin de retrouver son plancher Aspire.
 
 ```powershell
 pwsh eng/package-smoke.ps1 -Version 11.1.0 -FromNuGet

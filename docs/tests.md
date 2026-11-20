@@ -5,8 +5,8 @@
 Le package facultatif `TheDotSide.Aspire.IdentityServer.Testing` aide les projets de test qui démarrent un AppHost avec `DistributedApplicationTestingBuilder`. Il obtient des jetons auprès des vrais endpoints du fournisseur : la connexion d'un utilisateur passe par authorization code + PKCE et le formulaire de connexion du fournisseur, jamais par un grant mot de passe.
 
 ```xml
-<PackageReference Include="Aspire.Hosting.Testing" Version="13.6.5" />
-<PackageReference Include="TheDotSide.Aspire.IdentityServer.Testing" Version="11.1.0" />
+<PackageReference Include="Aspire.Hosting.Testing" Version="17.0.0" />
+<PackageReference Include="TheDotSide.Aspire.IdentityServer.Testing" Version="11.2.0" />
 ```
 
 Les extensions sont dans l'espace de noms `Aspire.Hosting.Testing`, déjà importé par ces tests. Elles s'appliquent à une `DistributedApplication` démarrée, après que le fournisseur est sain.
