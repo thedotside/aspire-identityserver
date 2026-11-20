@@ -148,8 +148,7 @@ public static class IdentityServerAuthenticationExtensions
         CancellationToken cancellationToken
     )
     {
-        var manager =
-            options.ConfigurationManager
+        var manager = options.ConfigurationManager
             ?? throw new InvalidOperationException("The OpenID Connect metadata are unavailable.");
         var configuration = await manager
             .GetConfigurationAsync(cancellationToken)

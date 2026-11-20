@@ -9,10 +9,9 @@ internal static class ProviderAssets
 {
     public static string Read(string name)
     {
-        using var stream =
-            typeof(ProviderAssets).Assembly.GetManifestResourceStream(
-                $"Aspire.IdentityServer.Server.Assets.{name}"
-            ) ?? throw new InvalidOperationException($"The runtime misses its asset '{name}'.");
+        using var stream = typeof(ProviderAssets).Assembly.GetManifestResourceStream(
+            $"Aspire.IdentityServer.Server.Assets.{name}"
+        ) ?? throw new InvalidOperationException($"The runtime misses its asset '{name}'.");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }

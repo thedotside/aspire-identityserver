@@ -72,9 +72,8 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
                 .WithBase64PrivateKeyJwt(secret, TestKeys.Public(other, "fixture-key"))
                 .WithScopes("orders.read");
         }
-        var legacy = builder.AddIdentityServer(
-            "idp-legacy",
-            options => options.AcceptTokenEndpointAudience = true
+        var legacy = builder.AddIdentityServer("idp-legacy", options =>
+            options.AcceptTokenEndpointAudience = true
         );
         legacy.AddApiResource("legacy-api").WithScopes("legacy.read");
         legacy

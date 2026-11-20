@@ -122,14 +122,11 @@ public sealed class ProtocolTests(AppFixture fixture)
         var services = new ServiceCollection();
         services
             .AddHttpClient("orders", http => http.BaseAddress = apiAddress)
-            .AddClientCredentialsHandler(
-                configuration.GetSection("Machine"),
-                options =>
-                {
-                    options.Scope = "orders.read";
-                    options.AllowedOrigins.Add(apiAddress);
-                }
-            );
+            .AddClientCredentialsHandler(configuration.GetSection("Machine"), options =>
+            {
+                options.Scope = "orders.read";
+                options.AllowedOrigins.Add(apiAddress);
+            });
         services
             .AddHttpClient(TokenExchangeHttpClientExtensions.BackchannelClientName)
             .AddHttpMessageHandler(() => tokenRequests);

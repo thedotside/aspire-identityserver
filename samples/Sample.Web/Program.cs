@@ -52,9 +52,8 @@ builder.Services.AddHttpContextAccessor();
 foreach (var (name, section) in new[] { ("private-key", "PrivateKey"), ("secret", "Secret") })
 {
     builder
-        .Services.AddHttpClient(
-            $"orders-{name}",
-            client => client.BaseAddress = new Uri(builder.Configuration["services:api:https:0"]!)
+        .Services.AddHttpClient($"orders-{name}", client =>
+            client.BaseAddress = new Uri(builder.Configuration["services:api:https:0"]!)
         )
         .AddTokenExchangeHandler(
             builder.Configuration.GetSection($"TokenExchange:{section}"),
@@ -100,16 +99,12 @@ app.MapGet(
     .RequireAuthorization(
         new AuthorizationPolicyBuilder("cookie-a").RequireAuthenticatedUser().Build()
     );
-app.MapGet(
-    "/spa/config.json",
-    (IConfiguration configuration) =>
-        new
-        {
-            authority = configuration["Spa:Authority"],
-            clientId = configuration["Spa:ClientId"],
-            scopes = configuration["Spa:Scopes"],
-        }
-);
+app.MapGet("/spa/config.json", (IConfiguration configuration) => new
+    {
+        authority = configuration["Spa:Authority"],
+        clientId = configuration["Spa:ClientId"],
+        scopes = configuration["Spa:Scopes"],
+    });
 
 // OpenID Connect Back-Channel Logout: the provider posts a signed logout token when a session
 // ends. This sample only records its session ID; an application would end that session.
@@ -149,61 +144,46 @@ app.MapPost(
     }
 );
 app.MapGet("/backchannel-logouts", () => loggedOutSessions.ToArray());
-app.MapGet(
-    "/",
-    async (HttpContext context, IAntiforgery antiforgery) =>
+app.MapGet("/", async (HttpContext context, IAntiforgery antiforgery) =>
+{
+    var token = antiforgery.GetAndStoreTokens(context);
+    var rows = new List<string>();
+    foreach (var provider in new[] { "a", "b", "public", "par" })
     {
-        var token = antiforgery.GetAndStoreTokens(context);
-        var rows = new List<string>();
-        foreach (var provider in new[] { "a", "b", "public", "par" })
-        {
-            var result = await context.AuthenticateAsync($"cookie-{provider}");
-            var name = HtmlEncoder.Default.Encode(result.Principal?.Identity?.Name ?? "Signed out");
-            rows.Add(
-                $"<section><h2>Provider {provider}</h2><p id='user-{provider}'>{name}</p><a href='/login/{provider}'>Sign in {provider}</a>"
-                    + $"<form method='post' action='/logout/{provider}'><input type='hidden' name='{token.FormFieldName}' value='{token.RequestToken}'/><button>Sign out {provider}</button></form></section>"
-            );
-        }
-        return Results.Content(
-            "<!doctype html><html lang='en'><head><meta charset='utf-8'/><title>Two identity providers</title></head><body><h1>Aspire IdentityServer</h1>"
-                + string.Join("", rows)
-                + "</body></html>",
-            "text/html"
+        var result = await context.AuthenticateAsync($"cookie-{provider}");
+        var name = HtmlEncoder.Default.Encode(result.Principal?.Identity?.Name ?? "Signed out");
+        rows.Add(
+            $"<section><h2>Provider {provider}</h2><p id='user-{provider}'>{name}</p><a href='/login/{provider}'>Sign in {provider}</a>"
+                + $"<form method='post' action='/logout/{provider}'><input type='hidden' name='{token.FormFieldName}' value='{token.RequestToken}'/><button>Sign out {provider}</button></form></section>"
         );
     }
-);
+    return Results.Content(
+        "<!doctype html><html lang='en'><head><meta charset='utf-8'/><title>Two identity providers</title></head><body><h1>Aspire IdentityServer</h1>"
+            + string.Join("", rows)
+            + "</body></html>",
+        "text/html"
+    );
+});
 foreach (var provider in new[] { "a", "b", "public", "par" })
 {
-    app.MapGet(
-        $"/login/{provider}",
-        () =>
-            Results.Challenge(
-                new AuthenticationProperties { RedirectUri = "/" },
-                [$"oidc-{provider}"]
-            )
+    app.MapGet($"/login/{provider}", () =>
+        Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [$"oidc-{provider}"])
     );
-    app.MapPost(
-        $"/logout/{provider}",
-        async (HttpContext context, IAntiforgery antiforgery) =>
-        {
-            await antiforgery.ValidateRequestAsync(context);
-            await context.SignOutAsync(
-                $"oidc-{provider}",
-                new AuthenticationProperties { RedirectUri = "/" }
-            );
-            await context.SignOutAsync($"cookie-{provider}");
-        }
-    );
-    app.MapGet(
-            $"/me/{provider}",
-            (HttpContext context) =>
-                new
-                {
-                    name = context.User.Identity?.Name,
-                    subject = context.User.FindFirst("sub")?.Value,
-                    sid = context.User.FindFirst("sid")?.Value,
-                }
-        )
+    app.MapPost($"/logout/{provider}", async (HttpContext context, IAntiforgery antiforgery) =>
+    {
+        await antiforgery.ValidateRequestAsync(context);
+        await context.SignOutAsync(
+            $"oidc-{provider}",
+            new AuthenticationProperties { RedirectUri = "/" }
+        );
+        await context.SignOutAsync($"cookie-{provider}");
+    });
+    app.MapGet($"/me/{provider}", (HttpContext context) => new
+            {
+                name = context.User.Identity?.Name,
+                subject = context.User.FindFirst("sub")?.Value,
+                sid = context.User.FindFirst("sid")?.Value,
+            })
         .RequireAuthorization(
             new AuthorizationPolicyBuilder($"cookie-{provider}").RequireAuthenticatedUser().Build()
         );

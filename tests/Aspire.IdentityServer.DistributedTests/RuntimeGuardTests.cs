@@ -124,14 +124,11 @@ public sealed class RuntimeGuardTests
         receiverBuilder.WebHost.UseUrls("http://127.0.0.1:0");
         receiverBuilder.Logging.ClearProviders();
         await using var receiver = receiverBuilder.Build();
-        receiver.MapPost(
-            "/v1/{signal}",
-            (string signal) =>
-            {
-                received.Enqueue(signal);
-                return Results.Ok();
-            }
-        );
+        receiver.MapPost("/v1/{signal}", (string signal) =>
+        {
+            received.Enqueue(signal);
+            return Results.Ok();
+        });
         await receiver.StartAsync(timeout.Token);
         using var certificate = TemporaryCertificate.Create();
         var port = FreePort();
