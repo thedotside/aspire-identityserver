@@ -99,23 +99,22 @@ public static partial class IdentityServerTestingExtensions
                 $"Client '{clientId}' is not an authorization-code client with a redirect URI.",
                 nameof(clientId)
             );
-        var user =
-            server.RegisteredUsers.SingleOrDefault(u =>
-                string.Equals(u.Username, username, StringComparison.Ordinal)
-            )
+        var user = server.RegisteredUsers.SingleOrDefault(u =>
+            string.Equals(u.Username, username, StringComparison.Ordinal)
+        )
             ?? throw new ArgumentException(
                 $"Provider '{server.Name}' has no test user '{username}'.",
                 nameof(username)
             );
-        var password =
-            await user.Password.Resource.GetValueAsync(cancellationToken).ConfigureAwait(false)
+        var password = await user
+            .Password.Resource.GetValueAsync(cancellationToken)
+            .ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Test user '{username}' has no password.");
         var options = await OptionsAsync(client, cancellationToken).ConfigureAwait(false);
-        var redirectUri =
-            await client
-                .RegisteredRedirectUris[0]
-                .GetValueAsync(cancellationToken)
-                .ConfigureAwait(false)
+        var redirectUri = await client
+            .RegisteredRedirectUris[0]
+            .GetValueAsync(cancellationToken)
+            .ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Client '{clientId}' has no redirect URI.");
 
         // A fresh cookie jar per sign-in: no provider session is shared between calls.
@@ -204,10 +203,10 @@ public static partial class IdentityServerTestingExtensions
         ArgumentNullException.ThrowIfNull(app);
         ArgumentException.ThrowIfNullOrWhiteSpace(provider);
         return app.Services.GetRequiredService<DistributedApplicationModel>()
-                .Resources.OfType<IdentityServerResource>()
-                .SingleOrDefault(r =>
-                    string.Equals(r.Name, provider, StringComparison.OrdinalIgnoreCase)
-                )
+            .Resources.OfType<IdentityServerResource>()
+            .SingleOrDefault(r =>
+                string.Equals(r.Name, provider, StringComparison.OrdinalIgnoreCase)
+            )
             ?? throw new ArgumentException(
                 $"The application has no identity provider '{provider}'.",
                 nameof(provider)
@@ -218,8 +217,8 @@ public static partial class IdentityServerTestingExtensions
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         return server.RegisteredClients.SingleOrDefault(c =>
-                string.Equals(c.ClientId, clientId, StringComparison.Ordinal)
-            )
+            string.Equals(c.ClientId, clientId, StringComparison.Ordinal)
+        )
             ?? throw new ArgumentException(
                 $"Provider '{server.Name}' has no client '{clientId}'.",
                 nameof(clientId)
@@ -291,8 +290,7 @@ public static partial class IdentityServerTestingExtensions
                 StringComparison.Ordinal
             )
         )
-            fields["client_secret"] =
-                client.ClientSecret
+            fields["client_secret"] = client.ClientSecret
                 ?? throw new InvalidOperationException(
                     $"Client '{client.ClientId}' has no secret."
                 );
@@ -319,8 +317,7 @@ public static partial class IdentityServerTestingExtensions
             );
         return new IdentityTokens
         {
-            AccessToken =
-                Text(payload, "access_token")
+            AccessToken = Text(payload, "access_token")
                 ?? throw new InvalidOperationException("The token answer has no access token."),
             TokenType = Text(payload, "token_type") ?? "Bearer",
             IdToken = Text(payload, "id_token"),

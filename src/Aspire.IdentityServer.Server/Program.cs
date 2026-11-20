@@ -31,8 +31,7 @@ internal static class ServerProgram
             throw new InvalidOperationException(
                 "This identity server only runs in Development or Testing."
             );
-        var config =
-            builder.Configuration.GetSection("IdentityServer").Get<ServerConfiguration>()
+        var config = builder.Configuration.GetSection("IdentityServer").Get<ServerConfiguration>()
             ?? throw new InvalidOperationException("Missing IdentityServer configuration.");
         if (config.ContractVersion != RuntimeContract.Version)
             throw new InvalidOperationException(
@@ -278,13 +277,8 @@ internal static class ServerProgram
         app.UseIdentityServer();
         app.UseAuthorization();
         app.MapRazorPages();
-        app.MapGet(
-            "/Account/signed-out.js",
-            () =>
-                Results.Text(
-                    Pages.Account.LogoutModel.RedirectScript,
-                    "text/javascript; charset=utf-8"
-                )
+        app.MapGet("/Account/signed-out.js", () =>
+            Results.Text(Pages.Account.LogoutModel.RedirectScript, "text/javascript; charset=utf-8")
         );
         // Read at startup, so that a runtime built without its assets fails here. nosniff
         // applies: each asset needs its exact media type.

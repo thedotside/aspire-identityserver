@@ -61,10 +61,9 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
         await HttpContext.SignInAsync(
             new IdentityServerUser(user.SubjectId)
             {
-                DisplayName =
-                    user.Claims.FirstOrDefault(c =>
-                        string.Equals(c.Type, "name", StringComparison.Ordinal)
-                    )?.Value
+                DisplayName = user.Claims.FirstOrDefault(c =>
+                    string.Equals(c.Type, "name", StringComparison.Ordinal)
+                )?.Value
                     ?? user.Username,
             }
         );

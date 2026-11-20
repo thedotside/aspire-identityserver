@@ -188,9 +188,8 @@ public sealed class ProjectionTests
         var consumer = builder
             .AddExecutable("consumer", "dotnet", ".")
             .WithIdentityClient(client, "Nested:First")
-            .WithIdentityClient(
-                client,
-                p => p.PrivateKeyPem("Nested:Second:Key").Authority("Issuer")
+            .WithIdentityClient(client, p =>
+                p.PrivateKeyPem("Nested:Second:Key").Authority("Issuer")
             );
         var providerEnvironment = await Evaluate(server);
         var consumerEnvironment = await Evaluate(consumer);

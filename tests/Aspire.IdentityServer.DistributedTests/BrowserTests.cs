@@ -340,10 +340,8 @@ public sealed class BrowserTests(AppFixture fixture)
         var page = await session.Context.NewPageAsync();
         var redirect =
             fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/') + "/signin-public";
-        await page.RouteAsync(
-            "**/signin-public?**",
-            route =>
-                route.FulfillAsync(new() { ContentType = "text/plain", Body = "Callback captured" })
+        await page.RouteAsync("**/signin-public?**", route =>
+            route.FulfillAsync(new() { ContentType = "text/plain", Body = "Callback captured" })
         );
         await page.GotoAsync(PublicClientAuthorizeUrl("cancel-state"));
         await page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
@@ -406,10 +404,8 @@ public sealed class BrowserTests(AppFixture fixture)
         var challenge = WebEncoders.Base64UrlEncode(
             SHA256.HashData(Encoding.ASCII.GetBytes(verifier))
         );
-        await page.RouteAsync(
-            "**/signin-public?**",
-            route =>
-                route.FulfillAsync(new() { ContentType = "text/plain", Body = "Code captured" })
+        await page.RouteAsync("**/signin-public?**", route =>
+            route.FulfillAsync(new() { ContentType = "text/plain", Body = "Code captured" })
         );
         var authorize = QueryHelpers.AddQueryString(
             issuer + "/connect/authorize",

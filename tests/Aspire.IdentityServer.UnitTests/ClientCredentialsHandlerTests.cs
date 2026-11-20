@@ -108,10 +108,8 @@ public sealed class ClientCredentialsHandlerTests
     {
         var provider = new FakeProvider();
         var api = new FakeApi();
-        await using var services = Build(
-            provider,
-            api,
-            configure: o => o.AllowedOrigins.Add(new Uri("https://api.test"))
+        await using var services = Build(provider, api, configure: o =>
+            o.AllowedOrigins.Add(new Uri("https://api.test"))
         );
         using var orders = services.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>

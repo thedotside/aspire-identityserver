@@ -165,8 +165,9 @@ internal static class DashboardCommands
     {
         if (client.ClientSecret is { } secret)
         {
-            fields["client_secret"] =
-                await secret.Resource.GetValueAsync(cancellationToken).ConfigureAwait(false)
+            fields["client_secret"] = await secret
+                .Resource.GetValueAsync(cancellationToken)
+                .ConfigureAwait(false)
                 ?? throw new HttpRequestException(
                     $"Client '{client.ClientId}' has no secret value."
                 );
@@ -176,8 +177,7 @@ internal static class DashboardCommands
         string keyId;
         if (client.PrivateKeyBase64 is { } base64)
         {
-            var value =
-                await base64.Resource.GetValueAsync(cancellationToken).ConfigureAwait(false)
+            var value = await base64.Resource.GetValueAsync(cancellationToken).ConfigureAwait(false)
                 ?? throw new HttpRequestException($"Client '{client.ClientId}' has no key value.");
             var (parameters, kid) = RsaJwk.ReadPrivateBase64(value);
             try

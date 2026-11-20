@@ -141,14 +141,12 @@ var api = builder
     .WithIdentityApiResource(ordersA, "Authentication:IdpA")
     .WithIdentityApiResource(ordersB, "Authentication:IdpB")
     .WithIdentityClient(workerA, "Integrations:Accounting:OAuth")
-    .WithIdentityClient(
-        workerB,
-        projection =>
-            projection
-                .Authority("Warehouse:OAuth:Issuer")
-                .ClientId("Warehouse:OAuth:Client")
-                .ClientSecret("Warehouse:OAuth:Secret")
-                .Scopes("Warehouse:OAuth:Scope")
+    .WithIdentityClient(workerB, projection =>
+        projection
+            .Authority("Warehouse:OAuth:Issuer")
+            .ClientId("Warehouse:OAuth:Client")
+            .ClientSecret("Warehouse:OAuth:Secret")
+            .Scopes("Warehouse:OAuth:Scope")
     );
 #pragma warning restore ASPIREPROJECTS001
 

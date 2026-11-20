@@ -42,10 +42,8 @@ public sealed class TokenExchangeHandlerTests
     public async Task The_backchannel_budget_bounds_a_silent_provider()
     {
         var provider = new FakeProvider { Delay = TimeSpan.FromSeconds(30) };
-        await using var services = Build(
-            provider,
-            new FakeApi(),
-            configure: o => o.BackchannelTimeout = TimeSpan.FromMilliseconds(200)
+        await using var services = Build(provider, new FakeApi(), configure: o =>
+            o.BackchannelTimeout = TimeSpan.FromMilliseconds(200)
         );
         using var orders = services.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
         await Assert.ThrowsExactlyAsync<TimeoutException>(() =>
@@ -58,10 +56,8 @@ public sealed class TokenExchangeHandlerTests
     {
         var provider = new FakeProvider();
         var api = new FakeApi();
-        await using var services = Build(
-            provider,
-            api,
-            configure: o => o.AllowedOrigins.Add(new Uri("https://api.test"))
+        await using var services = Build(provider, api, configure: o =>
+            o.AllowedOrigins.Add(new Uri("https://api.test"))
         );
         using var orders = services.GetRequiredService<IHttpClientFactory>().CreateClient("orders");
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>

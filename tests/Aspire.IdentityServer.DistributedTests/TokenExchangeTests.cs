@@ -47,9 +47,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         var apiAddress = fixture.App.GetEndpoint("api", "https");
         services
             .AddHttpClient("orders", http => http.BaseAddress = apiAddress)
-            .AddTokenExchangeHandler(
-                configuration.GetSection("Device"),
-                options => options.Scope = "orders.read"
+            .AddTokenExchangeHandler(configuration.GetSection("Device"), options =>
+                options.Scope = "orders.read"
             );
         services.AddHttpClient("plain", http => http.BaseAddress = apiAddress);
         using var provider = services.BuildServiceProvider(validateScopes: true);
@@ -876,10 +875,8 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         var redirect =
             fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/') + $"/signin-{callback}";
         var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
-        await page.RouteAsync(
-            $"**/signin-{callback}?**",
-            route =>
-                route.FulfillAsync(new() { ContentType = "text/plain", Body = "Code captured" })
+        await page.RouteAsync($"**/signin-{callback}?**", route =>
+            route.FulfillAsync(new() { ContentType = "text/plain", Body = "Code captured" })
         );
         await page.GotoAsync(
             QueryHelpers.AddQueryString(
