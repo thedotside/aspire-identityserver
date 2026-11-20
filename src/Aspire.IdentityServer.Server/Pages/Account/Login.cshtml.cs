@@ -24,6 +24,9 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
     [BindProperty]
     public string? Button { get; set; }
 
+    /// <summary>The client that asked for this sign-in, as the AppHost registered it.</summary>
+    public string? ClientId { get; private set; }
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (!ValidReturnUrl())
@@ -34,6 +37,7 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
             HttpContext.RequestAborted
         );
         Username = context?.LoginHint ?? "";
+        ClientId = context?.Client.ClientId;
         return Page();
     }
 
@@ -46,6 +50,11 @@ public sealed class LoginModel(IIdentityServerInteractionService interaction, Te
         if (!ModelState.IsValid || !users.ValidateCredentials(Username, Password))
         {
             ModelState.AddModelError("", "Invalid username or password.");
+            var context = await interaction.GetAuthorizationContextAsync(
+                ReturnUrl,
+                HttpContext.RequestAborted
+            );
+            ClientId = context?.Client.ClientId;
             return Page();
         }
         var user = users.FindByUsername(Username);
