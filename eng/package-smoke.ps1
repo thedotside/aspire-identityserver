@@ -59,6 +59,14 @@ var pem = idp.AddClientCredentialsClient("package-pem").WithGeneratedPrivateKeyJ
 // For the test consumer: a user signs in through a public client, whose callback is never called.
 idp.WithTestUser("package-user", "package-password");
 idp.AddAuthorizationCodeClient("package-browser").WithScopes("openid", "read").WithRedirectUri(idp.GetEndpoint("https"), "/signin-package");
+
+// Aspire Testing invokes this entry point too. Let it control the AppHost lifetime.
+if (!args.Contains("--package-smoke=true", StringComparer.Ordinal))
+{
+    await builder.Build().RunAsync();
+    return;
+}
+
 await using var app = builder.Build();
 using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
 await app.StartAsync(timeout.Token);
@@ -185,13 +193,13 @@ Console.WriteLine("PACKAGE_TEST_CONSUMER_OK: a test project started the packaged
     $previousEnvironment = $env:DOTNET_ENVIRONMENT
     try {
         $env:DOTNET_ENVIRONMENT = 'Production'
-        $refusedOutput = & dotnet $consumerAssembly 2>&1
+        $refusedOutput = & dotnet $consumerAssembly '--package-smoke=true' 2>&1
         if ($LASTEXITCODE -eq 0 -or !($refusedOutput -match 'runs only in an AppHost started in Development or Testing')) {
             $refusedOutput | Write-Output
             throw 'The packaged provider accepted a Production AppHost.'
         }
         $env:DOTNET_ENVIRONMENT = 'Development'
-        $runOutput = & dotnet $consumerAssembly 2>&1
+        $runOutput = & dotnet $consumerAssembly '--package-smoke=true' 2>&1
         $runResult = $LASTEXITCODE
     } finally { $env:DOTNET_ENVIRONMENT = $previousEnvironment }
     $runOutput | Write-Output
