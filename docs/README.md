@@ -44,6 +44,7 @@ Les exemples partiels indiquent les variables ou ressources déjà déclarées q
 | Helper d'assertion et exemple ASP.NET Core OIDC | Implémenté. |
 | Token Exchange local, sélection des informations utilisateur | Disponible depuis `0.1.0-alpha.2`. Voir le [guide](token-exchange.md). |
 | Claims de profil des utilisateurs de test, scopes d'identité personnalisés, refresh tokens (`offline_access`), Token Exchange par délégation | Disponible depuis `0.1.0-alpha.4`. Voir [les fournisseurs](fournisseurs.md) et [le guide](token-exchange.md#scopes-choisis-par-le-client-machine). |
+| SPA (CORS), durées de vie des jetons par client, callbacks littéraux, déconnexion back-channel et front-channel, clé de signature stable pendant l'exécution de l'AppHost | Disponible depuis `11.1.0`. Voir [les clients](clients.md) et [l'intégration](integration.md). |
 | Token Exchange entre deux IdP | [Phase 2 à implémenter](roadmap/token-exchange-cross-idp.md) après validation du parcours local. |
 | Adaptateur automatique Duende BFF | Non fourni. Le BFF configure sa bibliothèque avec les valeurs projetées. |
 | Utilisateurs persistants, fédération | Hors périmètre de cette intégration. |

@@ -58,6 +58,11 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
                 .WithBase64PrivateKeyJwt(secret, publicJwk)
                 .WithScopes("orders.read");
             provider
+                .AddClientCredentialsClient("short-lived")
+                .WithGeneratedClientSecret()
+                .WithScopes("orders.read")
+                .WithAccessTokenLifetime(TimeSpan.FromSeconds(30));
+            provider
                 .AddClientCredentialsClient("legacy-pem")
                 .WithPrivateKeyJwt(rsa.ExportPkcs8PrivateKeyPem())
                 .WithScopes("orders.read");

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Aspire.IdentityServer.Client;
 using Microsoft.Extensions.Configuration;
@@ -168,6 +169,42 @@ public sealed class ProtocolTests(AppFixture fixture)
                 Interlocked.Increment(ref posts);
             return base.SendAsync(request, cancellationToken);
         }
+    }
+
+    [Test]
+    public async Task A_client_access_token_lifetime_is_configurable()
+    {
+        var client = await fixture.Client("idp-a", "short-lived");
+        using var response = await TokenRequest("a", Fields(client));
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+        await Assert.That(payload.GetProperty("expires_in").GetInt32()).IsEqualTo(30);
+        var jwt = new JsonWebToken(payload.GetProperty("access_token").GetString()!);
+        await Assert.That(jwt.ValidTo - jwt.IssuedAt).IsEqualTo(TimeSpan.FromSeconds(30));
+    }
+
+    [Test]
+    public async Task The_provider_signs_with_the_key_that_the_apphost_generated()
+    {
+        var parameter = fixture
+            .App.Services.GetRequiredService<DistributedApplicationModel>()
+            .Resources.OfType<ParameterResource>()
+            .Single(p => string.Equals(p.Name, "idp-a-signing-key", StringComparison.Ordinal));
+        await Assert.That(parameter.Secret).IsTrue();
+        using var key = JsonDocument.Parse(
+            Convert.FromBase64String((await parameter.GetValueAsync(default))!)
+        );
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        var metadata = await http.GetFromJsonAsync<JsonElement>(
+            "/.well-known/openid-configuration"
+        );
+        var keys = await http.GetFromJsonAsync<JsonElement>(
+            metadata.GetProperty("jwks_uri").GetString()
+        );
+        // A provider restarted from the dashboard receives the same key again.
+        await Assert
+            .That(keys.GetProperty("keys")[0].GetProperty("kid").GetString())
+            .IsEqualTo(key.RootElement.GetProperty("kid").GetString());
     }
 
     [Test]

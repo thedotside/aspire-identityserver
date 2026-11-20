@@ -54,7 +54,10 @@ public sealed class IdentityClient
     /// <summary><c>authorization_code</c> for interactive clients, <c>client_credentials</c> for machine clients.</summary>
     public string GrantType { get; }
 
-    /// <summary>The deferred sign-in callbacks added with <see cref="WithRedirectUri" />, in declaration order.</summary>
+    /// <summary>
+    /// The sign-in callbacks added with <see cref="WithRedirectUri(EndpointReference, string)" /> and
+    /// <see cref="WithRedirectUri(Uri)" />, in declaration order.
+    /// </summary>
     public IReadOnlyList<ReferenceExpression> RegisteredRedirectUris => RedirectUris.AsReadOnly();
 
     /// <summary>The scopes this client may request.</summary>
@@ -75,6 +78,94 @@ public sealed class IdentityClient
     internal List<ReferenceExpression> RedirectUris { get; } = [];
     internal List<ReferenceExpression> PostLogoutRedirectUris { get; } = [];
     internal List<TokenExchangePolicy> TokenExchanges { get; } = [];
+    internal List<ReferenceExpression> AllowedCorsOrigins { get; } = [];
+    internal int? AccessTokenLifetimeSeconds { get; private set; }
+    internal int? RefreshTokenLifetimeSeconds { get; private set; }
+    internal ReferenceExpression? BackChannelLogoutUri { get; private set; }
+    internal ReferenceExpression? FrontChannelLogoutUri { get; private set; }
+
+    /// <summary>
+    /// Sets the lifetime of this client's access tokens, from one second to one day: five minutes
+    /// by default. A short lifetime lets tests exercise expiry and renewal quickly.
+    /// </summary>
+    public IdentityClient WithAccessTokenLifetime(TimeSpan lifetime)
+    {
+        AccessTokenLifetimeSeconds = Seconds(
+            lifetime,
+            TimeSpan.FromDays(1),
+            "one day",
+            nameof(lifetime)
+        );
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the absolute lifetime of the refresh tokens of an interactive client that requests
+    /// <c>offline_access</c>, from one second to 30 days, which is the default.
+    /// </summary>
+    public IdentityClient WithRefreshTokenLifetime(TimeSpan lifetime)
+    {
+        EnsureInteractive("Only interactive clients receive refresh tokens.");
+        RefreshTokenLifetimeSeconds = Seconds(
+            lifetime,
+            TimeSpan.FromDays(30),
+            "30 days",
+            nameof(lifetime)
+        );
+        return this;
+    }
+
+    /// <summary>
+    /// Allows a browser application served at this endpoint's origin to call the provider's
+    /// discovery, token and UserInfo endpoints with CORS, as a single-page application does.
+    /// </summary>
+    public IdentityClient WithAllowedCorsOrigin(EndpointReference endpoint)
+    {
+        ArgumentNullException.ThrowIfNull(endpoint);
+        EnsureInteractive("Only interactive clients run in a browser.");
+        AllowedCorsOrigins.Add(ReferenceExpression.Create($"{endpoint}"));
+        return this;
+    }
+
+    /// <summary>
+    /// Adds a literal sign-in callback for a tool outside the AppHost: an HTTPS address, an HTTP
+    /// loopback address, or the private-use scheme of a native application (RFC 8252).
+    /// </summary>
+    public IdentityClient WithRedirectUri(Uri redirectUri)
+    {
+        RedirectUris.Add(Literal(redirectUri, nameof(redirectUri)));
+        return this;
+    }
+
+    /// <summary>Adds a literal sign-out callback, with the rules of <see cref="WithRedirectUri(Uri)" />.</summary>
+    public IdentityClient WithPostLogoutRedirectUri(Uri postLogoutRedirectUri)
+    {
+        PostLogoutRedirectUris.Add(Literal(postLogoutRedirectUri, nameof(postLogoutRedirectUri)));
+        return this;
+    }
+
+    /// <summary>
+    /// Sends a logout token to the deferred <paramref name="endpoint" /> address followed by
+    /// <paramref name="path" /> when the user's provider session ends (OpenID Connect
+    /// Back-Channel Logout 1.0).
+    /// </summary>
+    public IdentityClient WithBackChannelLogoutUri(EndpointReference endpoint, string path)
+    {
+        ValidateCallback(path);
+        BackChannelLogoutUri = ReferenceExpression.Create($"{endpoint}{path}");
+        return this;
+    }
+
+    /// <summary>
+    /// Loads the deferred <paramref name="endpoint" /> address followed by <paramref name="path" />
+    /// in a frame of the provider's sign-out page (OpenID Connect Front-Channel Logout 1.0).
+    /// </summary>
+    public IdentityClient WithFrontChannelLogoutUri(EndpointReference endpoint, string path)
+    {
+        ValidateCallback(path);
+        FrontChannelLogoutUri = ReferenceExpression.Create($"{endpoint}{path}");
+        return this;
+    }
 
     /// <summary>
     /// Allows this machine client to exchange a same-provider authorization-code access token
@@ -353,6 +444,47 @@ public sealed class IdentityClient
                 "Use an absolute callback path, for example /signin-oidc.",
                 nameof(path)
             );
+    }
+
+    private void EnsureInteractive(string message)
+    {
+        if (!string.Equals(GrantType, "authorization_code", StringComparison.Ordinal))
+            throw new InvalidOperationException(message);
+    }
+
+    private ReferenceExpression Literal(Uri address, string parameter)
+    {
+        ArgumentNullException.ThrowIfNull(address, parameter);
+        EnsureInteractive("Only interactive clients have redirect URIs.");
+        var allowed =
+            address.IsAbsoluteUri
+            && string.IsNullOrEmpty(address.Fragment)
+            && string.IsNullOrEmpty(address.UserInfo)
+            && (
+                string.Equals(address.Scheme, "https", StringComparison.Ordinal)
+                || (
+                    string.Equals(address.Scheme, "http", StringComparison.Ordinal)
+                    && address.IsLoopback
+                )
+                // RFC 8252, section 7.1: a reverse domain name, such as com.example.app.
+                || (address.Scheme.Contains('.', StringComparison.Ordinal) && !address.IsLoopback)
+            );
+        if (!allowed)
+            throw new ArgumentException(
+                "Use an HTTPS address, an HTTP loopback address or a private-use scheme such as com.example.app, without a fragment.",
+                parameter
+            );
+        return ReferenceExpression.Create($"{address.OriginalString}");
+    }
+
+    private static int Seconds(TimeSpan lifetime, TimeSpan maximum, string most, string parameter)
+    {
+        if (lifetime < TimeSpan.FromSeconds(1) || lifetime > maximum)
+            throw new ArgumentOutOfRangeException(
+                parameter,
+                $"Use a lifetime from one second to {most}."
+            );
+        return (int)Math.Ceiling(lifetime.TotalSeconds);
     }
 
     internal static void ValidateScope(string scope)

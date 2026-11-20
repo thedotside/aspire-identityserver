@@ -13,6 +13,13 @@
 - New optional package `TheDotSide.Aspire.IdentityServer.Testing`: `GetUserTokensAsync` signs a test user in through the provider's authorization code + PKCE flow and sign-in form without a browser, `GetClientCredentialsTokensAsync` requests machine tokens, and `GetIdentityClientOptionsAsync` resolves a client's settings and credentials, on a started `DistributedApplication`. Publishing pushes it after Hosting and Client; the package smoke test uses it from an isolated test project.
 - New optional package `TheDotSide.Aspire.IdentityServer.Authentication`: `AddIdentityServerJwtBearer` and `AddIdentityServerOpenIdConnect` configure ASP.NET Core from the projected sections, with JWT claim names, PKCE, and a fresh `private_key_jwt` assertion for the code redemption and pushed authorization requests (PAR), so PAR no longer needs to be disabled. `RequireScope` matches the space-delimited `scope` claim. The samples use them, and the web sample adds a `par` scheme that requires PAR with the private-key client.
 - Hosting exposes `IdentityServerResource.RegisteredUsers`, `IdentityClient.GrantType` and `IdentityClient.RegisteredRedirectUris`.
+- Clients gain `WithAccessTokenLifetime` and `WithRefreshTokenLifetime` (refresh lifetimes require `offline_access`), `WithAllowedCorsOrigin` for single-page applications, literal `WithRedirectUri(Uri)`/`WithPostLogoutRedirectUri(Uri)` for tools and native applications (HTTPS, HTTP loopback or RFC 8252 private-use schemes), and `WithBackChannelLogoutUri`/`WithFrontChannelLogoutUri`.
+- The AppHost generates each provider's signing key as the secret parameter `{provider}-signing-key`: a provider restarted from the dashboard keeps it, so earlier tokens stay valid and consumers' cached keys keep matching.
+- The web sample adds a dependency-free single-page application at `/spa/` (code redemption and UserInfo through CORS) and records back-channel logout tokens.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 4 (signing key, lifetimes, CORS origins, logout URIs): use the same package versions.
 
 ## 11.0.0 - 2026-11-12
 

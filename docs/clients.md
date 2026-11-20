@@ -56,7 +56,9 @@ var publicClient = idp.AddAuthorizationCodeClient("public-web")
 
 Aucune méthode `With...Secret` ou `With...PrivateKeyJwt` n'est appelée. La méthode d'authentification reste `none` et aucune clé privée ni aucun secret ne sont projetés.
 
-Le sample teste ce type de client avec le handler ASP.NET Core. Il ne fournit pas d'exemple de SPA React ni de configuration CORS pour un échange direct de tokens depuis JavaScript. Un BFF conserve ses credentials côté serveur ; ne projette pas une clé privée dans un bundle React.
+Le sample teste ce type de client avec le handler ASP.NET Core, et avec la page `/spa/` du sample web, qui échange son code et appelle UserInfo depuis le navigateur : `WithAllowedCorsOrigin` autorise son origine. Un BFF conserve ses credentials côté serveur ; ne projette pas une clé privée dans un bundle JavaScript.
+
+Pour un outil hors de l'AppHost, comme Postman, Bruno ou une CLI, `WithRedirectUri(new Uri(...))` enregistre un callback littéral : HTTPS, HTTP loopback ou schéma privé d'application native.
 
 ## Secret généré
 

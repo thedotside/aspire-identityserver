@@ -84,6 +84,75 @@ public sealed class BrowserTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task A_browser_application_signs_in_and_reads_userinfo_through_cors()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(origin + "/spa/");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true })
+            .ClickAsync();
+        await Login(page);
+        // The page itself redeems the code and calls UserInfo: both are cross-origin requests.
+        await Assertions.Expect(page.Locator("#spa-user")).ToHaveTextAsync("Alice A");
+    }
+
+    [Test]
+    public async Task Signing_out_notifies_the_application_through_the_back_channel()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync(origin + "/login/a");
+        await Login(page);
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        var sid = await Json(session.Context, origin + "/me/a");
+        var sessionId = sid.GetProperty("sid").GetString()!;
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign out a", Exact = true })
+            .ClickAsync();
+        // Whether the provider confirms the sign-out depends on its id_token_hint handling.
+        var confirm = page.GetByRole(AriaRole.Button, new() { Name = "Sign out", Exact = true });
+        await Assertions.Expect(confirm.Or(page.Locator("#user-a"))).ToBeVisibleAsync();
+        if (await confirm.IsVisibleAsync())
+        {
+            await confirm.ClickAsync();
+            await page.GetByRole(AriaRole.Link, new() { Name = "Return to application" })
+                .ClickAsync();
+        }
+        await Assertions.Expect(page).ToHaveURLAsync(origin + "/");
+        // The provider posts a signed logout token for the ended session, in the background.
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            var notified = await Json(session.Context, origin + "/backchannel-logouts");
+            if (
+                notified
+                    .EnumerateArray()
+                    .Any(s => string.Equals(s.GetString(), sessionId, StringComparison.Ordinal))
+            )
+                break;
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"No back-channel logout for session {sessionId}.");
+            await Task.Delay(250);
+        }
+    }
+
+    private static async Task<JsonElement> Json(IBrowserContext context, string address)
+    {
+        var response = await context.APIRequest.GetAsync(address);
+        try
+        {
+            await Assert.That(response.Status).IsEqualTo(200);
+            using var document = JsonDocument.Parse(await response.TextAsync());
+            return document.RootElement.Clone();
+        }
+        finally
+        {
+            await response.DisposeAsync();
+        }
+    }
+
+    [Test]
     public async Task A_pooled_named_client_handler_keeps_concurrent_browser_users_isolated()
     {
         await using var aliceSession = await fixture.NewBrowserSessionAsync();
