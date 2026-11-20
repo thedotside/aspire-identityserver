@@ -1,0 +1,77 @@
+name: compatibility
+# Weekly and on demand, outside the pull request budget: the build paths that consumers use but
+# build-test-pack does not cover (ADR 0001). Each job reports only what it actually ran.
+on:
+  schedule:
+    - cron: '43 4 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+jobs:
+  visual-studio-msbuild:
+    # Visual Studio builds with MSBuild on .NET Framework: it runs the inline
+    # RoslynCodeTaskFactory task and ResolvePackageDependencies of the provider folder target.
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+          dotnet-version: '10.0.x'
+      - name: Build the solution with the MSBuild of Visual Studio
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $msbuild = & $vswhere -latest -prerelease -products * -requires Microsoft.Component.MSBuild -find 'MSBuild/**/Bin/MSBuild.exe' | Select-Object -First 1
+          if (!$msbuild) { throw 'No Visual Studio MSBuild on this runner.' }
+          & $msbuild -version -nologo
+          & $msbuild Aspire.IdentityServer.slnx -restore -p:RestoreLockedMode=true -p:Configuration=Release -m -v:minimal -nologo
+          if ($LASTEXITCODE -ne 0) { throw 'The Visual Studio MSBuild build failed.' }
+          foreach ($framework in @('net10.0', 'net11.0')) {
+            $runtime = "samples/Sample.AppHost/bin/Release/$framework/identityserver"
+            if (!(Test-Path "$runtime/Aspire.IdentityServer.Server.dll")) { throw "No provider folder for $framework." }
+            if (Get-ChildItem -Path $runtime -Filter '*.deps.json' -Recurse) { throw "The $framework provider folder has a deps.json." }
+          }
+  next-sdk-preview:
+    # An early warning before Renovate proposes the next SDK family: the provider folder target
+    # relies on SDK tasks kept for compatibility.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the next SDK preview, when one is published
+        id: preview
+        continue-on-error: true
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: |
+            10.0.x
+            11.0.x
+            12.0.x
+          dotnet-quality: preview
+      - name: Build the sample AppHost with the preview SDK
+        if: steps.preview.outcome == 'success'
+        shell: pwsh
+        run: |
+          $preview = dotnet --list-sdks | ForEach-Object { ($_ -split ' ')[0] } | Where-Object { $_ -like '12.*' } | Select-Object -Last 1
+          if (!$preview) { Write-Host 'No SDK 12 preview yet: nothing to check.'; exit 0 }
+          @{ sdk = @{ version = $preview; rollForward = 'disable'; allowPrerelease = $true } } | ConvertTo-Json -Depth 3 | Set-Content global.json
+          dotnet --version
+          dotnet build samples/Sample.AppHost -c Release
+          if ($LASTEXITCODE -ne 0) { throw "The sample AppHost does not build with SDK $preview." }
+          foreach ($framework in @('net10.0', 'net11.0')) {
+            if (!(Test-Path "samples/Sample.AppHost/bin/Release/$framework/identityserver/Aspire.IdentityServer.Server.dll")) { throw "No provider folder for $framework with SDK $preview." }
+          }
+      - name: Report a missing preview
+        if: steps.preview.outcome != 'success'
+        shell: pwsh
+        run: |
+          Write-Host 'No preview of the next SDK could be installed: this check did not run.'
