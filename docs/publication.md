@@ -12,9 +12,7 @@ La famille majeure suit la version .NET qui motive sa sortie, mais la liste des 
 
 À partir des versions stables, un correctif corrige un défaut sans rupture de l'API publique, une version mineure ajoute des fonctionnalités compatibles et une rupture exige une version majeure accompagnée d'un guide de migration. Les fonctionnalités internes du moteur Duende suivent la politique de leur éditeur. Le périmètre reste le développement et les tests locaux, avec une mémoire réinitialisée au redémarrage.
 
-Après `11.0.0`, les nouvelles fonctionnalités sont préparées dans `11.1.0`. Les versions `11.0.x` sont réservées aux correctifs nécessaires.
-
-Depuis `10.0.0` ou `0.1.0-alpha.5`, mets Hosting et le helper Client facultatif à `11.0.0` ; Runtime suit transitivement Hosting. Avec Central Package Management, modifie `Directory.Packages.props`. Aucun scope, nom de section ou appel de configuration ne change. Depuis alpha.4 ou une version antérieure, applique aussi les migrations décrites dans le CHANGELOG, notamment les scopes d'identité demandés lors de la connexion, puis redémarre et reconnecte les utilisateurs.
+`11.1.0` ajoute les packages Authentication et Testing et passe au contrat Hosting/Runtime 4. Mets Hosting et les packages facultatifs à la même version. Runtime suit transitivement Hosting. Avec Central Package Management, modifie `Directory.Packages.props`. Depuis alpha.4 ou une version antérieure, applique aussi les migrations du [changelog](../CHANGELOG.md) avant de redémarrer et de reconnecter les utilisateurs.
 
 ## Publier depuis main
 
@@ -82,16 +80,18 @@ Sans protection, quiconque a le droit d'écriture sur le dépôt peut publier so
 
 ## Vérifier une version publiée
 
-Les pages de la version stable `11.0.0` sont :
+Packages NuGet de la version `11.1.0`.
 
-- [Hosting 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/11.0.0)
-- [Runtime 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/11.0.0)
-- [Client 11.0.0](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/11.0.0)
+- [Hosting](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Hosting/11.1.0)
+- [Runtime](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Runtime/11.1.0)
+- [Client](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Client/11.1.0)
+- [Authentication](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Authentication/11.1.0)
+- [Testing](https://www.nuget.org/packages/TheDotSide.Aspire.IdentityServer.Testing/11.1.0)
 
 Pour relancer la vérification sans source locale :
 
 ```powershell
-pwsh eng/package-smoke.ps1 -Version 11.0.0 -FromNuGet
+pwsh eng/package-smoke.ps1 -Version 11.1.0 -FromNuGet
 ```
 
 ## Réserver le préfixe TheDotSide.

@@ -1,8 +1,7 @@
 # Changelog
 
-## 11.1.0 - Unreleased
+## 11.1.0 - 2026-11-20
 
-- Start the next feature development iteration after 11.0.0. Reserve 11.0.x for fixes.
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.
 - `WithIdentityClient(client, section)` chooses the projected fields when the consumer starts: credentials and token-exchange policies declared after the projection are no longer silently left out.
 - Renovate keeps the SDK 10 installed by the pipelines and the `net10.0` Microsoft.Extensions references in their family, and asks for approval before raising OpenTelemetry. Those versions reach every AppHost: Aspire.Hosting 13.6.5 requires 1.17.0, and the provider currently resolves 1.20.1.
@@ -19,6 +18,7 @@
 - Dashboard commands on each provider: **Show registrations** lists its clients, API resources, identity scopes and test users without secrets, and **Request a client token** requests and displays a client-credentials token, with its claims, for a chosen machine client. Aspire's resource command API makes them discoverable by other clients too.
 - A weekly `compatibility` workflow builds the solution with the MSBuild of Visual Studio and, once published, the next SDK preview, which the provider folder target of ADR 0001 depends on.
 - Token exchange between two providers (#4): `WithTokenExchangeFrom` accepts a source client of another provider, which declares a directional trust. The target provider validates the foreign token with keys discovered only from that issuer (bounded refresh on an unknown key), requires the declared source client and the usual scope rules, and issues a token for its own API whose subject is `{source provider}|{sub}`, so that equal subject IDs never collide. The sample AppHost adds a `partner` client of provider A trusting provider B's web users.
+- Update Microsoft.Extensions dependencies, Meziantou.Analyzer and CSharpier. The package smoke test keeps the provider running while the independent test consumer signs in and validates its tokens.
 
 ### Breaking changes
 

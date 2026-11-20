@@ -44,13 +44,13 @@ L'API présente aussi deux clients machine et deux configurations de clients sor
 
 ## Installer dans une autre solution
 
-Pour installer la version stable `11.0.0` sur nuget.org :
+Installe la version `11.1.0` depuis nuget.org avec cette commande.
 
 ```powershell
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.0.0 --source https://api.nuget.org/v3/index.json
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.1.0 --source https://api.nuget.org/v3/index.json
 ```
 
-`Runtime` est installé transitivement par `Hosting`. Le helper `TheDotSide.Aspire.IdentityServer.Client` est facultatif et s'installe dans l'application consommatrice, à la même version. Les applications ASP.NET Core peuvent ajouter `TheDotSide.Aspire.IdentityServer.Authentication` pour configurer JWT bearer et OpenID Connect depuis les sections projetées, et les projets de test `TheDotSide.Aspire.IdentityServer.Testing`, à la même version : voir [l'intégration](integration.md) et [les tests d'intégration](tests.md). Aucun filtre de préversions n'est nécessaire pour `11.0.0`. Depuis `10.0.0`, la migration consiste à aligner les versions des packages et à conserver `net10.0` ou choisir `net11.0` avec son SDK ; l'API et le contrat restent identiques. La [publication par tag](publication.md) explique comment vérifier qu'une version est disponible.
+`Hosting` installe `Runtime` comme dépendance. Installe les packages facultatifs à la même version. Utilise `Client` dans l'application consommatrice, `Authentication` pour [configurer JWT bearer et OpenID Connect](integration.md), et `Testing` dans les [tests d'intégration](tests.md). Depuis `10.0.0` ou `11.0.0`, mets `Hosting` et `Runtime` à jour ensemble pour passer au contrat 4. Tu peux conserver `net10.0` ou choisir `net11.0` avec le SDK correspondant. La [publication par tag](publication.md) explique comment vérifier que la version est disponible.
 
 Pour consommer des packages construits localement avant une publication, utilise la procédure suivante.
 
@@ -99,7 +99,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
 
 `AspireUseCliBundle` fournit les outils Aspire nécessaires au lancement. Les projets API/web conservent leurs références normales.
 
-Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. Le numéro `11.1.0` ci-dessus désigne les packages de développement construits localement. Pour les packages publiés, utilise `11.0.0` dans ce modèle ; NuGet sélectionne l'asset correspondant au framework du consommateur.
+Le même modèle fonctionne avec `<TargetFramework>net11.0</TargetFramework>` et le SDK .NET 11. NuGet sélectionne l'assembly correspondant au framework du consommateur.
 
 ## Premier fournisseur et client machine
 
