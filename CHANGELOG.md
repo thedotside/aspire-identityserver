@@ -1,5 +1,14 @@
 # Changelog
 
+## 11.2.0 - Unreleased
+
+- Migrate the sample AppHost to `Microsoft.NET.Sdk` and `AddDotnetProject`, with the same target framework for the AppHost and its .NET resources.
+- Validate the five packages against the published 11.1.0 API baseline.
+
+### Breaking changes
+
+- Raise the Hosting dependency floor to Aspire 17.0.0. Update Aspire packages in consuming AppHosts and distributed test projects together. .NET 10 and .NET 11 remain supported.
+
 ## 11.1.0 - 2026-11-20
 
 - Validate public package API compatibility against stable 11.0.0 for both .NET 10 and .NET 11.

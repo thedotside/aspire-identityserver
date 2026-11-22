@@ -190,7 +190,7 @@
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.15, )",
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[10.0.15, )",
-          "TheDotSide.Aspire.IdentityServer.Client": "[11.1.0, )"
+          "TheDotSide.Aspire.IdentityServer.Client": "[11.2.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Client": {
@@ -462,7 +462,7 @@
         "dependencies": {
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[11.0.0, )",
           "Microsoft.AspNetCore.Authentication.OpenIdConnect": "[11.0.0, )",
-          "TheDotSide.Aspire.IdentityServer.Client": "[11.1.0, )"
+          "TheDotSide.Aspire.IdentityServer.Client": "[11.2.0, )"
         }
       },
       "TheDotSide.Aspire.IdentityServer.Client": {
