@@ -99,12 +99,14 @@ app.MapGet(
     .RequireAuthorization(
         new AuthorizationPolicyBuilder("cookie-a").RequireAuthenticatedUser().Build()
     );
-app.MapGet("/spa/config.json", (IConfiguration configuration) => new
+app.MapGet("/spa/config.json", (IConfiguration configuration) =>
+    new
     {
         authority = configuration["Spa:Authority"],
         clientId = configuration["Spa:ClientId"],
         scopes = configuration["Spa:Scopes"],
-    });
+    }
+);
 
 // OpenID Connect Back-Channel Logout: the provider posts a signed logout token when a session
 // ends. This sample only records its session ID; an application would end that session.
@@ -178,12 +180,14 @@ foreach (var provider in new[] { "a", "b", "public", "par" })
         );
         await context.SignOutAsync($"cookie-{provider}");
     });
-    app.MapGet($"/me/{provider}", (HttpContext context) => new
+    app.MapGet($"/me/{provider}", (HttpContext context) =>
+            new
             {
                 name = context.User.Identity?.Name,
                 subject = context.User.FindFirst("sub")?.Value,
                 sid = context.User.FindFirst("sid")?.Value,
-            })
+            }
+        )
         .RequireAuthorization(
             new AuthorizationPolicyBuilder($"cookie-{provider}").RequireAuthenticatedUser().Build()
         );

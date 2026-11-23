@@ -29,7 +29,8 @@ app.UseAuthorization();
 app.MapDefaultEndpoints();
 foreach (var scheme in new[] { "a", "b" })
 {
-    app.MapGet($"/orders/{scheme}", (HttpContext context) => new
+    app.MapGet($"/orders/{scheme}", (HttpContext context) =>
+            new
             {
                 issuer = context.User.FindFirst("iss")?.Value,
                 audience = context.User.FindFirst("aud")?.Value,
@@ -38,7 +39,8 @@ foreach (var scheme in new[] { "a", "b" })
                 name = context.User.FindFirst("name")?.Value,
                 actor = context.User.FindFirst("act")?.Value,
                 orders = new[] { "order-001" },
-            })
+            }
+        )
         .RequireAuthorization(
             new AuthorizationPolicyBuilder(scheme)
                 .RequireAuthenticatedUser()
