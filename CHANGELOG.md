@@ -1,6 +1,6 @@
 # Changelog
 
-## 11.2.0 - Unreleased
+## 11.2.0 - 2026-11-23
 
 - Migrate the sample AppHost to `Microsoft.NET.Sdk` and `AddDotnetProject`, with the same target framework for the AppHost and its .NET resources.
 - Validate the five packages against the published 11.1.0 API baseline.
