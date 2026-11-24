@@ -1,5 +1,7 @@
 # Changelog
 
+## 11.4.0 - Unreleased
+
 ## 11.3.0 - 2026-11-24
 
 - `WithSimulatedMfa(code, acrValues)` declares a simulated second factor on a provider: a fixed development code and the acr values that ask for it. The **Show registrations** dashboard command lists them.
