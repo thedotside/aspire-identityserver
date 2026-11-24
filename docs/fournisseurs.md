@@ -152,6 +152,33 @@ En alpha.4, `WithIdentityScope("communities", "member_of")` alimentait seulement
 
 Le refresh token conserve les claims de l'access token selon les réglages Duende existants ; il ne recharge pas automatiquement les appartenances modifiées après la connexion. Le Token Exchange conserve sa liste explicite `userClaims` et ne propage pas automatiquement tous les claims du token source.
 
+## MFA simulée
+
+Une application qui demande un niveau d'authentification par `acr_values`, par exemple une MFA ou un appareil de confiance, le reçoit aussi en local. Le fournisseur simule le second facteur avec un code fixe déclaré dans l'AppHost :
+
+```csharp
+var idp = builder.AddIdentityServer("idp")
+    .WithSimulatedMfa("111111", "urn:exemple:loa:mfa");
+```
+
+- Une demande d'autorisation qui contient un niveau déclaré dans `acr_values` passe par une page de code : après le mot de passe, ou directement si l'utilisateur a déjà une session sans ce niveau.
+- Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`).
+- La session garde ce niveau jusqu'à la déconnexion : redemander le même niveau ne redemande pas le code. Un autre niveau déclaré le redemande.
+- **Cancel** renvoie `access_denied` au client, comme sur la page de connexion. Avec `prompt=none`, une session sans le niveau reçoit `interaction_required`.
+- Les valeurs non déclarées sont ignorées, avec un avertissement dans les logs du fournisseur. Les préfixes `idp:` et `tenant:` restent réservés à Duende.
+- La découverte publie les niveaux dans `acr_values_supported`. La commande **Show registrations** du dashboard affiche le code et les niveaux.
+
+Le code n'est pas un secret. C'est une valeur fixe de développement, de 4 à 10 chiffres, déclarée en un seul appel avec tous les niveaux. Aucun jeton ne porte `acr` sans que le code ait été saisi.
+
+Côté client ASP.NET Core, le handler OpenID Connect retire `acr` de l'utilisateur connecté par défaut. Pour vérifier le niveau à partir des claims, retire cette action :
+
+```csharp
+options.AdditionalAuthorizationParameters["acr_values"] = "urn:exemple:loa:mfa";
+options.ClaimActions.Remove("acr");
+```
+
+L'exemple déclare `urn:sample:loa:mfa` et `urn:sample:loa:high` sur `idp-a`, avec le code `111111`. Le schéma `mfa` du site web demande le premier niveau.
+
 ## Refresh tokens
 
 Un client interactif qui ajoute `offline_access` à ses scopes, et le demande à la connexion, reçoit un refresh token. Le token d'accès renouvelé conserve le sujet, l'heure et la méthode d'authentification : il reste utilisable comme jeton source d'un Token Exchange. Les refresh tokens suivent les réglages par défaut de Duende et restent en mémoire, comme le reste de l'état du fournisseur. Un client machine ne peut pas demander `offline_access`.

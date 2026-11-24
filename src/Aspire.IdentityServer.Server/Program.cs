@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using Aspire.IdentityServer.Server;
 using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
+using Duende.IdentityServer.ResponseHandling;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -72,6 +73,17 @@ internal static class ServerProgram
                 "Each token exchange policy needs FromSubjectToken or FromMachineClient scopes."
             );
 
+        if (
+            config.SimulatedMfa is { } simulatedMfa
+            && (
+                !SimulatedMfa.IsValidCode(simulatedMfa.Code)
+                || simulatedMfa.AcrValues.Count == 0
+                || simulatedMfa.AcrValues.Any(string.IsNullOrWhiteSpace)
+            )
+        )
+            throw new InvalidOperationException(
+                "A simulated MFA needs a code of 4 to 10 digits and at least one acr value."
+            );
         // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
             builder
@@ -138,6 +150,10 @@ internal static class ServerProgram
                 options.Authentication.CheckSessionCookieSameSiteMode = SameSiteMode.Lax;
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("subject_token");
                 options.Logging.TokenRequestSensitiveValuesFilter.Add("actor_token");
+                // The levels of the simulated second factor, as a provider advertises its acr values.
+                if (config.SimulatedMfa is { } levels)
+                    options.Discovery.CustomEntries["acr_values_supported"] =
+                        levels.AcrValues.ToArray();
             })
             .AddInMemoryIdentityResources([
                 new IdentityResources.OpenId(),
@@ -233,6 +249,13 @@ internal static class ServerProgram
             .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
             .AddProfileService<TokenExchangeProfileService>()
             .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
+        // Registered after Duende's generator, so that it replaces it: a declared level requested
+        // with acr_values that the session lacks asks for the simulated code.
+        if (config.SimulatedMfa is not null)
+            builder.Services.AddTransient<
+                IAuthorizeInteractionResponseGenerator,
+                StepUpInteractionResponseGenerator
+            >();
         builder.Services.Configure<CookieAuthenticationOptions>(
             IdentityServerConstants.DefaultCookieAuthenticationScheme,
             o =>

@@ -77,6 +77,21 @@ public sealed class ProviderPageTests(AppFixture fixture)
             .ToBeVisibleAsync();
         await AssertStyled(page);
 
+        // The simulated MFA page, after the password and after a wrong code.
+        await page.GotoAsync(StepUpAuthorizeUrl());
+        await page.GetByLabel("Username").FillAsync("alice");
+        await page.GetByLabel("Password").FillAsync("alice");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Sign in", Exact = true })
+            .ClickAsync();
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Two-step verification" }))
+            .ToBeVisibleAsync();
+        await AssertStyled(page);
+        await page.GetByLabel("Code").FillAsync("000000");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Verify", Exact = true }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Alert)).ToContainTextAsync("Invalid code.");
+        await AssertStyled(page);
+
         await Assert.That(errors.ToArray()).IsEmpty();
     }
 
@@ -165,6 +180,26 @@ public sealed class ProviderPageTests(AppFixture fixture)
         var violations = await page.EvaluateAsync<string[]>("() => window.cspViolations");
         await Assert.That(violations).IsEmpty();
     }
+
+    /// <summary>A request of the public client that asks provider A for its simulated second factor.</summary>
+    private string StepUpAuthorizeUrl() =>
+        QueryHelpers.AddQueryString(
+            fixture.App.GetEndpoint("idp-a", "https").ToString().TrimEnd('/')
+                + "/connect/authorize",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["client_id"] = "public-web",
+                ["response_type"] = "code",
+                ["scope"] = "openid",
+                ["redirect_uri"] =
+                    fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/')
+                    + "/signin-public",
+                // The RFC 7636 example challenge: this request never reaches the token endpoint.
+                ["code_challenge"] = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+                ["code_challenge_method"] = "S256",
+                ["acr_values"] = "urn:sample:loa:mfa",
+            }
+        );
 
     /// <summary>A request the provider cannot return to a client: it shows its error page.</summary>
     private string UnknownClientAuthorizeUrl() =>
