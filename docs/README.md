@@ -1,6 +1,6 @@
 # Documentation Aspire IdentityServer
 
-Cette documentation décrit le paramétrage de la version `11.2.0`, sur .NET 10 et .NET 11 et Aspire 17.0.0 ou ultérieur. La version 11.2.0 est en développement.
+Cette documentation décrit le paramétrage de la version `11.3.0`, sur .NET 10 et .NET 11 et Aspire 17.0.0 ou ultérieur. La version 11.3.0 est en développement.
 
 Le [changelog de la version 11.1.0](../CHANGELOG.md#1110---2026-11-20) présente les nouvelles fonctionnalités. Consulte la [compatibilité .NET 10 / .NET 11](compatibilite-dotnet.md) pour les frameworks pris en charge et la politique de support de Duende.
 

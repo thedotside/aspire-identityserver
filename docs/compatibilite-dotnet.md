@@ -8,7 +8,7 @@ La première version stable `10.0.0` reprend les fonctionnalités de `0.1.0-alph
 
 | Élément | .NET 10 | .NET 11 |
 | --- | --- | --- |
-| Packages IdentityServer 11.2.0 (en développement) | Asset `net10.0` | Asset `net11.0` |
+| Packages IdentityServer 11.3.0 (en développement) | Asset `net10.0` | Asset `net11.0` |
 | SDK du consommateur | SDK 10 | SDK 11 |
 | Framework du fournisseur lancé | .NET / ASP.NET Core 10 | .NET / ASP.NET Core 11 |
 | Authentification ASP.NET Core des exemples | 10.0.15 | 11.0.0 |
@@ -69,4 +69,4 @@ Sur un poste où `dotnet --version` affiche 11 mais le build mentionne un ancien
 
 Avec les packages stables `11.0.0`, garde `net10.0` pour rester sur .NET 10 ou choisis `net11.0` avec le SDK correspondant. Aligne les packages IdentityServer. L'API publique, les scopes, les sections projetées et le contrat 3 restent identiques ; aucune migration de données n'est nécessaire pour ce fournisseur en mémoire.
 
-La version publiée `11.1.0` passe au contrat 4. La version 11.2.0 en développement relève le plancher à Aspire 17.0.0. Mets à jour les dépendances Aspire de l'AppHost et des tests distribués ensemble. Voir le [guide d'installation](demarrage.md#installer-dans-une-autre-solution).
+La version publiée `11.1.0` passe au contrat 4. La version publiée `11.2.0` relève le plancher à Aspire 17.0.0. Mets à jour les dépendances Aspire de l'AppHost et des tests distribués ensemble. Voir le [guide d'installation](demarrage.md#installer-dans-une-autre-solution).
