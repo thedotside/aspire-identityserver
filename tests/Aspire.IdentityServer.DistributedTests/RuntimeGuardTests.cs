@@ -28,6 +28,7 @@ public sealed class RuntimeGuardTests
     [Arguments("endpoints", "Kestrel endpoints cannot be configured")]
     [Arguments("issuer", "loopback HTTPS address")]
     [Arguments("contract", "configuration contract")]
+    [Arguments("simulated-mfa", "code of 4 to 10 digits")]
     public async Task The_runtime_refuses_to_start_outside_its_development_boundary(
         string change,
         string expected
@@ -54,6 +55,10 @@ public sealed class RuntimeGuardTests
                 break;
             case "contract":
                 environment.Remove("IdentityServer__ContractVersion");
+                break;
+            case "simulated-mfa":
+                environment["IdentityServer__SimulatedMfa__Code"] = "12ab";
+                environment["IdentityServer__SimulatedMfa__AcrValues__0"] = "urn:test:mfa";
                 break;
         }
         using var process = Start(environment);
@@ -199,7 +204,7 @@ public sealed class RuntimeGuardTests
             ["ASPNETCORE_HTTPS_PORTS"] = port.ToString(CultureInfo.InvariantCulture),
             ["Kestrel__Certificates__Default__Path"] = cert.Path,
             ["Kestrel__Certificates__Default__Password"] = cert.Password,
-            ["IdentityServer__ContractVersion"] = "4",
+            ["IdentityServer__ContractVersion"] = "5",
             ["IdentityServer__SigningKey"] = GuardSigningKey.Value,
             ["IdentityServer__Name"] = "guard",
             ["IdentityServer__Issuer"] = $"https://localhost:{port}",

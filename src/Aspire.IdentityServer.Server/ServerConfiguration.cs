@@ -13,6 +13,7 @@ internal sealed class ServerConfiguration
     public List<ApiConfiguration> Apis { get; set; } = [];
     public List<IdentityScopeConfiguration> IdentityScopes { get; set; } = [];
     public List<UserConfiguration> Users { get; set; } = [];
+    public SimulatedMfaConfiguration? SimulatedMfa { get; set; }
 }
 
 internal sealed class ClientConfiguration
@@ -80,4 +81,10 @@ internal sealed class UserClaimConfiguration
 {
     public string Type { get; set; } = "";
     public string Value { get; set; } = "";
+}
+
+internal sealed class SimulatedMfaConfiguration
+{
+    public string Code { get; set; } = "";
+    public List<string> AcrValues { get; set; } = [];
 }

@@ -16,6 +16,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `idp.AddTestUser(string username, string password, string? displayName = null, string? subjectId = null)` | `IdentityTestUser` | Depuis `0.1.0-alpha.4` : mêmes règles que `WithTestUser` ; retourne l'utilisateur pour ajouter des claims. |
 | `testUser.WithClaim(string type, params string[] values)` | Même utilisateur. | Depuis `0.1.0-alpha.4` : claims de profil, plusieurs valeurs par type, doublons exacts ignorés. Claims de protocole et `name` refusés. |
 | `idp.WithIdentityScope(string name, params string[] userClaims)` | Builder du fournisseur. | Depuis `0.1.0-alpha.4` : scope d'identité personnalisé, nom unique, hors `openid`/`profile`/`email`/`offline_access` et scopes d'API ; au moins un claim utilisateur. Depuis alpha.5, un scope demandé par un client Authorization Code sélectionne aussi ses claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Voir [communities/member_of](fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token). |
+| `idp.WithSimulatedMfa(string code, params string[] acrValues)` | Builder du fournisseur. | Depuis `11.3.0` : MFA simulée. Code de 4 à 10 chiffres, valeur fixe de développement et non secrète. Au moins un niveau `acr`, sans espace, sans préfixe `idp:` ni `tenant:`, sans doublon. Un seul appel par fournisseur. Voir [MFA simulée](fournisseurs.md#mfa-simulée). |
 | `idp.AddApiResource(string audience)` | `IdentityApiResource` | Audience non vide, unique dans le fournisseur. |
 | `apiResource.WithScopes(params string[] scopes)` | Même ressource API. | Ajout cumulatif ; au moins un scope au démarrage. Scopes d'identité et `offline_access` réservés. |
 
@@ -27,6 +28,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityServerOptions.AcceptTokenEndpointAudience` | `bool`, défaut `false`. | Accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Par défaut, seul le profil draft-ietf-oauth-rfc7523bis est accepté. |
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
 | `IdentityServerResource.RegisteredUsers` | `IReadOnlyList<IdentityTestUser>` | Depuis `11.1.0` : utilisateurs de test, dans l'ordre de déclaration ; utilisés par le package `Testing`. |
+| `IdentityServerResource.SimulatedMfa` | `IdentitySimulatedMfa?` | Depuis `11.3.0` : code (`Code`) et niveaux `acr` (`AcrValues`) déclarés par `WithSimulatedMfa`, sinon `null` ; utilisé par le package `Testing`. |
 | `IdentityApiResource.Server` | Builder du fournisseur. | Fournisseur associé. |
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
@@ -194,7 +196,7 @@ Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Te
 
 | Membre | Comportement |
 | --- | --- |
-| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, CancellationToken cancellationToken = default)` | Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
+| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, string? acrValues = null, CancellationToken cancellationToken = default)` | Depuis `11.3.0`, `acrValues` envoie `acr_values` et saisit le code de la MFA simulée du fournisseur. Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
 | `GetClientCredentialsTokensAsync(string provider, string clientId, string? scope = null, CancellationToken cancellationToken = default)` | Jeton `client_credentials` d'un client machine. |
 | `GetIdentityClientOptionsAsync(string provider, string clientId, CancellationToken cancellationToken = default)` | `IdentityClientOptions` avec credentials résolus, comme la projection standard. |
 | `IdentityTokens` | `AccessToken`, `TokenType`, `IdToken`, `RefreshToken`, `Scope`, `ExpiresIn`. |

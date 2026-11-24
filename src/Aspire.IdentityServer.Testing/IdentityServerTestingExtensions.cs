@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
@@ -79,6 +80,10 @@ public static partial class IdentityServerTestingExtensions
     /// <param name="clientId">An authorization-code client; its first redirect URI is used.</param>
     /// <param name="username">A test user of the provider; its secret password is read from the AppHost.</param>
     /// <param name="scope">The requested scopes; defaults to every scope registered for the client.</param>
+    /// <param name="acrValues">
+    /// The requested authentication levels, sent as <c>acr_values</c>. When the provider asks for
+    /// the code of its simulated MFA, the helper types the code declared in the AppHost.
+    /// </param>
     /// <param name="cancellationToken">Cancels the requests.</param>
     public static async Task<IdentityTokens> GetUserTokensAsync(
         this DistributedApplication app,
@@ -86,6 +91,7 @@ public static partial class IdentityServerTestingExtensions
         string clientId,
         string username,
         string? scope = null,
+        string? acrValues = null,
         CancellationToken cancellationToken = default
     )
     {
@@ -129,23 +135,21 @@ public static partial class IdentityServerTestingExtensions
             .ConfigureAwait(false);
         var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
         var state = Base64Url(RandomNumberGenerator.GetBytes(16));
+        var parameters = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["client_id"] = client.ClientId,
+            ["response_type"] = "code",
+            ["scope"] = scope ?? options.Scopes,
+            ["redirect_uri"] = redirectUri,
+            ["code_challenge"] = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
+            ["code_challenge_method"] = "S256",
+            ["state"] = state,
+            ["nonce"] = Base64Url(RandomNumberGenerator.GetBytes(16)),
+        };
+        if (!string.IsNullOrWhiteSpace(acrValues))
+            parameters["acr_values"] = acrValues;
         var authorize = new Uri(
-            QueryHelpers.AddQueryString(
-                metadata.AuthorizationEndpoint,
-                new Dictionary<string, string?>(StringComparer.Ordinal)
-                {
-                    ["client_id"] = client.ClientId,
-                    ["response_type"] = "code",
-                    ["scope"] = scope ?? options.Scopes,
-                    ["redirect_uri"] = redirectUri,
-                    ["code_challenge"] = Base64Url(
-                        SHA256.HashData(Encoding.ASCII.GetBytes(verifier))
-                    ),
-                    ["code_challenge_method"] = "S256",
-                    ["state"] = state,
-                    ["nonce"] = Base64Url(RandomNumberGenerator.GetBytes(16)),
-                }
-            )
+            QueryHelpers.AddQueryString(metadata.AuthorizationEndpoint, parameters)
         );
         var login = await RedirectAsync(http, authorize, cancellationToken).ConfigureAwait(false);
         if (!login.AbsolutePath.StartsWith("/Account/Login", StringComparison.OrdinalIgnoreCase))
@@ -174,6 +178,16 @@ public static partial class IdentityServerTestingExtensions
         )
             signedIn = Location(login, response, $"the sign-in of test user '{username}'");
         var callback = await RedirectAsync(http, signedIn, cancellationToken).ConfigureAwait(false);
+        // A requested level that the session lacks: the provider asks for its simulated MFA code.
+        if (IsSimulatedMfaPage(callback, login))
+            callback = await TypeSimulatedMfaCodeAsync(
+                    http,
+                    server,
+                    callback,
+                    username,
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
         var result = QueryHelpers.ParseQuery(callback.Query);
         if (result.TryGetValue("error", out var error))
             throw new InvalidOperationException(
@@ -197,6 +211,28 @@ public static partial class IdentityServerTestingExtensions
         return await RequestTokensAsync(http, metadata, redeem, options, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Signs a test user in without <c>acr_values</c>. Kept for applications compiled against
+    /// an earlier version; new code calls the overload that accepts <c>acrValues</c>.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static Task<IdentityTokens> GetUserTokensAsync(
+        this DistributedApplication app,
+        string provider,
+        string clientId,
+        string username,
+        string? scope,
+        CancellationToken cancellationToken
+    ) =>
+        app.GetUserTokensAsync(
+            provider,
+            clientId,
+            username,
+            scope,
+            acrValues: null,
+            cancellationToken
+        );
 
     private static IdentityServerResource Provider(DistributedApplication app, string provider)
     {
@@ -352,6 +388,59 @@ public static partial class IdentityServerTestingExtensions
                 )
             );
         return next.IsAbsoluteUri ? next : new Uri(address, next);
+    }
+
+    /// <summary>The verification page of the provider's simulated MFA.</summary>
+    private static bool IsSimulatedMfaPage(Uri address, Uri login) =>
+        string.Equals(
+            address.GetLeftPart(UriPartial.Authority),
+            login.GetLeftPart(UriPartial.Authority),
+            StringComparison.OrdinalIgnoreCase
+        ) && address.AbsolutePath.StartsWith("/Account/Mfa", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Types the code declared with <c>WithSimulatedMfa</c>, then follows the authorization
+    /// request back to the client.
+    /// </summary>
+    private static async Task<Uri> TypeSimulatedMfaCodeAsync(
+        HttpClient http,
+        IdentityServerResource server,
+        Uri page,
+        string username,
+        CancellationToken cancellationToken
+    )
+    {
+        var mfa = server.SimulatedMfa
+            ?? throw new InvalidOperationException(
+                $"Provider '{server.Name}' asked for a simulated MFA code that the AppHost does not declare."
+            );
+        string form;
+        using (var response = await http.GetAsync(page, cancellationToken).ConfigureAwait(false))
+        {
+            response.EnsureSuccessStatusCode();
+            form = await response
+                .Content.ReadAsStringAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["ReturnUrl"] = Field(form, "ReturnUrl"),
+            ["__RequestVerificationToken"] = Field(form, "__RequestVerificationToken"),
+            ["Code"] = mfa.Code,
+            ["Button"] = "verify",
+        };
+        Uri verified;
+        using (var content = new FormUrlEncodedContent(fields))
+        using (
+            var response = await http.PostAsync(page, content, cancellationToken)
+                .ConfigureAwait(false)
+        )
+            verified = Location(
+                page,
+                response,
+                $"the simulated MFA code of test user '{username}'"
+            );
+        return await RedirectAsync(http, verified, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>The value of a named input of the provider's sign-in form.</summary>

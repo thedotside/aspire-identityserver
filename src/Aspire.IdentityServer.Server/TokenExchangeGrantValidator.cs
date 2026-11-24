@@ -163,6 +163,10 @@ internal sealed class TokenExchangeGrantValidator(
         transferred.Add(
             new Claim("act", JsonSerializer.Serialize(new { sub = client.ClientId }), "JSON")
         );
+        // Like amr, the level reached at sign-in follows the user: Duende issues the acr of the
+        // subject. It is a protocol claim, outside the user claims that the policy selects.
+        if (source.AuthenticationContextClass is { } level)
+            transferred.Add(new Claim("acr", level));
         var principal = new IdentityServerUser(subject)
         {
             AuthenticationTime = DateTimeOffset
@@ -234,7 +238,8 @@ internal sealed class TokenExchangeGrantValidator(
         List<string> AuthenticationMethods,
         HashSet<string> Scopes,
         List<string> Audiences,
-        List<Claim> Claims
+        List<Claim> Claims,
+        string? AuthenticationContextClass
     )
     {
         internal static Source? From(List<Claim> claims)
@@ -248,6 +253,11 @@ internal sealed class TokenExchangeGrantValidator(
                 .Select(c => c.Value)
                 .Distinct(StringComparer.Ordinal)
                 .ToList();
+            // The level reached, such as a simulated MFA, is optional but never ambiguous.
+            var levels = claims
+                .Where(c => string.Equals(c.Type, "acr", StringComparison.Ordinal))
+                .Select(c => c.Value)
+                .ToList();
             // A sender-constrained subject (DPoP or mTLS cnf) must never become a bearer token,
             // and an exchanged token is not exchanged again.
             if (
@@ -256,6 +266,8 @@ internal sealed class TokenExchangeGrantValidator(
                 || string.IsNullOrWhiteSpace(identityProvider)
                 || methods.Count == 0
                 || methods.Any(string.IsNullOrWhiteSpace)
+                || levels.Count > 1
+                || levels.Any(string.IsNullOrWhiteSpace)
                 || claims.Any(c =>
                     string.Equals(c.Type, "act", StringComparison.Ordinal)
                     || string.Equals(c.Type, "cnf", StringComparison.Ordinal)
@@ -289,7 +301,8 @@ internal sealed class TokenExchangeGrantValidator(
                     .Where(c => string.Equals(c.Type, "aud", StringComparison.Ordinal))
                     .Select(c => c.Value)
                     .ToList(),
-                claims
+                claims,
+                levels.SingleOrDefault()
             );
         }
 

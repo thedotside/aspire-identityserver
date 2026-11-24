@@ -232,6 +232,7 @@ Le jeton signé porte notamment :
 | `name` | `Alice`, uniquement si sélectionné. |
 | `auth_time` | Heure d'authentification du jeton source. |
 | `amr` | Méthodes d'authentification du jeton source, par exemple `pwd`. L'échange ne les remplace pas. |
+| `acr` | Depuis `11.3.0` : niveau du jeton source, par exemple celui d'une [MFA simulée](fournisseurs.md#mfa-simulée), recopié comme `amr`, y compris depuis un autre IdP. Absent si le jeton source n'en porte pas. |
 | `idp` | Fournisseur d'identité du jeton source, `local` pour les utilisateurs de test. |
 
 Les scopes demandés doivent appartenir au client machine et à l'API, et, sauf règle `FromMachineClient`, au jeton utilisateur. Le jeton échangé ne peut pas prolonger la validité du jeton source. Une marge d'une seconde évite de prolonger sa validité pendant l'émission ; un jeton trop proche de son expiration est refusé.

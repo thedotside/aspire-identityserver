@@ -650,6 +650,61 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await AssertRejected(first, "invalid_client");
     }
 
+    [Test]
+    public async Task An_exchanged_token_keeps_the_level_of_its_source()
+    {
+        var source = await fixture.App.GetUserTokensAsync(
+            "idp-a",
+            "web",
+            "alice",
+            acrValues: "urn:sample:loa:mfa"
+        );
+        var issued = await ExchangedToken(
+            await fixture.Client("idp-a", "device-secret"),
+            source.AccessToken
+        );
+        await Assert.That(issued.GetClaim("acr").Value).IsEqualTo("urn:sample:loa:mfa");
+        await Assert.That(Values(issued, "amr")).Contains("mfa");
+    }
+
+    [Test]
+    public async Task A_token_exchanged_from_another_provider_keeps_its_level()
+    {
+        var source = await fixture.App.GetUserTokensAsync(
+            "idp-b",
+            "web",
+            "alice",
+            acrValues: "urn:sample:loa:mfa"
+        );
+        var issued = await ExchangedToken(
+            await fixture.Client("idp-a", "partner"),
+            source.AccessToken
+        );
+        await Assert.That(issued.GetClaim("acr").Value).IsEqualTo("urn:sample:loa:mfa");
+        await Assert.That(Values(issued, "amr")).Contains("mfa");
+    }
+
+    [Test]
+    public async Task An_exchanged_token_without_a_source_level_has_no_acr()
+    {
+        var issued = await ExchangedToken(
+            await fixture.Client("idp-a", "partner"),
+            await SourceToken()
+        );
+        await Assert.That(issued.TryGetClaim("acr", out _)).IsFalse();
+    }
+
+    private async Task<JsonWebToken> ExchangedToken(IdentityClientOptions client, string subject)
+    {
+        using var response = await Exchange(client, subject);
+        response.EnsureSuccessStatusCode();
+        return new JsonWebToken(
+            (await response.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("access_token")
+                .GetString()!
+        );
+    }
+
     private static string[] Values(JsonWebToken token, string type) =>
         token
             .Claims.Where(c => string.Equals(c.Type, type, StringComparison.Ordinal))

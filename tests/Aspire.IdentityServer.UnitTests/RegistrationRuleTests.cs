@@ -39,6 +39,13 @@ public sealed class RegistrationRuleTests
     [Arguments("identity-scope-without-claim", "at least one user claim")]
     [Arguments("identity-scope-protocol-claim", "protocol claims")]
     [Arguments("exchange-scopes-undefined", "scopes")]
+    [Arguments("mfa-code-short", "4 to 10 digits")]
+    [Arguments("mfa-code-letters", "4 to 10 digits")]
+    [Arguments("mfa-no-level", "at least one acr value")]
+    [Arguments("mfa-level-space", "single acr value")]
+    [Arguments("mfa-level-idp", "reserved")]
+    [Arguments("mfa-level-tenant", "reserved")]
+    [Arguments("mfa-level-duplicate", "Duplicate acr value")]
     public async Task Invalid_arguments_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -109,6 +116,14 @@ public sealed class RegistrationRuleTests
                         idp.AddApiResource("orders"),
                         (TokenExchangeScopes)42
                     ),
+            "mfa-code-short" => () => idp.WithSimulatedMfa("123", "urn:test:mfa"),
+            "mfa-code-letters" => () => idp.WithSimulatedMfa("12ab56", "urn:test:mfa"),
+            "mfa-no-level" => () => idp.WithSimulatedMfa("111111"),
+            "mfa-level-space" => () => idp.WithSimulatedMfa("111111", "urn:a b"),
+            "mfa-level-idp" => () => idp.WithSimulatedMfa("111111", "idp:x"),
+            "mfa-level-tenant" => () => idp.WithSimulatedMfa("111111", "tenant:x"),
+            "mfa-level-duplicate" => () =>
+                idp.WithSimulatedMfa("111111", "urn:test:mfa", "urn:test:mfa"),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).Throws<ArgumentException>();
@@ -119,6 +134,7 @@ public sealed class RegistrationRuleTests
     [Arguments("pkce-machine", "PKCE only applies")]
     [Arguments("redirect-machine", "Only interactive clients")]
     [Arguments("double-authentication", "already configured")]
+    [Arguments("mfa-twice", "already declares a simulated MFA")]
     public async Task Invalid_operations_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -130,6 +146,9 @@ public sealed class RegistrationRuleTests
             "redirect-machine" => () => machine.WithRedirectUri(idp.GetEndpoint("https"), "/cb"),
             "double-authentication" => () =>
                 machine.WithGeneratedClientSecret().WithGeneratedPrivateKeyJwt(),
+            "mfa-twice" => () =>
+                idp.WithSimulatedMfa("111111", "urn:test:mfa")
+                    .WithSimulatedMfa("222222", "urn:test:high"),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).ThrowsExactly<InvalidOperationException>();
@@ -341,7 +360,10 @@ public sealed class RegistrationRuleTests
     public async Task The_provider_environment_matches_its_configuration_contract()
     {
         var builder = TestApp.CreateBuilder();
-        var idp = builder.AddIdentityServer("contract").WithIdentityScope("teams", "team");
+        var idp = builder
+            .AddIdentityServer("contract")
+            .WithIdentityScope("teams", "team")
+            .WithSimulatedMfa("111111", "urn:test:mfa");
         idp.AddTestUser("alice", "alice", "Alice").WithClaim("team", "sales", "support");
         var orders = idp.AddApiResource("orders").WithScopes("orders.read", "orders.write");
         var web = idp.AddAuthorizationCodeClient("web")
@@ -401,12 +423,14 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Clients__1__TokenExchanges__0__Scopes=FromSubjectToken",
             "IdentityServer__Clients__1__TokenExchanges__0__SubjectClientId=web",
             "IdentityServer__Clients__1__TokenExchanges__0__UserClaims__0=name",
-            "IdentityServer__ContractVersion=4",
+            "IdentityServer__ContractVersion=5",
             "IdentityServer__IdentityScopes__0__Name=teams",
             "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",
             "IdentityServer__Name=contract",
             "IdentityServer__SigningKey=<secret-parameter>",
+            "IdentityServer__SimulatedMfa__AcrValues__0=urn:test:mfa",
+            "IdentityServer__SimulatedMfa__Code=111111",
             "IdentityServer__Users__0__Claims__0__Type=team",
             "IdentityServer__Users__0__Claims__0__Value=sales",
             "IdentityServer__Users__0__Claims__1__Type=team",

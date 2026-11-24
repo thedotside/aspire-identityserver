@@ -237,7 +237,7 @@ internal static class DashboardCommands
         fields["client_assertion"] = $"{header}.{payload}.{Base64UrlEncode(signature)}";
     }
 
-    private static async Task<string> MarkdownAsync(
+    internal static async Task<string> MarkdownAsync(
         IdentityServerResource server,
         CancellationToken cancellationToken
     )
@@ -270,6 +270,12 @@ internal static class DashboardCommands
             text.Append(
                 CultureInfo.InvariantCulture,
                 $"| {Cell(scope.Name)} | {Cell(string.Join(' ', scope.UserClaims))} |\n"
+            );
+        // The code is a fixed development value, not a secret: shown so that people can type it.
+        if (server.SimulatedMfa is { } mfa)
+            text.Append(
+                CultureInfo.InvariantCulture,
+                $"\n### Simulated MFA\n\n| Code | acr values |\n| --- | --- |\n| {Cell(mfa.Code)} | {Cell(string.Join(' ', mfa.AcrValues))} |\n"
             );
         text.Append(
             "\n### Test users\n\n| Username | Subject | Display name | Claims |\n| --- | --- | --- | --- |\n"

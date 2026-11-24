@@ -16,13 +16,15 @@ builder.AddServiceDefaults();
 var authentication = builder.Services.AddAuthentication();
 
 // "par" signs in with the private-key client of provider A through pushed authorization requests.
+// "mfa" signs in with the same client and asks provider A for its simulated second factor.
 foreach (
-    var (provider, section, pushed) in new[]
+    var (provider, section, pushed, acrValues) in new (string, string, bool, string?)[]
     {
-        ("a", "IdpA", false),
-        ("b", "IdpB", false),
-        ("public", "Public", false),
-        ("par", "IdpA", true),
+        ("a", "IdpA", false, null),
+        ("b", "IdpB", false, null),
+        ("public", "Public", false, null),
+        ("par", "IdpA", true, null),
+        ("mfa", "IdpA", false, "urn:sample:loa:mfa"),
     }
 )
 {
@@ -43,6 +45,12 @@ foreach (
                 options.PushedAuthorizationBehavior = pushed
                     ? PushedAuthorizationBehavior.Require
                     : PushedAuthorizationBehavior.Disable;
+                if (acrValues is not null)
+                {
+                    options.AdditionalAuthorizationParameters["acr_values"] = acrValues;
+                    // The handler drops acr from the signed-in user by default: keep the level.
+                    options.ClaimActions.Remove("acr");
+                }
             }
         );
 }
@@ -150,7 +158,7 @@ app.MapGet("/", async (HttpContext context, IAntiforgery antiforgery) =>
 {
     var token = antiforgery.GetAndStoreTokens(context);
     var rows = new List<string>();
-    foreach (var provider in new[] { "a", "b", "public", "par" })
+    foreach (var provider in new[] { "a", "b", "public", "par", "mfa" })
     {
         var result = await context.AuthenticateAsync($"cookie-{provider}");
         var name = HtmlEncoder.Default.Encode(result.Principal?.Identity?.Name ?? "Signed out");
@@ -166,7 +174,7 @@ app.MapGet("/", async (HttpContext context, IAntiforgery antiforgery) =>
         "text/html"
     );
 });
-foreach (var provider in new[] { "a", "b", "public", "par" })
+foreach (var provider in new[] { "a", "b", "public", "par", "mfa" })
 {
     app.MapGet($"/login/{provider}", () =>
         Results.Challenge(new AuthenticationProperties { RedirectUri = "/" }, [$"oidc-{provider}"])
@@ -186,6 +194,8 @@ foreach (var provider in new[] { "a", "b", "public", "par" })
                 name = context.User.Identity?.Name,
                 subject = context.User.FindFirst("sub")?.Value,
                 sid = context.User.FindFirst("sid")?.Value,
+                acr = context.User.FindFirst("acr")?.Value,
+                amr = context.User.FindAll("amr").Select(c => c.Value).ToArray(),
             }
         )
         .RequireAuthorization(

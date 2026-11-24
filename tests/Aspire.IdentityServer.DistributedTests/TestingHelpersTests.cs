@@ -103,4 +103,83 @@ public sealed class TestingHelpersTests(AppFixture fixture)
             fixture.App.GetClientCredentialsTokensAsync("idp-a", "web")
         );
     }
+
+    [Test]
+    public async Task User_tokens_carry_the_requested_level()
+    {
+        var tokens = await fixture.App.GetUserTokensAsync(
+            "idp-a",
+            "web",
+            "alice",
+            acrValues: "urn:sample:loa:mfa"
+        );
+        foreach (var token in new[] { tokens.AccessToken, tokens.IdToken! })
+        {
+            var jwt = new JsonWebToken(token);
+            await Assert.That(jwt.GetClaim("acr").Value).IsEqualTo("urn:sample:loa:mfa");
+            await Assert.That(Amr(jwt)).IsEquivalentTo(["pwd", "otp", "mfa"]);
+        }
+    }
+
+    [Test]
+    public async Task Another_declared_level_is_issued_when_requested()
+    {
+        var tokens = await fixture.App.GetUserTokensAsync(
+            "idp-a",
+            "web",
+            "alice",
+            acrValues: "urn:sample:loa:high"
+        );
+        await Assert
+            .That(new JsonWebToken(tokens.AccessToken).GetClaim("acr").Value)
+            .IsEqualTo("urn:sample:loa:high");
+    }
+
+    [Test]
+    public async Task Undeclared_acr_values_pass_through_without_a_code()
+    {
+        var tokens = await fixture.App.GetUserTokensAsync(
+            "idp-a",
+            "web",
+            "alice",
+            acrValues: "urn:unknown"
+        );
+        var access = new JsonWebToken(tokens.AccessToken);
+        await Assert.That(access.TryGetClaim("acr", out _)).IsFalse();
+        await Assert.That(Amr(access)).IsEquivalentTo(["pwd"]);
+    }
+
+    [Test]
+    public async Task A_refreshed_token_keeps_acr_and_amr()
+    {
+        var tokens = await fixture.App.GetUserTokensAsync(
+            "idp-a",
+            "web",
+            "alice",
+            acrValues: "urn:sample:loa:mfa"
+        );
+        var fields = ProtocolTests.Fields(await fixture.Client("idp-a", "web"));
+        fields.Remove("scope");
+        fields["grant_type"] = "refresh_token";
+        fields["refresh_token"] = tokens.RefreshToken!;
+        using var http = fixture.App.CreateHttpClient("idp-a", "https");
+        using var response = await http.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(fields)
+        );
+        response.EnsureSuccessStatusCode();
+        var renewed = new JsonWebToken(
+            (await response.Content.ReadFromJsonAsync<JsonElement>())
+                .GetProperty("access_token")
+                .GetString()!
+        );
+        await Assert.That(renewed.GetClaim("acr").Value).IsEqualTo("urn:sample:loa:mfa");
+        await Assert.That(Amr(renewed)).IsEquivalentTo(["pwd", "otp", "mfa"]);
+    }
+
+    private static string[] Amr(JsonWebToken token) =>
+        token
+            .Claims.Where(c => string.Equals(c.Type, "amr", StringComparison.Ordinal))
+            .Select(c => c.Value)
+            .ToArray();
 }

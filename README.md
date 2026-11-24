@@ -49,6 +49,8 @@ No `using` is needed: the extensions live in `Aspire.Hosting`, like other Aspire
 
 `WithIdentityScope("communities", "member_of")` declares an identity scope requested only by Authorization Code clients, such as a BFF. Since alpha.5, the granted identity scopes select user claims in the login access token as well as the ID token and UserInfo. YARP can relay that access token directly to Xp; without Xp, the BFF uses token exchange for Capa. `communities` is never an API or machine-client scope. See the [complete example and alpha.4 migration](docs/fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token).
 
+`WithSimulatedMfa("111111", "urn:example:loa:mfa")` simulates a second factor: a client that requests that level in `acr_values` is asked for the code after the password, then receives the level as `acr`, with `pwd`, `otp` and `mfa` as `amr`. Applications keep their MFA checks enabled locally. See [simulated MFA](docs/fournisseurs.md#mfa-simulée).
+
 In the consumer, the optional `TheDotSide.Aspire.IdentityServer.Client` package binds the projected section and signs `private_key_jwt` assertions with the [draft-ietf-oauth-rfc7523bis](https://datatracker.ietf.org/doc/draft-ietf-oauth-rfc7523bis/) profile:
 
 ```csharp
@@ -69,7 +71,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | `TheDotSide.Aspire.IdentityServer.Authentication` | Optional ASP.NET Core helpers: `AddIdentityServerJwtBearer`, `AddIdentityServerOpenIdConnect` (PKCE, secret or `private_key_jwt`, PAR included) and `RequireScope`. |
 | `TheDotSide.Aspire.IdentityServer.Testing` | Optional integration-test helpers: user tokens through the real sign-in without a browser, client-credentials tokens and resolved client options. |
 
-Version: `11.2.0` (in development). Targets .NET 10 and .NET 11, with Aspire 17.0.0 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for published and local packages.
+Version: `11.3.0` (in development). Targets .NET 10 and .NET 11, with Aspire 17.0.0 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for published and local packages.
 
 See the [11.1.0 changelog](CHANGELOG.md#1110---2026-11-20) for the new integration features. Upgrade Hosting, Runtime and the optional Client, Authentication and Testing packages together. The major number identifies the .NET release family. See [compatibility and migration](docs/compatibilite-dotnet.md) for supported frameworks and Duende's support policy.
 

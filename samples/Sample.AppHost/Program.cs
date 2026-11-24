@@ -7,10 +7,13 @@ const string targetFramework = "net10.0";
 #endif
 
 // The teams identity scope gives clients that request it the team claims of the user.
+// Requesting urn:sample:loa:mfa or urn:sample:loa:high in acr_values asks for the simulated
+// second factor 111111 after the password.
 var idpA = builder
     .AddIdentityServer("idp-a")
     .WithIdentityScope("teams", "team")
-    .WithIdentityScope("communities", "member_of");
+    .WithIdentityScope("communities", "member_of")
+    .WithSimulatedMfa("111111", "urn:sample:loa:mfa", "urn:sample:loa:high");
 idpA.AddTestUser("alice", "alice", "Alice A")
     .WithClaim("email", "alice@example.test")
     .WithClaim("given_name", "Alice")
@@ -56,6 +59,9 @@ var browserA = idpA.AddAuthorizationCodeClient("web")
     // The "par" scheme of the web sample: the same client, through pushed authorization requests.
     .WithRedirectUri(web.GetEndpoint("https"), "/signin-par")
     .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-par")
+    // The "mfa" scheme of the web sample: the same client, asking for the urn:sample:loa:mfa level.
+    .WithRedirectUri(web.GetEndpoint("https"), "/signin-mfa")
+    .WithPostLogoutRedirectUri(web.GetEndpoint("https"), "/signout-callback-mfa")
     // The web sample records the logout tokens posted when a provider session ends.
     .WithBackChannelLogoutUri(web.GetEndpoint("https"), "/backchannel-logout-a");
 var browserB = idpB.AddAuthorizationCodeClient("web")
