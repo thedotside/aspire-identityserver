@@ -162,7 +162,7 @@ var idp = builder.AddIdentityServer("idp")
 ```
 
 - Une demande d'autorisation qui contient un niveau déclaré dans `acr_values` passe par une page de code : après le mot de passe, ou directement si l'utilisateur a déjà une session sans ce niveau.
-- Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`). Les access tokens renouvelés par refresh token les gardent.
+- Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`). Les access tokens renouvelés par refresh token les gardent, et un Token Exchange recopie `acr` comme `amr`.
 - La session garde ce niveau jusqu'à la déconnexion : redemander le même niveau ne redemande pas le code. Un autre niveau déclaré le redemande.
 - **Cancel** renvoie `access_denied` au client, comme sur la page de connexion. Avec `prompt=none`, une session sans le niveau reçoit `interaction_required`.
 - Les valeurs non déclarées sont ignorées, avec un avertissement dans les logs du fournisseur. Les préfixes `idp:` et `tenant:` restent réservés à Duende.

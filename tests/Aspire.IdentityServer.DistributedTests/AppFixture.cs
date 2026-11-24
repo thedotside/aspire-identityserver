@@ -72,6 +72,14 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
                 .WithBase64PrivateKeyJwt(secret, TestKeys.Public(other, "fixture-key"))
                 .WithScopes("orders.read");
         }
+        // Provider B also simulates a second factor: a token exchanged from it can carry a level.
+        builder
+            .CreateResourceBuilder(
+                builder
+                    .Resources.OfType<IdentityServerResource>()
+                    .Single(s => string.Equals(s.Name, "idp-b", StringComparison.Ordinal))
+            )
+            .WithSimulatedMfa("222222", "urn:sample:loa:mfa");
         var legacy = builder.AddIdentityServer("idp-legacy", options =>
             options.AcceptTokenEndpointAudience = true
         );
