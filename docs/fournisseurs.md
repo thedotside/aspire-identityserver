@@ -162,13 +162,13 @@ var idp = builder.AddIdentityServer("idp")
 ```
 
 - Une demande d'autorisation qui contient un niveau déclaré dans `acr_values` passe par une page de code : après le mot de passe, ou directement si l'utilisateur a déjà une session sans ce niveau.
-- Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`).
+- Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`). Les access tokens renouvelés par refresh token les gardent.
 - La session garde ce niveau jusqu'à la déconnexion : redemander le même niveau ne redemande pas le code. Un autre niveau déclaré le redemande.
 - **Cancel** renvoie `access_denied` au client, comme sur la page de connexion. Avec `prompt=none`, une session sans le niveau reçoit `interaction_required`.
 - Les valeurs non déclarées sont ignorées, avec un avertissement dans les logs du fournisseur. Les préfixes `idp:` et `tenant:` restent réservés à Duende.
 - La découverte publie les niveaux dans `acr_values_supported`. La commande **Show registrations** du dashboard affiche le code et les niveaux.
 
-Le code n'est pas un secret. C'est une valeur fixe de développement, de 4 à 10 chiffres, déclarée en un seul appel avec tous les niveaux. Aucun jeton ne porte `acr` sans que le code ait été saisi.
+Le code n'est pas un secret. C'est une valeur fixe de développement, de 4 à 10 chiffres, déclarée en un seul appel avec tous les niveaux. Aucun jeton ne porte `acr` sans que le code ait été saisi. Dans les tests, `GetUserTokensAsync(…, acrValues: …)` du package `Testing` saisit le code lui-même (voir [les tests d'intégration](tests.md#jetons-dun-utilisateur-de-test)).
 
 Côté client ASP.NET Core, le handler OpenID Connect retire `acr` de l'utilisateur connecté par défaut. Pour vérifier le niveau à partir des claims, retire cette action :
 

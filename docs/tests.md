@@ -27,7 +27,7 @@ using var api = app.CreateHttpClient("api", "https");
 api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", alice.AccessToken);
 ```
 
-`GetUserTokensAsync(provider, clientId, username, scope?)` :
+`GetUserTokensAsync(provider, clientId, username, scope?, acrValues?)` :
 
 1. lit le mot de passe du paramètre secret de l'utilisateur dans l'AppHost ;
 2. envoie une demande d'autorisation avec PKCE `S256`, `state` et `nonce`, vers la première redirect URI du client ;
@@ -36,6 +36,14 @@ api.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer"
 5. vérifie `state` et l'issuer de la réponse (RFC 9207), puis échange le code avec l'authentification du client : clé privée, secret ou client public.
 
 Le résultat `IdentityTokens` contient `AccessToken`, `IdToken`, `RefreshToken` (avec `offline_access`), `Scope`, `TokenType` et `ExpiresIn`. Sans `scope`, le client demande tous les scopes qui lui sont enregistrés.
+
+Avec `acrValues`, la demande d'autorisation porte `acr_values`. Si le fournisseur demande le code de sa [MFA simulée](fournisseurs.md#mfa-simulée), l'helper saisit le code déclaré dans l'AppHost, puis les jetons portent le niveau dans `acr` :
+
+```csharp
+var alice = await app.GetUserTokensAsync("idp", "web", "alice", acrValues: "urn:exemple:loa:mfa");
+```
+
+Une valeur que le fournisseur ne déclare pas passe telle quelle, comme avec un vrai client : le jeton n'a pas de claim `acr`. Un code refusé lève `InvalidOperationException`.
 
 ## Jetons d'un client machine et options
 

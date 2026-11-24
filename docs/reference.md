@@ -196,7 +196,7 @@ Extensions de `DistributedApplication`, dans l'espace de noms `Aspire.Hosting.Te
 
 | Membre | Comportement |
 | --- | --- |
-| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, CancellationToken cancellationToken = default)` | Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
+| `GetUserTokensAsync(string provider, string clientId, string username, string? scope = null, string? acrValues = null, CancellationToken cancellationToken = default)` | Depuis `11.3.0`, `acrValues` envoie `acr_values` et saisit le code de la MFA simulée du fournisseur. Connexion authorization code + PKCE par le formulaire du fournisseur, sans navigateur ; échange du code avec l'authentification du client. Client d'authorization code avec redirect URI exigé. |
 | `GetClientCredentialsTokensAsync(string provider, string clientId, string? scope = null, CancellationToken cancellationToken = default)` | Jeton `client_credentials` d'un client machine. |
 | `GetIdentityClientOptionsAsync(string provider, string clientId, CancellationToken cancellationToken = default)` | `IdentityClientOptions` avec credentials résolus, comme la projection standard. |
 | `IdentityTokens` | `AccessToken`, `TokenType`, `IdToken`, `RefreshToken`, `Scope`, `ExpiresIn`. |

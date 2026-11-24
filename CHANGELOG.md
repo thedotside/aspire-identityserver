@@ -4,6 +4,7 @@
 
 - `WithSimulatedMfa(code, acrValues)` declares a simulated second factor on a provider: a fixed development code and the acr values that ask for it. The **Show registrations** dashboard command lists them.
 - A provider with a simulated MFA asks for its code when an authorization request asks for a declared level in `acr_values`: after the password, or straight away for a session without that level. The tokens then carry the level as `acr`, with `pwd`, `otp` and `mfa` as `amr`, and the session keeps it until sign-out. `prompt=none` receives `interaction_required`, Cancel `access_denied`, and discovery lists the levels in `acr_values_supported`. The `mfa` scheme of the web sample demonstrates it.
+- `GetUserTokensAsync` of the Testing package accepts `acrValues`: it sends them as `acr_values` and types the simulated MFA code declared in the AppHost. Refreshed tokens keep `acr` and `amr`.
 
 ### Breaking changes
 
