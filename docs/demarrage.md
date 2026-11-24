@@ -52,7 +52,7 @@ dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer
 
 `Hosting` installe `Runtime` comme dépendance. Installe les packages facultatifs à la même version. Utilise `Client` dans l'application consommatrice, `Authentication` pour [configurer JWT bearer et OpenID Connect](integration.md), et `Testing` dans les [tests d'intégration](tests.md). Depuis `10.0.0` ou `11.0.0`, mets `Hosting` et `Runtime` à jour ensemble pour passer au contrat 4. Tu peux conserver `net10.0` ou choisir `net11.0` avec le SDK correspondant. La [publication par tag](publication.md) explique comment vérifier que la version est disponible.
 
-Pour essayer `11.3.0` avec Aspire 17, construis les packages de cette branche et installe-les depuis le dossier local.
+Pour essayer `11.4.0` avec Aspire 17, construis les packages de cette branche et installe-les depuis le dossier local.
 
 Depuis ce dépôt :
 
@@ -64,13 +64,13 @@ Depuis la solution consommatrice, ajoute le répertoire `artifacts/packages` de 
 
 ```powershell
 dotnet nuget add source "C:/chemin/aspire-identityserver/artifacts/packages" --name aspire-identityserver-local
-dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.3.0
+dotnet add MonAppHost/MonAppHost.csproj package TheDotSide.Aspire.IdentityServer.Hosting --version 11.4.0
 ```
 
 `Runtime` est installé transitivement par `Hosting`. Ajoute le helper à l'application consommatrice si elle utilise ses options ou crée des assertions :
 
 ```powershell
-dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.3.0
+dotnet add MonApplication/MonApplication.csproj package TheDotSide.Aspire.IdentityServer.Client --version 11.4.0
 ```
 
 Avec Central Package Management, déclare les versions dans `Directory.Packages.props` et les références sans version dans les projets.
@@ -91,7 +91,7 @@ Pour une solution indépendante sans Central Package Management, voici le modèl
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" Version="17.0.0" />
-    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.3.0" />
+    <PackageReference Include="TheDotSide.Aspire.IdentityServer.Hosting" Version="11.4.0" />
   </ItemGroup>
 </Project>
 ```
