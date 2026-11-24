@@ -21,6 +21,30 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
 
     /// <summary>The test users of this provider, in declaration order.</summary>
     public IReadOnlyList<IdentityTestUser> RegisteredUsers => Users.AsReadOnly();
+
+    /// <summary>
+    /// The simulated second factor declared with <c>WithSimulatedMfa</c>, or <see langword="null" />.
+    /// </summary>
+    public IdentitySimulatedMfa? SimulatedMfa { get; internal set; }
+}
+
+/// <summary>
+/// A simulated second factor: the fixed code the provider asks for after the password, and the
+/// acr values whose request triggers it.
+/// </summary>
+public sealed class IdentitySimulatedMfa
+{
+    internal IdentitySimulatedMfa(string code, IReadOnlyList<string> acrValues)
+    {
+        Code = code;
+        AcrValues = acrValues;
+    }
+
+    /// <summary>The code to type on the verification page: a fixed development value, not a secret.</summary>
+    public string Code { get; }
+
+    /// <summary>The acr values that ask for the code, in declaration order.</summary>
+    public IReadOnlyList<string> AcrValues { get; }
 }
 
 /// <summary>Options of one local identity provider.</summary>

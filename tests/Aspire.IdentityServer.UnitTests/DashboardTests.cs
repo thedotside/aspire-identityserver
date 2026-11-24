@@ -1,5 +1,6 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Aspire.IdentityServer.Hosting;
 
 namespace Aspire.IdentityServer.Tests;
 
@@ -52,5 +53,23 @@ public sealed class DashboardTests
         var idp = TestApp.CreateBuilder().AddIdentityServer("idp").Resource;
         await Assert.That(idp.Annotations.OfType<ResourceIconAnnotation>()).IsNotEmpty();
         await Assert.That(idp.Annotations.OfType<ResourceUrlsCallbackAnnotation>()).IsNotEmpty();
+    }
+
+    [Test]
+    public async Task Registrations_list_the_simulated_mfa()
+    {
+        var builder = TestApp.CreateBuilder();
+        var idp = builder
+            .AddIdentityServer("idp")
+            .WithSimulatedMfa("111111", "urn:test:mfa", "urn:test:high");
+        var plain = builder.AddIdentityServer("plain");
+        await Assert
+            .That(await DashboardCommands.MarkdownAsync(idp.Resource, CancellationToken.None))
+            .Contains(
+                "### Simulated MFA\n\n| Code | acr values |\n| --- | --- |\n| 111111 | urn:test:mfa urn:test:high |\n"
+            );
+        await Assert
+            .That(await DashboardCommands.MarkdownAsync(plain.Resource, CancellationToken.None))
+            .DoesNotContain("Simulated MFA");
     }
 }

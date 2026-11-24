@@ -223,6 +223,61 @@ public static class IdentityServerExtensions
         return server;
     }
 
+    /// <summary>
+    /// Simulates a second factor for local development and tests. When an authorization request
+    /// asks with <c>acr_values</c> for one of <paramref name="acrValues" />, the provider asks for
+    /// <paramref name="code" /> after the password, or straight away for a session without that
+    /// level, then issues the level as <c>acr</c> with the <c>amr</c> values <c>pwd</c>, <c>otp</c>
+    /// and <c>mfa</c>. The session keeps it until sign-out. The code is a fixed development value,
+    /// not a secret. Declare every level in one call.
+    /// </summary>
+    public static IResourceBuilder<IdentityServerResource> WithSimulatedMfa(
+        this IResourceBuilder<IdentityServerResource> server,
+        string code,
+        params string[] acrValues
+    )
+    {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentNullException.ThrowIfNull(acrValues);
+        if (server.Resource.SimulatedMfa is not null)
+            throw new InvalidOperationException(
+                $"Identity provider '{server.Resource.Name}' already declares a simulated MFA: declare all its acr values in one call."
+            );
+        if (code.Length is < 4 or > 10 || !code.All(char.IsAsciiDigit))
+            throw new ArgumentException("A simulated MFA code has 4 to 10 digits.", nameof(code));
+        if (acrValues.Length == 0)
+            throw new ArgumentException(
+                "Give at least one acr value that asks for the code.",
+                nameof(acrValues)
+            );
+        var levels = new List<string>();
+        foreach (var value in acrValues)
+        {
+            if (
+                string.IsNullOrEmpty(value)
+                || value.Any(c => char.IsWhiteSpace(c) || char.IsControl(c))
+            )
+                throw new ArgumentException(
+                    $"Use a single acr value without spaces, not '{value}'.",
+                    nameof(acrValues)
+                );
+            if (
+                value.StartsWith("idp:", StringComparison.Ordinal)
+                || value.StartsWith("tenant:", StringComparison.Ordinal)
+            )
+                throw new ArgumentException(
+                    $"The acr value '{value}' starts with idp: or tenant:, prefixes reserved by Duende IdentityServer.",
+                    nameof(acrValues)
+                );
+            if (levels.Contains(value, StringComparer.Ordinal))
+                throw new ArgumentException($"Duplicate acr value '{value}'.", nameof(acrValues));
+            levels.Add(value);
+        }
+        server.Resource.SimulatedMfa = new IdentitySimulatedMfa(code, levels.AsReadOnly());
+        return server;
+    }
+
     /// <summary>Declares an API audience; add its scopes with <see cref="IdentityApiResource.WithScopes" />.</summary>
     public static IdentityApiResource AddApiResource(
         this IResourceBuilder<IdentityServerResource> server,
@@ -476,6 +531,11 @@ public static class IdentityServerExtensions
                 environment[$"{prefix}__Claims__{claimIndex}__Type"] = type;
                 environment[$"{prefix}__Claims__{claimIndex}__Value"] = value;
             }
+        }
+        if (server.SimulatedMfa is { } mfa)
+        {
+            environment["IdentityServer__SimulatedMfa__Code"] = mfa.Code;
+            AddList(environment, "IdentityServer__SimulatedMfa__AcrValues", mfa.AcrValues);
         }
     }
 

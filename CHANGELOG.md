@@ -2,6 +2,12 @@
 
 ## 11.3.0 - Unreleased
 
+- `WithSimulatedMfa(code, acrValues)` declares a simulated second factor on a provider: a fixed development code and the acr values that ask for it. The **Show registrations** dashboard command lists them.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 5 (simulated MFA): use the same package versions.
+
 ## 11.2.0 - 2026-11-23
 
 - Migrate the sample AppHost to `Microsoft.NET.Sdk` and `AddDotnetProject`, with the same target framework for the AppHost and its .NET resources.
