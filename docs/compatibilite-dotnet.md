@@ -8,7 +8,7 @@ La première version stable `10.0.0` reprend les fonctionnalités de `0.1.0-alph
 
 | Élément | .NET 10 | .NET 11 |
 | --- | --- | --- |
-| Packages IdentityServer 11.3.0 (en développement) | Asset `net10.0` | Asset `net11.0` |
+| Packages IdentityServer 11.3.1 (en développement) | Asset `net10.0` | Asset `net11.0` |
 | SDK du consommateur | SDK 10 | SDK 11 |
 | Framework du fournisseur lancé | .NET / ASP.NET Core 10 | .NET / ASP.NET Core 11 |
 | Authentification ASP.NET Core des exemples | 10.0.15 | 11.0.0 |

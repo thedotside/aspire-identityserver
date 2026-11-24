@@ -6,7 +6,7 @@ Le package facultatif `TheDotSide.Aspire.IdentityServer.Testing` aide les projet
 
 ```xml
 <PackageReference Include="Aspire.Hosting.Testing" Version="17.0.0" />
-<PackageReference Include="TheDotSide.Aspire.IdentityServer.Testing" Version="11.3.0" />
+<PackageReference Include="TheDotSide.Aspire.IdentityServer.Testing" Version="11.3.1" />
 ```
 
 Les extensions sont dans l'espace de noms `Aspire.Hosting.Testing`, déjà importé par ces tests. Elles s'appliquent à une `DistributedApplication` démarrée, après que le fournisseur est sain.

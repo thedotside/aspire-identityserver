@@ -71,7 +71,7 @@ var assertion = PrivateKeyJwt.CreateAssertion(client, issuer);
 | `TheDotSide.Aspire.IdentityServer.Authentication` | Optional ASP.NET Core helpers: `AddIdentityServerJwtBearer`, `AddIdentityServerOpenIdConnect` (PKCE, secret or `private_key_jwt`, PAR included) and `RequireScope`. |
 | `TheDotSide.Aspire.IdentityServer.Testing` | Optional integration-test helpers: user tokens through the real sign-in without a browser, client-credentials tokens and resolved client options. |
 
-Version: `11.3.0` (in development). Targets .NET 10 and .NET 11, with Aspire 17.0.0 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for published and local packages.
+Version: `11.3.1` (in development). Targets .NET 10 and .NET 11, with Aspire 17.0.0 or later and a trusted development HTTPS certificate. Building this repository requires SDK 11 and the .NET 10 runtime as well. Package consumers can keep SDK 10 when targeting .NET 10. See [installation](docs/demarrage.md) for published and local packages.
 
 See the [11.1.0 changelog](CHANGELOG.md#1110---2026-11-20) for the new integration features. Upgrade Hosting, Runtime and the optional Client, Authentication and Testing packages together. The major number identifies the .NET release family. See [compatibility and migration](docs/compatibilite-dotnet.md) for supported frameworks and Duende's support policy.
 
