@@ -28,6 +28,9 @@ public sealed class MfaModel(IIdentityServerInteractionService interaction) : Pa
     /// <summary>The client that asked for the level, as the AppHost registered it.</summary>
     public string? ClientId { get; private set; }
 
+    /// <summary>The number of digits of the declared code: the page draws one box for each.</summary>
+    public int CodeLength => Mfa?.Code.Length ?? 0;
+
     public async Task<IActionResult> OnGetAsync()
     {
         if (await PendingAsync() is not { } pending)

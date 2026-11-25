@@ -91,6 +91,70 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task The_code_page_draws_one_box_per_digit()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await OpenCodePageAsync(page);
+        await Assertions.Expect(page.GetByLabel("Code")).ToHaveAttributeAsync("maxlength", "6");
+        await Assertions
+            .Expect(page.Locator(".code > span[aria-hidden='true']"))
+            .ToHaveCountAsync(6);
+    }
+
+    [Test]
+    public async Task A_pasted_code_with_a_trailing_space_signs_in()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await OpenCodePageAsync(page);
+        await page.GetByLabel("Code").FocusAsync();
+        // A code copied from a message often brings a trailing space along.
+        await page.Keyboard.InsertTextAsync("111111 ");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Verify", Exact = true }).ClickAsync();
+        await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
+    }
+
+    [Test]
+    public async Task Clicking_a_box_focuses_the_code_field()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await OpenCodePageAsync(page);
+        // The page focuses the field on load: start from the page itself.
+        await page.Mouse.ClickAsync(1, 1);
+        await Assertions.Expect(page.GetByLabel("Code")).Not.ToBeFocusedAsync();
+        var box = await page.Locator(".code > span").Nth(3).BoundingBoxAsync();
+        await page.Mouse.ClickAsync(box!.X + box.Width / 2, box.Y + box.Height / 2);
+        await Assertions.Expect(page.GetByLabel("Code")).ToBeFocusedAsync();
+    }
+
+    [Test]
+    public async Task A_full_code_stays_in_its_boxes()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        // A phone: the boxes shrink to the width of the card.
+        await page.SetViewportSizeAsync(375, 812);
+        await OpenCodePageAsync(page);
+        var field = page.GetByLabel("Code");
+        await field.FillAsync("111111");
+        // Scrolled text would shift the digits out of their boxes.
+        var overflow = await field.EvaluateAsync<double[]>(
+            "e => [e.scrollLeft, e.scrollWidth - e.clientWidth]"
+        );
+        await Assert.That(overflow[0]).IsEqualTo(0);
+        await Assert.That(overflow[1]).IsLessThanOrEqualTo(0);
+        // Nor does the row of boxes scroll to show the caret: the first box stays under the label.
+        var first = await page.Locator(".code > span").First.BoundingBoxAsync();
+        var label = await page.Locator("label[for='Code']").BoundingBoxAsync();
+        await Assert.That(Math.Abs(first!.X - label!.X)).IsLessThan(1);
+        var last = await page.Locator(".code > span").Last.BoundingBoxAsync();
+        var card = await page.Locator(".card-body").BoundingBoxAsync();
+        await Assert.That(last!.X + last.Width).IsLessThanOrEqualTo(card!.X + card.Width);
+    }
+
+    [Test]
     public async Task A_session_without_the_level_goes_straight_to_the_code()
     {
         await using var session = await fixture.NewBrowserSessionAsync();
@@ -248,6 +312,14 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
         await ExpectCodePageAsync(page);
         await EnterCodeAsync(page, "111111");
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
+    }
+
+    /// <summary>Signs alice in with the mfa scheme of the sample, up to the code page.</summary>
+    private async Task OpenCodePageAsync(IPage page)
+    {
+        await page.GotoAsync(Origin + "/login/mfa");
+        await Login(page);
+        await ExpectCodePageAsync(page);
     }
 
     private async Task ExpectCodePageAsync(IPage page)
