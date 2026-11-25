@@ -99,7 +99,7 @@ La CI ajoute `--hangdump --hangdump-timeout 5m` : un test bloqué produit un vid
 | Mauvaise signature, audience d'assertion, secret ou scope refusé | ProtocolTests. |
 | Rejeu d'assertion refusé et client public refusé en client credentials | ProtocolTests. |
 | Connexion/déconnexion avec clé, secret et client public | [BrowserTests](../tests/Aspire.IdentityServer.DistributedTests/BrowserTests.cs). |
-| Déconnexion directe avec `id_token_hint`, confirmation sans ce jeton, `login_hint` et annulation `access_denied` | BrowserTests. |
+| Déconnexion directe avec `id_token_hint`, confirmation sans ce jeton, `login_hint`, annulation `access_denied` et retour dans l'application après une annulation, sur la page de connexion comme sur celle du code | BrowserTests et [SimulatedMfaTests](../tests/Aspire.IdentityServer.DistributedTests/SimulatedMfaTests.cs). |
 | PAR authentifié par `private_key_jwt` avec le handler OIDC (schéma `par` du sample web) | BrowserTests. |
 | Options JWT bearer et OIDC tirées des sections projetées, assertions PAR et échange du code, `RequireScope` | [AuthenticationTests](../tests/Aspire.IdentityServer.UnitTests/AuthenticationTests.cs). |
 | Package Testing : jetons utilisateur par le vrai parcours code + PKCE sans navigateur (clé, secret, client public), jetons machine, options résolues et refus des noms inconnus | [TestingHelpersTests](../tests/Aspire.IdentityServer.DistributedTests/TestingHelpersTests.cs). |

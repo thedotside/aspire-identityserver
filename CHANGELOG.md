@@ -2,6 +2,7 @@
 
 ## 11.4.0 - Unreleased
 
+- `AddIdentityServerOpenIdConnect` returns a cancelled sign-in (`access_denied`) to the application root, with `AccessDeniedPath = "/"`, instead of the ASP.NET Core error page. `configure` can choose another page.
 - Update the maintenance workflow to Renovate 44.260.3.
 
 ## 11.3.0 - 2026-11-24

@@ -70,6 +70,27 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task Cancel_on_the_code_page_brings_the_user_back_to_the_application()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await page.GotoAsync(Origin + "/login/mfa");
+        await Login(page);
+        await ExpectCodePageAsync(page);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions
+            .Expect(page)
+            .ToHaveURLAsync(
+                new Regex(
+                    "^" + Regex.Escape(Origin + "/") + "(\\?.*)?$",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                )
+            );
+        await Assertions.Expect(page.Locator("#user-mfa")).ToHaveTextAsync("Signed out");
+    }
+
+    [Test]
     public async Task A_session_without_the_level_goes_straight_to_the_code()
     {
         await using var session = await fixture.NewBrowserSessionAsync();
