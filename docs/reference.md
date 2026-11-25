@@ -25,7 +25,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | Type / propriété | Type de valeur | Rôle |
 | --- | --- | --- |
 | `IdentityServerOptions.RuntimeDirectory` | `string` modifiable. | Dossier contenant le serveur ; défaut `AppContext.BaseDirectory/identityserver`. Chemin relatif résolu depuis l'AppHost. |
-| `IdentityServerOptions.AcceptTokenEndpointAudience` | `bool`, défaut `false`. | Accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Par défaut, seul le profil draft-ietf-oauth-rfc7523bis est accepté. |
+| `IdentityServerOptions.StrictClientAssertionAudienceValidation` | `bool`, défaut `true`. | N'accepte que le profil draft-ietf-oauth-rfc7523bis : l'issuer comme seule audience et le type `client-authentication+jwt`. À `false`, accepte aussi les assertions RFC 7523 d'origine, dont l'audience est le token endpoint. Remplace `AcceptTokenEndpointAudience`, de sens inverse, qui marche encore mais est obsolète. |
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
 | `IdentityServerResource.RegisteredUsers` | `IReadOnlyList<IdentityTestUser>` | Depuis `11.1.0` : utilisateurs de test, dans l'ordre de déclaration ; utilisés par le package `Testing`. |
 | `IdentityServerResource.SimulatedMfa` | `IdentitySimulatedMfa?` | Depuis `11.3.0` : code (`Code`) et niveaux `acr` (`AcrValues`) déclarés par `WithSimulatedMfa`, sinon `null` ; utilisé par le package `Testing`. |
@@ -137,7 +137,7 @@ Le binding ne valide pas automatiquement les champs et ne configure aucun handle
 | `PrivateKeyJwt.AssertionType` | `urn:ietf:params:oauth:client-assertion-type:jwt-bearer`. |
 | `PrivateKeyJwt.ClientAuthenticationType` | `client-authentication+jwt`. |
 | `PrivateKeyJwt.CreateAssertion(IdentityClientOptions client, string issuer)` | Retourne un JWT signé RS256 au profil draft-ietf-oauth-rfc7523bis : `typ: client-authentication+jwt`, `aud` = issuer seul. Exige client ID, clé privée RSA >= 2048 bits, `kid` et issuer URI absolue. |
-| `PrivateKeyJwt.CreateTokenEndpointAssertion(IdentityClientOptions client, string tokenEndpoint)` | Profil RFC 7523 d'origine, pour un fournisseur qui refuse l'issuer : `typ: JWT`, `aud` = token endpoint. Refusé par le fournisseur local sans `AcceptTokenEndpointAudience`. |
+| `PrivateKeyJwt.CreateTokenEndpointAssertion(IdentityClientOptions client, string tokenEndpoint)` | Profil RFC 7523 d'origine, pour un fournisseur qui refuse l'issuer : `typ: JWT`, `aud` = token endpoint. Refusé par le fournisseur local tant que `StrictClientAssertionAudienceValidation` vaut `true`. |
 
 Le JWT dure une minute, avec un nouveau `jti` à chaque appel. Le helper d'assertion n'envoie pas de requête HTTP. Voir [clients](clients.md) et [intégration](integration.md).
 

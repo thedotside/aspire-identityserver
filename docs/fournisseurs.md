@@ -222,7 +222,7 @@ Une API doit valider issuer, signature, expiration et audience, puis vérifier l
 
 ## Emplacement du runtime
 
-`IdentityServerOptions` expose `RuntimeDirectory` et `AcceptTokenEndpointAudience` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
+`IdentityServerOptions` expose `RuntimeDirectory` et `StrictClientAssertionAudienceValidation` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
 
 ```csharp
 var idp = builder.AddIdentityServer("idp", options =>

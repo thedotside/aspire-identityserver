@@ -59,9 +59,10 @@ public static class IdentityServerExtensions
                 RuntimeContract.Version.ToString(CultureInfo.InvariantCulture)
             )
             .WithEnvironment("IdentityServer__Name", name)
+            // The runtime contract keeps the former name, with its inverse meaning.
             .WithEnvironment(
                 "IdentityServer__AcceptTokenEndpointAudience",
-                options.AcceptTokenEndpointAudience ? "true" : "false"
+                options.StrictClientAssertionAudienceValidation ? "false" : "true"
             )
             .WithHttpHealthCheck("/health", endpointName: "https")
             .WithOtlpExporter()
