@@ -58,9 +58,10 @@ public sealed class IdentityServerOptions
     /// <summary>
     /// Requires the draft-ietf-oauth-rfc7523bis profile for private_key_jwt assertions: the issuer
     /// as sole audience and the <c>client-authentication+jwt</c> type. <see langword="true" /> by
-    /// default, as Duende's option of the same name. Set <see langword="false" /> only for clients
-    /// written for providers that refuse the issuer audience: the provider then also accepts the
-    /// original RFC 7523 profile, whose audience is the token endpoint.
+    /// default: the provider sets the Duende option of the same name, which itself defaults to
+    /// <see langword="false" />. Set <see langword="false" /> only for clients written for
+    /// providers that refuse the issuer audience: the provider then also accepts the original
+    /// RFC 7523 profile, whose audience is the token endpoint.
     /// </summary>
     public bool StrictClientAssertionAudienceValidation { get; set; } = true;
 

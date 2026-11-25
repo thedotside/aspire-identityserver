@@ -361,8 +361,8 @@ input:-webkit-autofill {
   border-color: var(--muted);
 }
 
-/* The 2px accent edge of the other fields, drawn inside the box (the grid clips what
-   overflows) and with an outline, which forced colours keep. */
+/* A 2px accent edge (border plus outline), drawn inside the box, since the grid clips what
+   overflows, and with an outline, which forced colours keep. */
 .code:focus-within > span {
   border-color: var(--accent);
   outline: 1px solid var(--accent);

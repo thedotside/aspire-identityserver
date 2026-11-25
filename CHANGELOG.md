@@ -2,9 +2,9 @@
 
 ## 11.4.0 - Unreleased
 
-- `AddIdentityServerOpenIdConnect` returns a cancelled sign-in (`access_denied`) to the application root, with `AccessDeniedPath = "/"`, instead of the ASP.NET Core error page. `configure` can choose another page.
+- `AddIdentityServerOpenIdConnect` returns a cancelled sign-in (`access_denied`) to the application root, with `AccessDeniedPath = "/"`, instead of the ASP.NET Core error page. `configure` can choose another page. The handler then redirects before `OnRemoteFailure`, which no longer receives cancellations: to keep handling them there, set `AccessDeniedPath` back to `default` in `configure`.
 - The simulated MFA page draws one box per digit of the declared code, without script. Pasting the code and one-time-code autofill keep working.
-- `IdentityServerOptions.StrictClientAssertionAudienceValidation` (default `true`, Duende's name) replaces `AcceptTokenEndpointAudience`, which keeps working as an obsolete alias with the inverse meaning.
+- `IdentityServerOptions.StrictClientAssertionAudienceValidation` (default `true`, named after the Duende option it sets) replaces `AcceptTokenEndpointAudience`, which keeps working as an obsolete alias with the inverse meaning.
 - Update the maintenance workflow to Renovate 44.260.3.
 
 ## 11.3.0 - 2026-11-24
