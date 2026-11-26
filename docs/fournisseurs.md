@@ -261,6 +261,8 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Users__{i}__DisplayName` | Nom affiché. |
 | `IdentityServer__Users__{i}__Password` | Paramètre secret de mot de passe. |
 | `IdentityServer__Users__{i}__Claims__{j}__Type` et `__Value` | Claim de profil ; un type peut se répéter. |
+| `IdentityServer__SignUp__Enabled` | `true` dès que le fournisseur déclare `WithSignUp`, même sans claim. |
+| `IdentityServer__SignUp__ClaimTypes__{i}` | Claim demandé par le formulaire d'inscription, dans l'ordre. |
 
 Les listes serveur utilisent des indices. La projection de scopes vers un consommateur utilise une chaîne séparée par des espaces.
 

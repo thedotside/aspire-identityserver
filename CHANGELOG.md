@@ -3,6 +3,11 @@
 ## 11.4.0 - Unreleased
 
 - Update the maintenance workflow to Renovate 44.260.3.
+- `WithSignUp(claimTypes)` declares a sign-up form on a provider: the profile claims it asks for besides the username and password, in order. The **Show registrations** dashboard command lists its fields.
+
+### Breaking changes
+
+- Hosting and Runtime share configuration contract 6 (sign-up): use the same package versions.
 
 ## 11.3.0 - 2026-11-24
 

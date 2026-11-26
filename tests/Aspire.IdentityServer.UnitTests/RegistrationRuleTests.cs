@@ -46,6 +46,10 @@ public sealed class RegistrationRuleTests
     [Arguments("mfa-level-idp", "reserved")]
     [Arguments("mfa-level-tenant", "reserved")]
     [Arguments("mfa-level-duplicate", "Duplicate acr value")]
+    [Arguments("sign-up-protocol-claim", "profile claims")]
+    [Arguments("sign-up-blank-claim", "profile claims")]
+    [Arguments("sign-up-claim-space", "profile claims")]
+    [Arguments("sign-up-duplicate", "Duplicate sign-up claim")]
     public async Task Invalid_arguments_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -124,6 +128,10 @@ public sealed class RegistrationRuleTests
             "mfa-level-tenant" => () => idp.WithSimulatedMfa("111111", "tenant:x"),
             "mfa-level-duplicate" => () =>
                 idp.WithSimulatedMfa("111111", "urn:test:mfa", "urn:test:mfa"),
+            "sign-up-protocol-claim" => () => idp.WithSignUp("email", "sub"),
+            "sign-up-blank-claim" => () => idp.WithSignUp(" "),
+            "sign-up-claim-space" => () => idp.WithSignUp("given name"),
+            "sign-up-duplicate" => () => idp.WithSignUp("email", "email"),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).Throws<ArgumentException>();
@@ -135,6 +143,7 @@ public sealed class RegistrationRuleTests
     [Arguments("redirect-machine", "Only interactive clients")]
     [Arguments("double-authentication", "already configured")]
     [Arguments("mfa-twice", "already declares a simulated MFA")]
+    [Arguments("sign-up-twice", "already declares a sign-up form")]
     public async Task Invalid_operations_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -149,6 +158,7 @@ public sealed class RegistrationRuleTests
             "mfa-twice" => () =>
                 idp.WithSimulatedMfa("111111", "urn:test:mfa")
                     .WithSimulatedMfa("222222", "urn:test:high"),
+            "sign-up-twice" => () => idp.WithSignUp("email").WithSignUp("given_name"),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).ThrowsExactly<InvalidOperationException>();
@@ -311,6 +321,21 @@ public sealed class RegistrationRuleTests
     }
 
     [Test]
+    public async Task A_sign_up_form_keeps_its_claims_in_declaration_order()
+    {
+        var builder = TestApp.CreateBuilder();
+        var idp = builder.AddIdentityServer("rules");
+        await Assert.That(idp.Resource.SignUp).IsNull();
+        idp.WithSignUp("name", "email", "given_name");
+        await Assert
+            .That(idp.Resource.SignUp!.ClaimTypes)
+            .IsEquivalentTo(["name", "email", "given_name"], CollectionOrdering.Matching);
+        await Assert
+            .That(builder.AddIdentityServer("empty").WithSignUp().Resource.SignUp!.ClaimTypes)
+            .IsEmpty();
+    }
+
+    [Test]
     public async Task Publish_mode_refuses_the_provider_and_points_to_run_mode()
     {
         var builder = DistributedApplication.CreateBuilder(
@@ -357,13 +382,31 @@ public sealed class RegistrationRuleTests
     }
 
     [Test]
+    public async Task Sign_up_is_projected_only_when_declared()
+    {
+        var builder = TestApp.CreateBuilder();
+        var plain = await ProjectionTests.Evaluate(builder.AddIdentityServer("plain"));
+        await Assert
+            .That(
+                plain.Keys.Any(k =>
+                    k.StartsWith("IdentityServer__SignUp", StringComparison.Ordinal)
+                )
+            )
+            .IsFalse();
+        var empty = await ProjectionTests.Evaluate(builder.AddIdentityServer("empty").WithSignUp());
+        await Assert.That(empty["IdentityServer__SignUp__Enabled"]).IsEqualTo("true");
+        await Assert.That(empty.ContainsKey("IdentityServer__SignUp__ClaimTypes__0")).IsFalse();
+    }
+
+    [Test]
     public async Task The_provider_environment_matches_its_configuration_contract()
     {
         var builder = TestApp.CreateBuilder();
         var idp = builder
             .AddIdentityServer("contract")
             .WithIdentityScope("teams", "team")
-            .WithSimulatedMfa("111111", "urn:test:mfa");
+            .WithSimulatedMfa("111111", "urn:test:mfa")
+            .WithSignUp("email", "name");
         idp.AddTestUser("alice", "alice", "Alice").WithClaim("team", "sales", "support");
         var orders = idp.AddApiResource("orders").WithScopes("orders.read", "orders.write");
         var web = idp.AddAuthorizationCodeClient("web")
@@ -423,11 +466,14 @@ public sealed class RegistrationRuleTests
             "IdentityServer__Clients__1__TokenExchanges__0__Scopes=FromSubjectToken",
             "IdentityServer__Clients__1__TokenExchanges__0__SubjectClientId=web",
             "IdentityServer__Clients__1__TokenExchanges__0__UserClaims__0=name",
-            "IdentityServer__ContractVersion=5",
+            "IdentityServer__ContractVersion=6",
             "IdentityServer__IdentityScopes__0__Name=teams",
             "IdentityServer__IdentityScopes__0__UserClaims__0=team",
             "IdentityServer__Issuer=<endpoint>",
             "IdentityServer__Name=contract",
+            "IdentityServer__SignUp__ClaimTypes__0=email",
+            "IdentityServer__SignUp__ClaimTypes__1=name",
+            "IdentityServer__SignUp__Enabled=true",
             "IdentityServer__SigningKey=<secret-parameter>",
             "IdentityServer__SimulatedMfa__AcrValues__0=urn:test:mfa",
             "IdentityServer__SimulatedMfa__Code=111111",

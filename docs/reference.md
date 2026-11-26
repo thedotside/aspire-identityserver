@@ -17,6 +17,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `testUser.WithClaim(string type, params string[] values)` | Même utilisateur. | Depuis `0.1.0-alpha.4` : claims de profil, plusieurs valeurs par type, doublons exacts ignorés. Claims de protocole et `name` refusés. |
 | `idp.WithIdentityScope(string name, params string[] userClaims)` | Builder du fournisseur. | Depuis `0.1.0-alpha.4` : scope d'identité personnalisé, nom unique, hors `openid`/`profile`/`email`/`offline_access` et scopes d'API ; au moins un claim utilisateur. Depuis alpha.5, un scope demandé par un client Authorization Code sélectionne aussi ses claims dans l'access token de connexion, en plus de l'ID token et UserInfo. Voir [communities/member_of](fournisseurs.md#claims-des-scopes-didentité-dans-laccess-token). |
 | `idp.WithSimulatedMfa(string code, params string[] acrValues)` | Builder du fournisseur. | Depuis `11.3.0` : MFA simulée. Code de 4 à 10 chiffres, valeur fixe de développement et non secrète. Au moins un niveau `acr`, sans espace, sans préfixe `idp:` ni `tenant:`, sans doublon. Un seul appel par fournisseur. Voir [MFA simulée](fournisseurs.md#mfa-simulée). |
+| `idp.WithSignUp(params string[] claimTypes)` | Builder du fournisseur. | Depuis `11.4.0` : inscription par `prompt=create`. Un champ par claim de profil, dans l'ordre, après l'identifiant et le mot de passe ; liste vide acceptée. `name` donne le nom affiché du compte ; claims de protocole, espaces et doublons refusés. Un seul appel par fournisseur. Voir [Inscription](fournisseurs.md#inscription-promptcreate). |
 | `idp.AddApiResource(string audience)` | `IdentityApiResource` | Audience non vide, unique dans le fournisseur. |
 | `apiResource.WithScopes(params string[] scopes)` | Même ressource API. | Ajout cumulatif ; au moins un scope au démarrage. Scopes d'identité et `offline_access` réservés. |
 
@@ -29,6 +30,7 @@ Les règles d'enregistrement (scopes déclarés, méthode d'authentification, PK
 | `IdentityServerResource.RegisteredClients` | `IReadOnlyList<IdentityClient>` | Consultation des enregistrements ; utilisée par les tests. |
 | `IdentityServerResource.RegisteredUsers` | `IReadOnlyList<IdentityTestUser>` | Depuis `11.1.0` : utilisateurs de test, dans l'ordre de déclaration ; utilisés par le package `Testing`. |
 | `IdentityServerResource.SimulatedMfa` | `IdentitySimulatedMfa?` | Depuis `11.3.0` : code (`Code`) et niveaux `acr` (`AcrValues`) déclarés par `WithSimulatedMfa`, sinon `null` ; utilisé par le package `Testing`. |
+| `IdentityServerResource.SignUp` | `IdentitySignUp?` | Depuis `11.4.0` : types de claims du formulaire d'inscription (`ClaimTypes`), dans l'ordre de `WithSignUp`, sinon `null` ; utilisé par le package `Testing`. |
 | `IdentityApiResource.Server` | Builder du fournisseur. | Fournisseur associé. |
 | `IdentityApiResource.Audience` | `string` | Audience de la ressource. |
 | `IdentityApiResource.Authority` | `EndpointReference` | Endpoint `https` différé. |
@@ -209,7 +211,7 @@ Ces valeurs sont celles du code actuel, sans option fluide associée :
 
 | Réglage | Valeur / comportement |
 | --- | --- |
-| Contrat de configuration | `IdentityServer__ContractVersion`, version `4` depuis `11.1.0`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
+| Contrat de configuration | `IdentityServer__ContractVersion`, version `6` depuis `11.4.0`. Le runtime refuse de démarrer si l'AppHost écrit une autre version : Hosting et Runtime doivent avoir la même version de paquet. |
 | Environnement accepté | Celui de l'AppHost, `Development` ou `Testing` ; `AddIdentityServer()` refuse les autres et le runtime les refuse aussi. Un avertissement est journalisé à chaque démarrage. |
 | Issuer | URI absolue HTTPS loopback exigée. |
 | Écoute | HTTPS sur `localhost` uniquement, au port `ASPNETCORE_HTTPS_PORTS` fixé par Aspire ; `Kestrel:Endpoints` refusé et adresses effectives vérifiées au démarrage. |

@@ -26,6 +26,11 @@ public sealed class IdentityServerResource(string name, string runtimeDirectory)
     /// The simulated second factor declared with <c>WithSimulatedMfa</c>, or <see langword="null" />.
     /// </summary>
     public IdentitySimulatedMfa? SimulatedMfa { get; internal set; }
+
+    /// <summary>
+    /// The sign-up form declared with <c>WithSignUp</c>, or <see langword="null" />.
+    /// </summary>
+    public IdentitySignUp? SignUp { get; internal set; }
 }
 
 /// <summary>
@@ -45,6 +50,17 @@ public sealed class IdentitySimulatedMfa
 
     /// <summary>The acr values that ask for the code, in declaration order.</summary>
     public IReadOnlyList<string> AcrValues { get; }
+}
+
+/// <summary>
+/// A sign-up form: the profile claims it asks for, besides the username and the password.
+/// </summary>
+public sealed class IdentitySignUp
+{
+    internal IdentitySignUp(IReadOnlyList<string> claimTypes) => ClaimTypes = claimTypes;
+
+    /// <summary>The claim types of the form fields, in declaration order.</summary>
+    public IReadOnlyList<string> ClaimTypes { get; }
 }
 
 /// <summary>Options of one local identity provider.</summary>

@@ -204,7 +204,7 @@ public sealed class RuntimeGuardTests
             ["ASPNETCORE_HTTPS_PORTS"] = port.ToString(CultureInfo.InvariantCulture),
             ["Kestrel__Certificates__Default__Path"] = cert.Path,
             ["Kestrel__Certificates__Default__Password"] = cert.Password,
-            ["IdentityServer__ContractVersion"] = "5",
+            ["IdentityServer__ContractVersion"] = "6",
             ["IdentityServer__SigningKey"] = GuardSigningKey.Value,
             ["IdentityServer__Name"] = "guard",
             ["IdentityServer__Issuer"] = $"https://localhost:{port}",
