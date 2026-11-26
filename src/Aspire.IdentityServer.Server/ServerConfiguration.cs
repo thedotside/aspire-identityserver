@@ -14,6 +14,7 @@ internal sealed class ServerConfiguration
     public List<IdentityScopeConfiguration> IdentityScopes { get; set; } = [];
     public List<UserConfiguration> Users { get; set; } = [];
     public SimulatedMfaConfiguration? SimulatedMfa { get; set; }
+    public SignUpConfiguration? SignUp { get; set; }
 }
 
 internal sealed class ClientConfiguration
@@ -87,4 +88,13 @@ internal sealed class SimulatedMfaConfiguration
 {
     public string Code { get; set; } = "";
     public List<string> AcrValues { get; set; } = [];
+}
+
+internal sealed class SignUpConfiguration
+{
+    /// <summary>Written by the AppHost for every sign-up form, so that one without claims exists.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>The claims that the form asks for, after the username and password, in order.</summary>
+    public List<string> ClaimTypes { get; set; } = [];
 }

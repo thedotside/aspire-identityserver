@@ -84,6 +84,13 @@ internal static class ServerProgram
             throw new InvalidOperationException(
                 "A simulated MFA needs a code of 4 to 10 digits and at least one acr value."
             );
+        if (
+            config.SignUp is { Enabled: true } signUp
+            && !SignUpForm.HasValidClaimTypes(signUp.ClaimTypes)
+        )
+            throw new InvalidOperationException(
+                "A sign-up form needs distinct profile claim types, without protocol claims such as sub."
+            );
         // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
             builder
@@ -154,6 +161,10 @@ internal static class ServerProgram
                 if (config.SimulatedMfa is { } levels)
                     options.Discovery.CustomEntries["acr_values_supported"] =
                         levels.AcrValues.ToArray();
+                // With a sign-up page, Duende advertises prompt=create, sends those requests to the
+                // page, then resumes them. Without one, it keeps refusing prompt=create.
+                if (config.SignUp is { Enabled: true })
+                    options.UserInteraction.CreateAccountUrl = SignUpForm.PagePath;
             })
             .AddInMemoryIdentityResources([
                 new IdentityResources.OpenId(),

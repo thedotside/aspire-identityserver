@@ -29,6 +29,8 @@ public sealed class RuntimeGuardTests
     [Arguments("issuer", "loopback HTTPS address")]
     [Arguments("contract", "configuration contract")]
     [Arguments("simulated-mfa", "code of 4 to 10 digits")]
+    [Arguments("sign-up-duplicate", "distinct profile claim types")]
+    [Arguments("sign-up-protocol", "distinct profile claim types")]
     public async Task The_runtime_refuses_to_start_outside_its_development_boundary(
         string change,
         string expected
@@ -59,6 +61,15 @@ public sealed class RuntimeGuardTests
             case "simulated-mfa":
                 environment["IdentityServer__SimulatedMfa__Code"] = "12ab";
                 environment["IdentityServer__SimulatedMfa__AcrValues__0"] = "urn:test:mfa";
+                break;
+            case "sign-up-duplicate":
+                environment["IdentityServer__SignUp__Enabled"] = "true";
+                environment["IdentityServer__SignUp__ClaimTypes__0"] = "email";
+                environment["IdentityServer__SignUp__ClaimTypes__1"] = "email";
+                break;
+            case "sign-up-protocol":
+                environment["IdentityServer__SignUp__Enabled"] = "true";
+                environment["IdentityServer__SignUp__ClaimTypes__0"] = "sub";
                 break;
         }
         using var process = Start(environment);
