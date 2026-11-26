@@ -8,6 +8,7 @@ using Duende.IdentityServer.ResponseHandling;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
@@ -130,6 +131,20 @@ internal static class ServerProgram
         // Discovery and keys of the providers that token-exchange policies trust.
         builder.Services.AddHttpClient(ForeignIssuerKeys.ClientName);
         builder.Services.AddSingleton<ForeignIssuerKeys>();
+        var users = config
+            .Users.Select(u => new TestUser
+            {
+                Username = u.Username,
+                Password = u.Password,
+                SubjectId = u.SubjectId,
+                Claims =
+                [
+                    new Claim("name", u.DisplayName),
+                    .. u.Claims.Select(c => new Claim(c.Type, c.Value)),
+                ],
+            })
+            .ToList();
+        var accounts = new LocalAccounts(users);
         builder
             .Services.AddIdentityServer(options =>
             {
@@ -241,25 +256,16 @@ internal static class ServerProgram
                     AlwaysIncludeUserClaimsInIdToken = true,
                 })
             )
-            .AddTestUsers(
-                config
-                    .Users.Select(u => new TestUser
-                    {
-                        Username = u.Username,
-                        Password = u.Password,
-                        SubjectId = u.SubjectId,
-                        Claims =
-                        [
-                            new Claim("name", u.DisplayName),
-                            .. u.Claims.Select(c => new Claim(c.Type, c.Value)),
-                        ],
-                    })
-                    .ToList()
-            )
+            // Also registers Duende's test-user validators; only its fixed store is replaced below.
+            .AddTestUsers(users)
             .AddJwtBearerClientAuthentication()
             .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
             .AddProfileService<TokenExchangeProfileService>()
             .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
+        // The sign-up page adds accounts while requests read them: each request resolves the
+        // store of the current snapshot, from the sign-in page to the profile service.
+        builder.Services.AddSingleton(accounts);
+        builder.Services.Replace(ServiceDescriptor.Transient(_ => accounts.Current));
         // Registered after Duende's generator, so that it replaces it: a declared level requested
         // with acr_values that the session lacks asks for the simulated code.
         if (config.SimulatedMfa is not null)

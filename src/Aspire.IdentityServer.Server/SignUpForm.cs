@@ -16,4 +16,20 @@ internal static class SignUpForm
     internal static bool HasValidClaimTypes(IReadOnlyCollection<string> claimTypes) =>
         claimTypes.All(TokenExchangeClaims.IsUserClaim)
         && claimTypes.Distinct(StringComparer.Ordinal).Count() == claimTypes.Count;
+
+    /// <summary>
+    /// The autocomplete token of a standard claim's field, so that browsers can fill it, or
+    /// <see langword="null" /> for a claim that they do not know.
+    /// </summary>
+    internal static string? Autocomplete(string claimType) =>
+        claimType switch
+        {
+            "email" => "email",
+            "given_name" => "given-name",
+            "family_name" => "family-name",
+            "name" => "name",
+            "phone_number" => "tel",
+            "birthdate" => "bday",
+            _ => null,
+        };
 }

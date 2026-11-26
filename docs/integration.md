@@ -64,6 +64,18 @@ builder.Services.AddAuthentication(options =>
 
 `AddIdentityServerOpenIdConnect` fixe l'authority, le client ID, les scopes projetés, `ResponseType = code`, PKCE, `SaveTokens`, les noms de claims JWT et `name` comme claim de nom. Un client `client_secret_post` envoie son secret. Un client `private_key_jwt` signe une assertion neuve, dont l'audience est l'issuer découvert, pour l'échange du code **et pour la requête PAR** : PAR peut rester activé, comme le fait le handler ASP.NET Core par défaut quand le fournisseur l'annonce. Le callback `configure` s'applique après ces valeurs, pour les chemins, cookies ou `MaxAge` ; les événements qu'il définit sont conservés. [Sample.Web](../samples/Sample.Web/Program.cs) utilise ce helper pour ses quatre schémas, dont `par`, qui exige PAR avec le client à clé privée.
 
+Pour ouvrir l'inscription d'un fournisseur déclaré avec [`WithSignUp`](fournisseurs.md#inscription-promptcreate), par exemple depuis un bouton « Créer un compte », l'application envoie `prompt=create` dans le challenge :
+
+```csharp
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+
+app.MapGet("/signup", () => Results.Challenge(
+    new OpenIdConnectChallengeProperties { RedirectUri = "/", Prompt = "create" },
+    ["web-oidc"]));
+```
+
+Le fournisseur affiche sa page de création de compte, puis revient au callback avec l'utilisateur connecté, comme après une connexion ; PAR reste possible. Un fournisseur sans `WithSignUp` refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
+
 Sans ce package, configure `AddOpenIdConnect` avec les mêmes valeurs. Pour `private_key_jwt`, renseigne `ClientAssertionType` et `ClientAssertion` (avec `PrivateKeyJwt.CreateAssertion(client, issuer)`) dans `OnAuthorizationCodeReceived`, et dans `OnPushAuthorization` suivi de `HandleClientAuthentication()`, ou désactive PAR.
 
 ## Plusieurs connexions et déconnexion

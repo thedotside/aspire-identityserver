@@ -92,6 +92,24 @@ public sealed class ProviderPageTests(AppFixture fixture)
         await Assertions.Expect(page.GetByRole(AriaRole.Alert)).ToContainTextAsync("Invalid code.");
         await AssertStyled(page);
 
+        // The sign-up page, then a refused username.
+        await page.GotoAsync(SignUpAuthorizeUrl());
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Create an account" }))
+            .ToBeVisibleAsync();
+        await AssertStyled(page);
+        await page.GetByLabel("Username").FillAsync("alice");
+        await page.GetByLabel("Password").FillAsync("Passw0rd!");
+        await page.GetByLabel("email", new() { Exact = true }).FillAsync("ada@example.test");
+        await page.GetByLabel("given_name", new() { Exact = true }).FillAsync("Ada");
+        await page.GetByLabel("family_name", new() { Exact = true }).FillAsync("Lovelace");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create account", Exact = true })
+            .ClickAsync();
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Alert))
+            .ToContainTextAsync("This username is already taken.");
+        await AssertStyled(page);
+
         await Assert.That(errors.ToArray()).IsEmpty();
     }
 
@@ -198,6 +216,26 @@ public sealed class ProviderPageTests(AppFixture fixture)
                 ["code_challenge"] = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
                 ["code_challenge_method"] = "S256",
                 ["acr_values"] = "urn:sample:loa:mfa",
+            }
+        );
+
+    /// <summary>A request of the public client that opens provider A's sign-up page.</summary>
+    private string SignUpAuthorizeUrl() =>
+        QueryHelpers.AddQueryString(
+            fixture.App.GetEndpoint("idp-a", "https").ToString().TrimEnd('/')
+                + "/connect/authorize",
+            new Dictionary<string, string?>(StringComparer.Ordinal)
+            {
+                ["client_id"] = "public-web",
+                ["response_type"] = "code",
+                ["scope"] = "openid",
+                ["redirect_uri"] =
+                    fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/')
+                    + "/signin-public",
+                // The RFC 7636 example challenge: this request never reaches the token endpoint.
+                ["code_challenge"] = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+                ["code_challenge_method"] = "S256",
+                ["prompt"] = "create",
             }
         );
 

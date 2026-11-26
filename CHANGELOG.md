@@ -4,6 +4,7 @@
 
 - Update the maintenance workflow to Renovate 44.260.3.
 - `WithSignUp(claimTypes)` declares a sign-up form on a provider: the profile claims it asks for besides the username and password, in order. The **Show registrations** dashboard command lists its fields.
+- A provider with a sign-up form answers `prompt=create` (OpenID Connect Prompt Create 1.0): discovery lists `create` in `prompt_values_supported`, and the request opens a page that creates the account in the provider's memory, signs it in and resumes the request, simulated MFA included. The account's subject is `{provider}:{username}`; usernames are unique ignoring case, as the sign-in page looks them up. **Cancel** returns `access_denied`. Until the provider restarts, created accounts sign in again, refresh their tokens and exchange them. Providers without a form keep refusing `prompt=create` with `invalid_request`. The web sample adds a **Create an account** link.
 
 ### Breaking changes
 
