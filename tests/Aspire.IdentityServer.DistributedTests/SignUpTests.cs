@@ -16,8 +16,8 @@ namespace Aspire.IdentityServer.Tests;
 
 /// <summary>
 /// The sign-up form of provider A, opened with prompt=create: the sample AppHost declares it with
-/// the email, given_name and family_name claims. Providers B and legacy declare none. Every test
-/// creates its own username: accounts live as long as the shared AppHost.
+/// the email, given_name and family_name claims. Provider B declares none. Every test creates its
+/// own username: accounts live as long as the shared AppHost.
 /// </summary>
 [ClassDataSource<AppFixture>(Shared = SharedType.PerTestSession)]
 public sealed class SignUpTests(AppFixture fixture)

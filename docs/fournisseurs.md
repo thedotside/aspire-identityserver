@@ -196,7 +196,7 @@ var idp = builder.AddIdentityServer("idp")
 - Une session déjà ouverte n'empêche pas l'inscription : la session du nouveau compte la remplace, sans prévenir les clients de l'ancienne.
 - Sans `WithSignUp`, le fournisseur refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
 
-`WithSignUp()` sans argument donne un formulaire réduit à l'identifiant et au mot de passe. Les claims de protocole (`sub`, `acr`…) et les doublons sont refusés ; `name` est accepté, puisqu'il donne le nom affiché. Déclare tous les champs en un seul appel. Côté application, voir [l'envoi de `prompt=create`](integration.md#application-web--authorization-code-et-pkce).
+`WithSignUp()` sans argument donne un formulaire réduit à l'identifiant et au mot de passe. Les claims de protocole (`sub`, `acr`…) et les doublons sont refusés ; `name` est accepté, puisqu'il donne le nom affiché. Déclare tous les champs en un seul appel. Côté application, voir [l'envoi de `prompt=create`](integration.md#application-web--authorization-code-et-pkce). Dans les tests, `GetSignUpTokensAsync` du package `Testing` crée un compte sans navigateur (voir [les tests d'intégration](tests.md#jetons-dun-compte-créé-par-inscription)).
 
 L'exemple déclare `email`, `given_name` et `family_name` sur `idp-a`. Le lien **Create an account** du site web (`/signup/a`) ouvre le parcours ; `/signup/par` fait de même par PAR.
 

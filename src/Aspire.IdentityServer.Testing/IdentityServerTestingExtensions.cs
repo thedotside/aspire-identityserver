@@ -96,15 +96,7 @@ public static partial class IdentityServerTestingExtensions
     )
     {
         var server = Provider(app, provider);
-        var client = Client(server, clientId);
-        if (
-            !string.Equals(client.GrantType, "authorization_code", StringComparison.Ordinal)
-            || client.RegisteredRedirectUris.Count == 0
-        )
-            throw new ArgumentException(
-                $"Client '{clientId}' is not an authorization-code client with a redirect URI.",
-                nameof(clientId)
-            );
+        var client = InteractiveClient(server, clientId);
         var user = server.RegisteredUsers.SingleOrDefault(u =>
             string.Equals(u.Username, username, StringComparison.Ordinal)
         )
@@ -116,99 +108,25 @@ public static partial class IdentityServerTestingExtensions
             .Password.Resource.GetValueAsync(cancellationToken)
             .ConfigureAwait(false)
             ?? throw new InvalidOperationException($"Test user '{username}' has no password.");
-        var options = await OptionsAsync(client, cancellationToken).ConfigureAwait(false);
-        var redirectUri = await client
-            .RegisteredRedirectUris[0]
-            .GetValueAsync(cancellationToken)
-            .ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Client '{clientId}' has no redirect URI.");
-
-        // A fresh cookie jar per sign-in: no provider session is shared between calls.
-        using var handler = new SocketsHttpHandler
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            AllowAutoRedirect = false,
-            UseCookies = true,
-            CookieContainer = new CookieContainer(),
-        };
-        using var http = new HttpClient(handler);
-        var metadata = await DiscoverAsync(http, options.Authority, cancellationToken)
-            .ConfigureAwait(false);
-        var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
-        var state = Base64Url(RandomNumberGenerator.GetBytes(16));
-        var parameters = new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            ["client_id"] = client.ClientId,
-            ["response_type"] = "code",
-            ["scope"] = scope ?? options.Scopes,
-            ["redirect_uri"] = redirectUri,
-            ["code_challenge"] = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
-            ["code_challenge_method"] = "S256",
-            ["state"] = state,
-            ["nonce"] = Base64Url(RandomNumberGenerator.GetBytes(16)),
-        };
-        if (!string.IsNullOrWhiteSpace(acrValues))
-            parameters["acr_values"] = acrValues;
-        var authorize = new Uri(
-            QueryHelpers.AddQueryString(metadata.AuthorizationEndpoint, parameters)
-        );
-        var login = await RedirectAsync(http, authorize, cancellationToken).ConfigureAwait(false);
-        if (!login.AbsolutePath.StartsWith("/Account/Login", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(
-                $"The provider refused the authorization request of '{clientId}': it redirected to {login.AbsolutePath}."
-            );
-        string form;
-        using (var page = await http.GetAsync(login, cancellationToken).ConfigureAwait(false))
-        {
-            page.EnsureSuccessStatusCode();
-            form = await page.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-        }
-        var credentials = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["ReturnUrl"] = Field(form, "ReturnUrl"),
-            ["__RequestVerificationToken"] = Field(form, "__RequestVerificationToken"),
             ["Username"] = username,
             ["Password"] = password,
             ["Button"] = "login",
         };
-        Uri signedIn;
-        using (var content = new FormUrlEncodedContent(credentials))
-        using (
-            var response = await http.PostAsync(login, content, cancellationToken)
-                .ConfigureAwait(false)
-        )
-            signedIn = Location(login, response, $"the sign-in of test user '{username}'");
-        var callback = await RedirectAsync(http, signedIn, cancellationToken).ConfigureAwait(false);
-        // A requested level that the session lacks: the provider asks for its simulated MFA code.
-        if (IsSimulatedMfaPage(callback, login))
-            callback = await TypeSimulatedMfaCodeAsync(
-                    http,
-                    server,
-                    callback,
-                    username,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
-        var result = QueryHelpers.ParseQuery(callback.Query);
-        if (result.TryGetValue("error", out var error))
-            throw new InvalidOperationException(
-                $"The provider returned '{error}' to client '{clientId}': {result["error_description"]}"
-            );
-        if (!string.Equals(result["state"], state, StringComparison.Ordinal))
-            throw new InvalidOperationException("The authorization response has another state.");
-        // RFC 9207: a response that names its issuer must name this provider.
-        if (
-            result.TryGetValue("iss", out var issuer)
-            && !string.Equals(issuer, metadata.Issuer, StringComparison.Ordinal)
-        )
-            throw new InvalidOperationException("The authorization response names another issuer.");
-        var redeem = new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["grant_type"] = "authorization_code",
-            ["code"] = result["code"].ToString(),
-            ["redirect_uri"] = redirectUri,
-            ["code_verifier"] = verifier,
-        };
-        return await RequestTokensAsync(http, metadata, redeem, options, cancellationToken)
+        return await SignInThroughPageAsync(
+                server,
+                client,
+                scope,
+                acrValues,
+                new PageSubmission(
+                    "/Account/Login",
+                    Prompt: null,
+                    fields,
+                    $"the sign-in of test user '{username}'"
+                ),
+                cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
@@ -233,6 +151,86 @@ public static partial class IdentityServerTestingExtensions
             acrValues: null,
             cancellationToken
         );
+
+    /// <summary>
+    /// Creates an account through the sign-up page that <c>prompt=create</c> opens on a provider
+    /// declared with <c>WithSignUp</c>, without a browser, then redeems the code as the client
+    /// does, like <c>GetUserTokensAsync</c>. The account stays in the provider's memory while the
+    /// application runs: give each test its own username, such as <c>$"ada-{Guid.NewGuid():N}"</c>.
+    /// </summary>
+    /// <param name="app">The started application.</param>
+    /// <param name="provider">The name of an identity provider declared with <c>WithSignUp</c>.</param>
+    /// <param name="clientId">An authorization-code client; its first redirect URI is used.</param>
+    /// <param name="username">The username of the new account; its subject is <c>{provider}:{username}</c>.</param>
+    /// <param name="password">The password of the new account.</param>
+    /// <param name="claims">A value for each claim of the sign-up form, and for no other claim.</param>
+    /// <param name="scope">The requested scopes; defaults to every scope registered for the client.</param>
+    /// <param name="acrValues">
+    /// The requested authentication levels, sent as <c>acr_values</c>. When the provider asks for
+    /// the code of its simulated MFA, the helper types the code declared in the AppHost.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the requests.</param>
+    /// <exception cref="InvalidOperationException">
+    /// The provider has no sign-up form, or refuses the account, for example a username already
+    /// taken: the message carries the page's.
+    /// </exception>
+    public static async Task<IdentityTokens> GetSignUpTokensAsync(
+        this DistributedApplication app,
+        string provider,
+        string clientId,
+        string username,
+        string password,
+        IReadOnlyDictionary<string, string>? claims = null,
+        string? scope = null,
+        string? acrValues = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var server = Provider(app, provider);
+        var form = server.SignUp
+            ?? throw new InvalidOperationException(
+                $"Provider '{server.Name}' has no sign-up form: declare it in the AppHost with WithSignUp."
+            );
+        var client = InteractiveClient(server, clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(username);
+        ArgumentException.ThrowIfNullOrWhiteSpace(password);
+        claims ??= new Dictionary<string, string>(StringComparer.Ordinal);
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["Username"] = username,
+            ["Password"] = password,
+            ["Button"] = "create",
+        };
+        // The page names its claim fields by position, in the order of the declaration.
+        for (var i = 0; i < form.ClaimTypes.Count; i++)
+            fields[string.Create(CultureInfo.InvariantCulture, $"ClaimValues[{i}]")] =
+                claims.TryGetValue(form.ClaimTypes[i], out var value)
+                    ? value
+                    : throw new ArgumentException(
+                        $"Give a value for the sign-up claim '{form.ClaimTypes[i]}'.",
+                        nameof(claims)
+                    );
+        foreach (var type in claims.Keys)
+            if (!form.ClaimTypes.Contains(type, StringComparer.Ordinal))
+                throw new ArgumentException(
+                    $"Provider '{server.Name}' does not ask for the claim '{type}' at sign-up.",
+                    nameof(claims)
+                );
+        return await SignInThroughPageAsync(
+                server,
+                client,
+                scope,
+                acrValues,
+                new PageSubmission(
+                    "/Account/Create",
+                    "create",
+                    fields,
+                    $"the sign-up of '{username}'"
+                ),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
 
     private static IdentityServerResource Provider(DistributedApplication app, string provider)
     {
@@ -283,6 +281,159 @@ public static partial class IdentityServerTestingExtensions
             Scopes = string.Join(' ', client.Scopes),
             TokenExchangeAudience = client.TokenExchangeAudience,
         };
+
+    /// <summary>An authorization-code client with a redirect URI; the helpers use the first one.</summary>
+    private static IdentityClient InteractiveClient(IdentityServerResource server, string clientId)
+    {
+        var client = Client(server, clientId);
+        if (
+            !string.Equals(client.GrantType, "authorization_code", StringComparison.Ordinal)
+            || client.RegisteredRedirectUris.Count == 0
+        )
+            throw new ArgumentException(
+                $"Client '{clientId}' is not an authorization-code client with a redirect URI.",
+                nameof(clientId)
+            );
+        return client;
+    }
+
+    /// <summary>
+    /// The authorization code + PKCE flow through one page of the provider: the authorization
+    /// request opens it, the helper posts its form, types the simulated MFA code if the provider
+    /// asks for it, then redeems the code as the client does. The client's callback is never
+    /// called: its application does not need to run.
+    /// </summary>
+    private static async Task<IdentityTokens> SignInThroughPageAsync(
+        IdentityServerResource server,
+        IdentityClient client,
+        string? scope,
+        string? acrValues,
+        PageSubmission submission,
+        CancellationToken cancellationToken
+    )
+    {
+        var options = await OptionsAsync(client, cancellationToken).ConfigureAwait(false);
+        var redirectUri = await client
+            .RegisteredRedirectUris[0]
+            .GetValueAsync(cancellationToken)
+            .ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                $"Client '{client.ClientId}' has no redirect URI."
+            );
+
+        // A fresh cookie jar per call: no provider session is shared between calls.
+        using var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = true,
+            CookieContainer = new CookieContainer(),
+        };
+        using var http = new HttpClient(handler);
+        var metadata = await DiscoverAsync(http, options.Authority, cancellationToken)
+            .ConfigureAwait(false);
+        var verifier = Base64Url(RandomNumberGenerator.GetBytes(32));
+        var state = Base64Url(RandomNumberGenerator.GetBytes(16));
+        var parameters = new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["client_id"] = client.ClientId,
+            ["response_type"] = "code",
+            ["scope"] = scope ?? options.Scopes,
+            ["redirect_uri"] = redirectUri,
+            ["code_challenge"] = Base64Url(SHA256.HashData(Encoding.ASCII.GetBytes(verifier))),
+            ["code_challenge_method"] = "S256",
+            ["state"] = state,
+            ["nonce"] = Base64Url(RandomNumberGenerator.GetBytes(16)),
+        };
+        if (!string.IsNullOrWhiteSpace(acrValues))
+            parameters["acr_values"] = acrValues;
+        if (submission.Prompt is not null)
+            parameters["prompt"] = submission.Prompt;
+        var authorize = new Uri(
+            QueryHelpers.AddQueryString(metadata.AuthorizationEndpoint, parameters)
+        );
+        var page = await RedirectAsync(http, authorize, cancellationToken).ConfigureAwait(false);
+        if (!page.AbsolutePath.StartsWith(submission.PagePath, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"The provider refused the authorization request of '{client.ClientId}': it redirected to {page.AbsolutePath}."
+            );
+        string form;
+        using (var response = await http.GetAsync(page, cancellationToken).ConfigureAwait(false))
+        {
+            response.EnsureSuccessStatusCode();
+            form = await response
+                .Content.ReadAsStringAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        var fields = new Dictionary<string, string>(submission.Fields, StringComparer.Ordinal)
+        {
+            ["ReturnUrl"] = Field(form, "ReturnUrl"),
+            ["__RequestVerificationToken"] = Field(form, "__RequestVerificationToken"),
+        };
+        Uri submitted;
+        using (var content = new FormUrlEncodedContent(fields))
+        using (
+            var response = await http.PostAsync(page, content, cancellationToken)
+                .ConfigureAwait(false)
+        )
+            submitted = await SubmittedAsync(page, response, submission.Step, cancellationToken)
+                .ConfigureAwait(false);
+        var callback = await RedirectAsync(http, submitted, cancellationToken)
+            .ConfigureAwait(false);
+        // A requested level that the session lacks: the provider asks for its simulated MFA code.
+        if (IsSimulatedMfaPage(callback, page))
+            callback = await TypeSimulatedMfaCodeAsync(
+                    http,
+                    server,
+                    callback,
+                    submission.Fields["Username"],
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        var result = QueryHelpers.ParseQuery(callback.Query);
+        if (result.TryGetValue("error", out var error))
+            throw new InvalidOperationException(
+                $"The provider returned '{error}' to client '{client.ClientId}': {result["error_description"]}"
+            );
+        if (!string.Equals(result["state"], state, StringComparison.Ordinal))
+            throw new InvalidOperationException("The authorization response has another state.");
+        // RFC 9207: a response that names its issuer must name this provider.
+        if (
+            result.TryGetValue("iss", out var issuer)
+            && !string.Equals(issuer, metadata.Issuer, StringComparison.Ordinal)
+        )
+            throw new InvalidOperationException("The authorization response names another issuer.");
+        var redeem = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["grant_type"] = "authorization_code",
+            ["code"] = result["code"].ToString(),
+            ["redirect_uri"] = redirectUri,
+            ["code_verifier"] = verifier,
+        };
+        return await RequestTokensAsync(http, metadata, redeem, options, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The redirect that follows a posted form. A page shown again instead refused the form: its
+    /// alert gives the reason.
+    /// </summary>
+    private static async Task<Uri> SubmittedAsync(
+        Uri page,
+        HttpResponseMessage response,
+        string step,
+        CancellationToken cancellationToken
+    )
+    {
+        if ((int)response.StatusCode is >= 300 and <= 399)
+            return Location(page, response, step);
+        var html = await response
+            .Content.ReadAsStringAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var reason = AlertPattern().Match(html) is { Success: true } alert
+            ? WebUtility.HtmlDecode(alert.Groups["message"].Value).Trim()
+            : string.Create(CultureInfo.InvariantCulture, $"status {(int)response.StatusCode}");
+        throw new InvalidOperationException($"The provider refused {step}: {reason}");
+    }
 
     private static async Task<Metadata> DiscoverAsync(
         HttpClient http,
@@ -391,10 +542,10 @@ public static partial class IdentityServerTestingExtensions
     }
 
     /// <summary>The verification page of the provider's simulated MFA.</summary>
-    private static bool IsSimulatedMfaPage(Uri address, Uri login) =>
+    private static bool IsSimulatedMfaPage(Uri address, Uri page) =>
         string.Equals(
             address.GetLeftPart(UriPartial.Authority),
-            login.GetLeftPart(UriPartial.Authority),
+            page.GetLeftPart(UriPartial.Authority),
             StringComparison.OrdinalIgnoreCase
         ) && address.AbsolutePath.StartsWith("/Account/Mfa", StringComparison.OrdinalIgnoreCase);
 
@@ -481,6 +632,26 @@ public static partial class IdentityServerTestingExtensions
         matchTimeoutMilliseconds: 1000
     )]
     private static partial Regex ValuePattern();
+
+    /// <summary>The first message of the alert that a provider page shows when it refuses a form.</summary>
+    [GeneratedRegex(
+        "<div class=\"alert\" role=\"alert\">.*?<p>(?<message>[^<]*)</p>",
+        RegexOptions.Singleline,
+        matchTimeoutMilliseconds: 1000
+    )]
+    private static partial Regex AlertPattern();
+
+    /// <summary>
+    /// A page of the provider that an authorization request opens, with the prompt that opens it,
+    /// the fields that the helper posts there besides the return URL and the antiforgery token,
+    /// and the step that error messages name.
+    /// </summary>
+    private sealed record PageSubmission(
+        string PagePath,
+        string? Prompt,
+        IReadOnlyDictionary<string, string> Fields,
+        string Step
+    );
 
     private sealed record Metadata(
         string Issuer,

@@ -694,6 +694,30 @@ public sealed class TokenExchangeTests(AppFixture fixture)
         await Assert.That(issued.TryGetClaim("acr", out _)).IsFalse();
     }
 
+    [Test]
+    public async Task A_signed_up_account_token_is_exchanged_locally()
+    {
+        var username = $"ada-{Guid.NewGuid():N}";
+        var source = await fixture.App.GetSignUpTokensAsync(
+            "idp-a",
+            "web",
+            username,
+            "Passw0rd!",
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["email"] = "ada@example.test",
+                ["given_name"] = "Ada",
+                ["family_name"] = "Lovelace",
+            }
+        );
+        // The exchange checks that the subject is still active: the created account must be found.
+        var issued = await ExchangedToken(
+            await fixture.Client("idp-a", "device-secret"),
+            source.AccessToken
+        );
+        await Assert.That(issued.Subject).IsEqualTo($"idp-a:{username}");
+    }
+
     private async Task<JsonWebToken> ExchangedToken(IdentityClientOptions client, string subject)
     {
         using var response = await Exchange(client, subject);
