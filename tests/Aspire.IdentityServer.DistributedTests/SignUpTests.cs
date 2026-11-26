@@ -252,6 +252,68 @@ public sealed class SignUpTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task A_sign_up_post_needs_the_pending_authorization_request()
+    {
+        // The page's form, opened by a real prompt=create request, with its antiforgery token.
+        using var handler = new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseCookies = true,
+            CookieContainer = new CookieContainer(),
+        };
+        using var http = new HttpClient(handler);
+        using var authorize = await http.GetAsync(
+            AuthorizeUrl("idp-a", "public-web", "/signin-public")
+        );
+        var page = new Uri(new Uri(ProviderA), authorize.Headers.Location!);
+        var form = await http.GetStringAsync(page);
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["__RequestVerificationToken"] = Input(form, "__RequestVerificationToken"),
+            ["Username"] = NewUsername(),
+            ["Password"] = Password,
+            ["ClaimValues[0]"] = "ada@example.test",
+            ["ClaimValues[1]"] = "Ada",
+            ["ClaimValues[2]"] = "Lovelace",
+            ["Button"] = "create",
+            // Not the pending request: no account is created outside a client's flow.
+            ["ReturnUrl"] = "/",
+        };
+        using (var outside = await http.PostAsync(page, new FormUrlEncodedContent(fields)))
+            await Assert.That(outside.StatusCode).IsEqualTo(HttpStatusCode.BadRequest);
+        // The same form with the pending request creates the account: its username was free.
+        fields["ReturnUrl"] = Input(form, "ReturnUrl");
+        using var inside = await http.PostAsync(page, new FormUrlEncodedContent(fields));
+        await Assert.That(inside.StatusCode).IsEqualTo(HttpStatusCode.Redirect);
+    }
+
+    [Test]
+    [Arguments(true)]
+    [Arguments(false)]
+    public async Task A_username_with_surrounding_spaces_is_refused(bool leading)
+    {
+        // Sign-in compares usernames as typed: a stray space would hide the new account.
+        var username = leading ? " " + NewUsername() : NewUsername() + " ";
+        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+            fixture.App.GetSignUpTokensAsync(
+                "idp-a",
+                "web",
+                username,
+                Password,
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["email"] = "ada@example.test",
+                    ["given_name"] = "Ada",
+                    ["family_name"] = "Lovelace",
+                }
+            )
+        );
+        await Assert
+            .That(error!.Message)
+            .Contains("The username cannot start or end with a space.");
+    }
+
+    [Test]
     public async Task Sign_up_logs_the_account_without_its_password()
     {
         await using var session = await fixture.NewBrowserSessionAsync();
@@ -273,6 +335,22 @@ public sealed class SignUpTests(AppFixture fixture)
     }
 
     private static string NewUsername() => $"ada-{Guid.NewGuid():N}";
+
+    /// <summary>The value of a named input of a provider page.</summary>
+    private static string Input(string html, string name) =>
+        WebUtility.HtmlDecode(
+            Regex
+                .Match(
+                    html,
+                    "<input[^>]*\\bname=\""
+                        + Regex.Escape(name)
+                        + "\"[^>]*\\bvalue=\"(?<value>[^\"]*)\"",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                )
+                .Groups["value"]
+                .Value
+        );
 
     /// <summary>Fills the sign-up form of provider A, then creates the account.</summary>
     private static async Task SignUpAsync(

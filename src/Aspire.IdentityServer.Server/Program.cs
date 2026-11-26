@@ -263,7 +263,8 @@ internal static class ServerProgram
             .AddProfileService<TokenExchangeProfileService>()
             .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
         // The sign-up page adds accounts while requests read them: each request resolves the
-        // store of the current snapshot, from the sign-in page to the profile service.
+        // store of the current snapshot, from the sign-in page to the profile service. A singleton
+        // must take LocalAccounts, never TestUserStore: it would keep the snapshot of its creation.
         builder.Services.AddSingleton(accounts);
         builder.Services.Replace(ServiceDescriptor.Transient(_ => accounts.Current));
         // Registered after Duende's generator, so that it replaces it: a declared level requested

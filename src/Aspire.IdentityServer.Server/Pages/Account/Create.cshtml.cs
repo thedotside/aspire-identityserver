@@ -75,6 +75,9 @@ public sealed class CreateModel(
             || ClaimValues.Any(string.IsNullOrWhiteSpace)
         )
             return Refuse(form, request, "Fill in every field.");
+        // The sign-in page compares usernames as typed: a stray space would hide the account.
+        if (!string.Equals(Username, Username.Trim(), StringComparison.Ordinal))
+            return Refuse(form, request, "The username cannot start or end with a space.");
         var provider = HttpContext.RequestServices.GetRequiredService<ServerConfiguration>();
         var claims = form
             .ClaimTypes.Zip(ClaimValues, (type, value) => new Claim(type, value))
