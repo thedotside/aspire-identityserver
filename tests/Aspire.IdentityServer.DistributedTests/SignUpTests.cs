@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -450,18 +449,26 @@ public sealed class SignUpTests(AppFixture fixture)
         var resource = fixture
             .App.Services.GetRequiredService<DistributedApplicationModel>()
             .Resources.Single(r => string.Equals(r.Name, provider, StringComparison.Ordinal));
-        var watch = Stopwatch.StartNew();
-        while (true)
+        // A read streams the logs from DCP and may never end: the deadline bounds the read too.
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var lines = new List<string>();
+        try
         {
-            var lines = new List<string>();
-            await foreach (var batch in logs.GetAllAsync(resource))
-                lines.AddRange(batch.Select(l => l.Content));
-            if (
-                lines.Exists(l => l.Contains(expected, StringComparison.Ordinal))
-                || watch.Elapsed > TimeSpan.FromSeconds(10)
-            )
-                return lines;
-            await Task.Delay(TimeSpan.FromMilliseconds(200));
+            while (true)
+            {
+                lines = [];
+                await foreach (
+                    var batch in logs.GetAllAsync(resource).WithCancellation(deadline.Token)
+                )
+                    lines.AddRange(batch.Select(l => l.Content));
+                if (lines.Exists(l => l.Contains(expected, StringComparison.Ordinal)))
+                    return lines;
+                await Task.Delay(TimeSpan.FromMilliseconds(200), deadline.Token);
+            }
+        }
+        catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+        {
+            return lines;
         }
     }
 
