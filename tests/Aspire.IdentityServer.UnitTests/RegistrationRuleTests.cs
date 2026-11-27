@@ -347,13 +347,7 @@ public sealed class RegistrationRuleTests
     [Test]
     public async Task Publish_mode_refuses_the_provider_and_points_to_run_mode()
     {
-        var builder = DistributedApplication.CreateBuilder(
-            new DistributedApplicationOptions
-            {
-                DisableDashboard = true,
-                Args = ["--environment", "Development", "--operation", "publish"],
-            }
-        );
+        var builder = TestApp.CreateBuilder("Development", "--operation", "publish");
         await Assert.That(builder.ExecutionContext.IsPublishMode).IsTrue();
         var error = await Assert
             .That(() => builder.AddIdentityServer("idp"))
