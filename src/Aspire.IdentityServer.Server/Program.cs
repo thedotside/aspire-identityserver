@@ -90,7 +90,7 @@ internal static class ServerProgram
             && !SignUpForm.HasValidClaimTypes(signUp.ClaimTypes)
         )
             throw new InvalidOperationException(
-                "A sign-up form needs distinct profile claim types, without protocol claims such as sub."
+                "A sign-up form needs distinct profile claim types issued as text, without protocol claims such as sub or typed claims such as email_verified."
             );
         // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
@@ -261,6 +261,8 @@ internal static class ServerProgram
             .AddJwtBearerClientAuthentication()
             .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
             .AddProfileService<TokenExchangeProfileService>()
+            // Only a form-declaring provider supports prompt=create; this refuses it without openid.
+            .AddCustomAuthorizeRequestValidator<CreatePromptValidator>()
             .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
         // The sign-up page adds accounts while requests read them: each request resolves the
         // store of the current snapshot, from the sign-in page to the profile service. A singleton

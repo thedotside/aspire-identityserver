@@ -88,11 +88,8 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
             .AddClientCredentialsClient("legacy-worker")
             .WithGeneratedBase64PrivateKeyJwt()
             .WithScopes("legacy.read");
-        // A sign-up form whose name field gives the display name, and a declared account whose
-        // explicit subject is the one that signing up "carol" would get.
-        legacy
-            .WithSignUp("name", "email")
-            .WithTestUser("dave", "dave", subjectId: "idp-legacy:carol");
+        // A sign-up form whose name field gives the display name.
+        legacy.WithSignUp("name", "email");
         legacy
             .AddAuthorizationCodeClient("legacy-web")
             .RequirePkce()

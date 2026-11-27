@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Shared/TokenExchangeClaims.cs" Link="TokenExchangeClaims.cs" />
+    <Compile Include="../Shared/SignUpClaims.cs" Link="SignUpClaims.cs" />
     <Compile Include="../Shared/RsaJwk.cs" Link="RsaJwk.cs" />
     <Compile Include="../Shared/RuntimeContract.cs" Link="RuntimeContract.cs" />
     <PackageReference Include="Aspire.Hosting" />

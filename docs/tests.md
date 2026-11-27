@@ -60,9 +60,10 @@ var ada = await app.GetSignUpTokensAsync(
     });
 ```
 
-`GetSignUpTokensAsync(provider, clientId, username, password, claims?, scope?, acrValues?)` suit le parcours de `GetUserTokensAsync`, avec `prompt=create` : il remplit le formulaire de création, saisit le code de la [MFA simulée](fournisseurs.md#mfa-simulée) si le fournisseur le demande, puis échange le code. Le compte a pour `sub` `{fournisseur}:{username}`.
+`GetSignUpTokensAsync(provider, clientId, username, password, claims?, scope?, acrValues?)` suit le parcours de `GetUserTokensAsync`, avec `prompt=create` : il remplit le formulaire de création, saisit le code de la [MFA simulée](fournisseurs.md#mfa-simulée) si le fournisseur le demande, puis échange le code. Le fournisseur donne au compte un `sub` aléatoire, à lire dans les jetons rendus.
 
 - Les clés de `claims` sont exactement les claims du formulaire : un claim manquant ou non déclaré lève `ArgumentException`, qui le nomme.
+- Le scope demandé, par défaut tous ceux du client, doit inclure `openid` : sinon `ArgumentException`, avant toute requête. Une réponse sans ID token lève `InvalidOperationException`, puisque seul cet ID token confirme l'inscription.
 - Un fournisseur sans `WithSignUp` lève `InvalidOperationException`. Un refus de la page, par exemple un identifiant déjà pris, lève aussi `InvalidOperationException`, avec le message de la page.
 - Les comptes créés vivent autant que l'AppHost partagé par les tests : donne à chaque test son propre identifiant, par exemple avec un `Guid`.
 - `GetUserTokensAsync` lit les mots de passe dans l'AppHost, qui ne connaît pas ces comptes. Pour un nouveau jeton, utilise le refresh token rendu (avec `offline_access`), ou la page de connexion dans un navigateur.

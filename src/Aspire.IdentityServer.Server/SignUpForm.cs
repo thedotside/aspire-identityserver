@@ -10,11 +10,14 @@ internal static class SignUpForm
     internal const string PagePath = "/Account/Create";
 
     /// <summary>
-    /// The rule of <c>WithSignUp</c>: distinct profile claims. Unlike a declared user's claims,
-    /// <c>name</c> is accepted: this field gives the account its display name.
+    /// The rule of <c>WithSignUp</c>: distinct profile claims that a field issues as text. Unlike
+    /// a declared user's claims, <c>name</c> is accepted: this field gives the account its
+    /// display name.
     /// </summary>
     internal static bool HasValidClaimTypes(IReadOnlyCollection<string> claimTypes) =>
-        claimTypes.All(TokenExchangeClaims.IsUserClaim)
+        claimTypes.All(type =>
+            TokenExchangeClaims.IsUserClaim(type) && !SignUpClaims.IsTypedClaim(type)
+        )
         && claimTypes.Distinct(StringComparer.Ordinal).Count() == claimTypes.Count;
 
     /// <summary>

@@ -76,6 +76,26 @@ public sealed class SignUpTests(AppFixture fixture)
     }
 
     [Test]
+    public async Task Prompt_create_without_openid_shows_the_error_page()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        // A request for an API alone returns no ID token: the client could not confirm the account.
+        await page.GotoAsync(
+            AuthorizeUrl("idp-a", "public-web", "/signin-public", scope: "orders.read")
+        );
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Heading, new() { Name = "Identity request rejected" }))
+            .ToBeVisibleAsync();
+        await Assertions
+            .Expect(page.GetByText("invalid_request", new() { Exact = true }))
+            .ToBeVisibleAsync();
+        await Assertions
+            .Expect(page.GetByText("prompt=create requires the openid scope"))
+            .ToBeVisibleAsync();
+    }
+
+    [Test]
     public async Task Prompt_create_signs_the_new_account_in_to_the_application()
     {
         await using var session = await fixture.NewBrowserSessionAsync();
@@ -93,7 +113,9 @@ public sealed class SignUpTests(AppFixture fixture)
         await SignUpAsync(page, username);
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
         var me = await Json(session.Context, Origin + "/me/a");
-        await Assert.That(me.GetProperty("subject").GetString()).IsEqualTo($"idp-a:{username}");
+        // A random subject: a provider restart erases the account, and its username may then
+        // name someone else, while OpenID Connect never reassigns a subject.
+        await Assert.That(IsOpaqueSubject(me.GetProperty("subject").GetString())).IsTrue();
         await Assert.That(me.GetProperty("name").GetString()).IsEqualTo(username);
         await Assert.That(me.GetProperty("email").GetString()).IsEqualTo("ada@example.test");
     }
@@ -162,7 +184,7 @@ public sealed class SignUpTests(AppFixture fixture)
             .ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
         var me = await Json(session.Context, Origin + "/me/a");
-        await Assert.That(me.GetProperty("subject").GetString()).IsEqualTo($"idp-a:{username}");
+        await Assert.That(me.GetProperty("name").GetString()).IsEqualTo(username);
     }
 
     [Test]
@@ -183,6 +205,7 @@ public sealed class SignUpTests(AppFixture fixture)
     public async Task The_new_account_signs_in_again_with_its_password()
     {
         var username = NewUsername();
+        string? created;
         await using (var first = await fixture.NewBrowserSessionAsync())
         {
             var page = await first.Context.NewPageAsync();
@@ -190,6 +213,9 @@ public sealed class SignUpTests(AppFixture fixture)
             await ExpectSignUpPageAsync(page);
             await SignUpAsync(page, username);
             await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
+            created = (await Json(first.Context, Origin + "/me/a"))
+                .GetProperty("subject")
+                .GetString();
         }
         await using var second = await fixture.NewBrowserSessionAsync();
         var again = await second.Context.NewPageAsync();
@@ -197,7 +223,7 @@ public sealed class SignUpTests(AppFixture fixture)
         await SignInAsync(again, username, Password);
         await Assertions.Expect(again).ToHaveURLAsync(Origin + "/");
         var me = await Json(second.Context, Origin + "/me/a");
-        await Assert.That(me.GetProperty("subject").GetString()).IsEqualTo($"idp-a:{username}");
+        await Assert.That(me.GetProperty("subject").GetString()).IsEqualTo(created);
     }
 
     [Test]
@@ -216,7 +242,10 @@ public sealed class SignUpTests(AppFixture fixture)
         await SignUpAsync(page, username);
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
         var after = await Json(session.Context, Origin + "/me/a");
-        await Assert.That(after.GetProperty("subject").GetString()).IsEqualTo($"idp-a:{username}");
+        await Assert.That(after.GetProperty("name").GetString()).IsEqualTo(username);
+        await Assert
+            .That(after.GetProperty("subject").GetString())
+            .IsNotEqualTo(before.GetProperty("subject").GetString());
         await Assert
             .That(after.GetProperty("sid").GetString())
             .IsNotEqualTo(before.GetProperty("sid").GetString());
@@ -234,7 +263,7 @@ public sealed class SignUpTests(AppFixture fixture)
         await SignUpAsync(page, username);
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
         var me = await Json(session.Context, Origin + "/me/par");
-        await Assert.That(me.GetProperty("subject").GetString()).IsEqualTo($"idp-a:{username}");
+        await Assert.That(me.GetProperty("name").GetString()).IsEqualTo(username);
     }
 
     [Test]
@@ -335,6 +364,13 @@ public sealed class SignUpTests(AppFixture fixture)
 
     private static string NewUsername() => $"ada-{Guid.NewGuid():N}";
 
+    /// <summary>
+    /// A subject that the sign-up page generated: 32 lowercase hexadecimal digits, whatever the
+    /// username.
+    /// </summary>
+    internal static bool IsOpaqueSubject(string? subject) =>
+        subject is { Length: 32 } && subject.All(char.IsAsciiHexDigitLower);
+
     /// <summary>The value of a named input of a provider page.</summary>
     private static string Input(string html, string name) =>
         WebUtility.HtmlDecode(
@@ -397,7 +433,12 @@ public sealed class SignUpTests(AppFixture fixture)
     /// An authorization request with prompt=create and PKCE, from a browser client of the
     /// sample, to its callback on the web sample.
     /// </summary>
-    private string AuthorizeUrl(string provider, string clientId, string callback)
+    private string AuthorizeUrl(
+        string provider,
+        string clientId,
+        string callback,
+        string scope = "openid profile"
+    )
     {
         var verifier = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         return QueryHelpers.AddQueryString(
@@ -407,7 +448,7 @@ public sealed class SignUpTests(AppFixture fixture)
             {
                 ["client_id"] = clientId,
                 ["response_type"] = "code",
-                ["scope"] = "openid profile",
+                ["scope"] = scope,
                 ["redirect_uri"] = Origin + callback,
                 ["code_challenge"] = WebEncoders.Base64UrlEncode(
                     SHA256.HashData(Encoding.ASCII.GetBytes(verifier))

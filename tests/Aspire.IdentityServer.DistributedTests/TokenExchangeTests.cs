@@ -715,7 +715,7 @@ public sealed class TokenExchangeTests(AppFixture fixture)
             await fixture.Client("idp-a", "device-secret"),
             source.AccessToken
         );
-        await Assert.That(issued.Subject).IsEqualTo($"idp-a:{username}");
+        await Assert.That(issued.Subject).IsEqualTo(new JsonWebToken(source.AccessToken).Subject);
     }
 
     private async Task<JsonWebToken> ExchangedToken(IdentityClientOptions client, string subject)

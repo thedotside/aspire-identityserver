@@ -189,7 +189,7 @@ public sealed class TestingHelpersTests(AppFixture fixture)
             AdaClaims()
         );
         var access = new JsonWebToken(tokens.AccessToken);
-        await Assert.That(access.Subject).IsEqualTo($"idp-a:{username}");
+        await Assert.That(SignUpTests.IsOpaqueSubject(access.Subject)).IsTrue();
         await Assert.That(Amr(access)).IsEquivalentTo(["pwd"]);
         var id = new JsonWebToken(tokens.IdToken!);
         await Assert.That(id.GetClaim("name").Value).IsEqualTo(username);
@@ -198,6 +198,23 @@ public sealed class TestingHelpersTests(AppFixture fixture)
         await Assert.That(id.GetClaim("family_name").Value).IsEqualTo("Lovelace");
         // The web client registers offline_access: the provider issues a refresh token.
         await Assert.That(tokens.RefreshToken).IsNotNull();
+    }
+
+    [Test]
+    public async Task A_created_account_has_an_opaque_subject_of_fixed_size()
+    {
+        // OpenID Connect caps a subject at 255 characters: a long username must not reach it.
+        var username = NewUsername() + new string('x', 300);
+        var tokens = await fixture.App.GetSignUpTokensAsync(
+            "idp-a",
+            "web",
+            username,
+            "Passw0rd!",
+            AdaClaims()
+        );
+        var id = new JsonWebToken(tokens.IdToken!);
+        await Assert.That(SignUpTests.IsOpaqueSubject(id.Subject)).IsTrue();
+        await Assert.That(id.GetClaim("name").Value).IsEqualTo(username);
     }
 
     [Test]
@@ -261,7 +278,7 @@ public sealed class TestingHelpersTests(AppFixture fixture)
                 .GetProperty("access_token")
                 .GetString()!
         );
-        await Assert.That(renewed.Subject).IsEqualTo($"idp-a:{username}");
+        await Assert.That(renewed.Subject).IsEqualTo(new JsonWebToken(tokens.AccessToken).Subject);
     }
 
     [Test]
@@ -319,6 +336,18 @@ public sealed class TestingHelpersTests(AppFixture fixture)
             fixture.App.GetSignUpTokensAsync("idp-a", "web", NewUsername(), "Passw0rd!", extra)
         );
         await Assert.That(extraError!.Message).Contains("phone_number");
+        // OpenID Connect Prompt Create 1.0 counts a sign-up as done only with an ID token.
+        var withoutOpenId = await Assert.ThrowsExactlyAsync<ArgumentException>(() =>
+            fixture.App.GetSignUpTokensAsync(
+                "idp-a",
+                "web",
+                NewUsername(),
+                "Passw0rd!",
+                AdaClaims(),
+                scope: "orders.read"
+            )
+        );
+        await Assert.That(withoutOpenId!.Message).Contains("openid");
     }
 
     [Test]
@@ -326,26 +355,6 @@ public sealed class TestingHelpersTests(AppFixture fixture)
     {
         var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
             fixture.App.GetSignUpTokensAsync("idp-a", "web", "alice", "Passw0rd!", AdaClaims())
-        );
-        await Assert.That(error!.Message).Contains("This username is already taken.");
-    }
-
-    [Test]
-    public async Task A_username_whose_subject_is_taken_is_refused()
-    {
-        // Declared account dave has the subject idp-legacy:carol, the one carol would get.
-        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-            fixture.App.GetSignUpTokensAsync(
-                "idp-legacy",
-                "legacy-web",
-                "carol",
-                "Passw0rd!",
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["name"] = "Carol",
-                    ["email"] = "carol@example.test",
-                }
-            )
         );
         await Assert.That(error!.Message).Contains("This username is already taken.");
     }

@@ -280,11 +280,12 @@ public static class IdentityServerExtensions
 
     /// <summary>
     /// Lets clients open a sign-up page with <c>prompt=create</c>, as with a production provider.
-    /// The form asks for a username, a password, then one field per claim of
+    /// The form asks for a username, a password, then one text field per claim of
     /// <paramref name="claimTypes" />, in order; a <c>name</c> field gives the display name,
-    /// otherwise the username does. The account's subject is <c>{provider}:{username}</c>, its
-    /// claims reach tokens through identity scopes like those of declared users, and it stays in
-    /// the provider's memory until the provider restarts. Declare every field in one call.
+    /// otherwise the username does. Claims that OpenID Connect types as a boolean, a number or
+    /// an object, such as <c>email_verified</c>, are refused. The account gets a random subject,
+    /// its claims reach tokens through identity scopes like those of declared users, and it stays
+    /// in the provider's memory until the provider restarts. Declare every field in one call.
     /// </summary>
     public static IResourceBuilder<IdentityServerResource> WithSignUp(
         this IResourceBuilder<IdentityServerResource> server,
@@ -304,6 +305,11 @@ public static class IdentityServerExtensions
             if (!TokenExchangeClaims.IsUserClaim(type))
                 throw new ArgumentException(
                     $"A sign-up form asks for profile claims, not '{type}': protocol claims such as sub are issued by the provider, and a claim type has no spaces.",
+                    nameof(claimTypes)
+                );
+            if (SignUpClaims.IsTypedClaim(type))
+                throw new ArgumentException(
+                    $"A sign-up form asks for text claims, not '{type}': OpenID Connect issues it as a boolean, a number or an object, and only the provider can verify an email address or a phone number.",
                     nameof(claimTypes)
                 );
             if (types.Contains(type, StringComparer.Ordinal))

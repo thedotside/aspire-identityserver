@@ -50,6 +50,10 @@ public sealed class RegistrationRuleTests
     [Arguments("sign-up-blank-claim", "profile claims")]
     [Arguments("sign-up-claim-space", "profile claims")]
     [Arguments("sign-up-duplicate", "Duplicate sign-up claim")]
+    [Arguments("sign-up-email-verified", "text claims")]
+    [Arguments("sign-up-phone-verified", "text claims")]
+    [Arguments("sign-up-updated-at", "text claims")]
+    [Arguments("sign-up-address", "text claims")]
     public async Task Invalid_arguments_are_rejected_when_declared(string rule, string message)
     {
         var builder = TestApp.CreateBuilder();
@@ -132,6 +136,11 @@ public sealed class RegistrationRuleTests
             "sign-up-blank-claim" => () => idp.WithSignUp(" "),
             "sign-up-claim-space" => () => idp.WithSignUp("given name"),
             "sign-up-duplicate" => () => idp.WithSignUp("email", "email"),
+            "sign-up-email-verified" => () => idp.WithSignUp("email", "email_verified"),
+            "sign-up-phone-verified" => () =>
+                idp.WithSignUp("phone_number", "phone_number_verified"),
+            "sign-up-updated-at" => () => idp.WithSignUp("updated_at"),
+            "sign-up-address" => () => idp.WithSignUp("address"),
             _ => throw new ArgumentOutOfRangeException(nameof(rule)),
         };
         var error = await Assert.That(declare).Throws<ArgumentException>();

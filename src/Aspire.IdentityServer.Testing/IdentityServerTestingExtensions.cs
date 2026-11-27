@@ -161,18 +161,21 @@ public static partial class IdentityServerTestingExtensions
     /// <param name="app">The started application.</param>
     /// <param name="provider">The name of an identity provider declared with <c>WithSignUp</c>.</param>
     /// <param name="clientId">An authorization-code client; its first redirect URI is used.</param>
-    /// <param name="username">The username of the new account; its subject is <c>{provider}:{username}</c>.</param>
+    /// <param name="username">The username of the new account; the provider gives it a random subject.</param>
     /// <param name="password">The password of the new account.</param>
     /// <param name="claims">A value for each claim of the sign-up form, and for no other claim.</param>
-    /// <param name="scope">The requested scopes; defaults to every scope registered for the client.</param>
+    /// <param name="scope">
+    /// The requested scopes, which must include <c>openid</c>: a sign-up succeeds only with an ID
+    /// token. Defaults to every scope registered for the client.
+    /// </param>
     /// <param name="acrValues">
     /// The requested authentication levels, sent as <c>acr_values</c>. When the provider asks for
     /// the code of its simulated MFA, the helper types the code declared in the AppHost.
     /// </param>
     /// <param name="cancellationToken">Cancels the requests.</param>
     /// <exception cref="InvalidOperationException">
-    /// The provider has no sign-up form, or refuses the account, for example a username already
-    /// taken: the message carries the page's.
+    /// The provider has no sign-up form, refuses the account, for example a username already
+    /// taken, in which case the message carries the page's, or returns no ID token.
     /// </exception>
     public static async Task<IdentityTokens> GetSignUpTokensAsync(
         this DistributedApplication app,
@@ -216,7 +219,18 @@ public static partial class IdentityServerTestingExtensions
                     $"Provider '{server.Name}' does not ask for the claim '{type}' at sign-up.",
                     nameof(claims)
                 );
-        return await SignInThroughPageAsync(
+        // Without openid the provider issues no ID token: refuse before creating an account.
+        var requested = scope ?? string.Join(' ', client.Scopes);
+        if (
+            !requested
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Contains("openid", StringComparer.Ordinal)
+        )
+            throw new ArgumentException(
+                $"A sign-up returns an ID token: request the openid scope, not '{requested}'.",
+                nameof(scope)
+            );
+        var tokens = await SignInThroughPageAsync(
                 server,
                 client,
                 scope,
@@ -230,6 +244,12 @@ public static partial class IdentityServerTestingExtensions
                 cancellationToken
             )
             .ConfigureAwait(false);
+        // OpenID Connect Prompt Create 1.0, 4.1: a sign-up succeeds only with an ID token.
+        return string.IsNullOrEmpty(tokens.IdToken)
+            ? throw new InvalidOperationException(
+                $"The sign-up of '{username}' returned no ID token: request the openid scope."
+            )
+            : tokens;
     }
 
     private static IdentityServerResource Provider(DistributedApplication app, string provider)

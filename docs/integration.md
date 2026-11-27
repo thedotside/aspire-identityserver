@@ -74,7 +74,7 @@ app.MapGet("/signup", () => Results.Challenge(
     ["web-oidc"]));
 ```
 
-Le fournisseur affiche sa page de création de compte, puis revient au callback avec l'utilisateur connecté, comme après une connexion ; PAR reste possible. Un fournisseur sans `WithSignUp` refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
+Le fournisseur affiche sa page de création de compte, puis revient au callback avec l'utilisateur connecté, comme après une connexion ; PAR reste possible. La demande garde le scope `openid`, que le handler OpenID Connect envoie toujours : sans lui, le fournisseur refuse `prompt=create` avec `invalid_request`. Un fournisseur sans `WithSignUp` refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
 
 Sans ce package, configure `AddOpenIdConnect` avec les mêmes valeurs. Pour `private_key_jwt`, renseigne `ClientAssertionType` et `ClientAssertion` (avec `PrivateKeyJwt.CreateAssertion(client, issuer)`) dans `OnAuthorizationCodeReceived`, et dans `OnPushAuthorization` suivi de `HandleClientAuthentication()`, ou désactive PAR.
 

@@ -31,6 +31,7 @@ public sealed class RuntimeGuardTests
     [Arguments("simulated-mfa", "code of 4 to 10 digits")]
     [Arguments("sign-up-duplicate", "distinct profile claim types")]
     [Arguments("sign-up-protocol", "distinct profile claim types")]
+    [Arguments("sign-up-typed", "distinct profile claim types")]
     public async Task The_runtime_refuses_to_start_outside_its_development_boundary(
         string change,
         string expected
@@ -70,6 +71,10 @@ public sealed class RuntimeGuardTests
             case "sign-up-protocol":
                 environment["IdentityServer__SignUp__Enabled"] = "true";
                 environment["IdentityServer__SignUp__ClaimTypes__0"] = "sub";
+                break;
+            case "sign-up-typed":
+                environment["IdentityServer__SignUp__Enabled"] = "true";
+                environment["IdentityServer__SignUp__ClaimTypes__0"] = "email_verified";
                 break;
         }
         using var process = Start(environment);

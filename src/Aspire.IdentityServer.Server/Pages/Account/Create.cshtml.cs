@@ -90,7 +90,9 @@ public sealed class CreateModel(
         {
             Username = Username,
             Password = Password,
-            SubjectId = $"{provider.Name}:{Username}",
+            // A random subject of fixed size: a restart erases the account but keeps the issuer,
+            // and OpenID Connect never reassigns a subject nor lets it exceed 255 characters.
+            SubjectId = Guid.NewGuid().ToString("N"),
             Claims = [new Claim("name", name), .. claims],
         };
         if (!HttpContext.RequestServices.GetRequiredService<LocalAccounts>().TryAdd(user))
