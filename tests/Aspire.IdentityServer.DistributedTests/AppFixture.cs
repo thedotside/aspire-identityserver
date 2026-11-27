@@ -81,7 +81,7 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
             )
             .WithSimulatedMfa("222222", "urn:sample:loa:mfa");
         var legacy = builder.AddIdentityServer("idp-legacy", options =>
-            options.AcceptTokenEndpointAudience = true
+            options.StrictClientAssertionAudienceValidation = false
         );
         legacy.AddApiResource("legacy-api").WithScopes("legacy.read");
         legacy

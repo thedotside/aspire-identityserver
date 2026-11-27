@@ -360,6 +360,26 @@ public sealed class BrowserTests(AppFixture fixture)
         await Assert.That(query.ContainsKey("code")).IsFalse();
     }
 
+    [Test]
+    public async Task Cancelling_sign_in_brings_the_user_back_to_the_application()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        var origin = fixture.App.GetEndpoint("web", "https").ToString().TrimEnd('/');
+        await page.GotoAsync($"{origin}/login/a");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
+        await Assertions
+            .Expect(page)
+            .ToHaveURLAsync(
+                new Regex(
+                    "^" + Regex.Escape(origin + "/") + "(\\?.*)?$",
+                    RegexOptions.None,
+                    TimeSpan.FromSeconds(1)
+                )
+            );
+        await Assertions.Expect(page.Locator("#user-a")).ToHaveTextAsync("Signed out");
+    }
+
     /// <summary>An authorization request of the public client, with PKCE.</summary>
     private string PublicClientAuthorizeUrl(
         string state,

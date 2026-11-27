@@ -48,7 +48,9 @@ public static class IdentityServerAuthenticationExtensions
     /// tokens. A <c>client_secret_post</c> client sends its secret; a <c>private_key_jwt</c> client
     /// signs a new assertion, whose audience is the discovered issuer, for the code redemption
     /// and the pushed authorization request. <paramref name="configure" /> runs after these
-    /// defaults, for the callback paths, cookies or <c>MaxAge</c> for instance.
+    /// defaults, for the callback paths, cookies or <c>MaxAge</c> for instance. A cancelled
+    /// sign-in (<c>access_denied</c>) fails as with the ASP.NET Core handler, unless
+    /// <paramref name="configure" /> sets <c>AccessDeniedPath</c> to a page that needs no sign-in.
     /// </summary>
     public static AuthenticationBuilder AddIdentityServerOpenIdConnect(
         this AuthenticationBuilder builder,

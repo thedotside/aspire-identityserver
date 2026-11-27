@@ -159,12 +159,12 @@ Le package facultatif `TheDotSide.Aspire.IdentityServer.Client` expose `PrivateK
 | `exp` | Heure courante plus 1 minute. |
 | `jti` | Nouveau GUID à chaque appel. |
 
-Le fournisseur local exige ce profil par défaut (`StrictClientAssertionAudienceValidation` de Duende). Pour un fournisseur réel qui refuse encore l'issuer comme audience, `PrivateKeyJwt.CreateTokenEndpointAssertion(client, tokenEndpoint)` produit le profil RFC 7523 d'origine : audience = token endpoint, `typ: JWT`. Pour tester un tel client contre le fournisseur local, active explicitement `AcceptTokenEndpointAudience` :
+Le fournisseur local exige ce profil par défaut : son option `StrictClientAssertionAudienceValidation`, qui porte le nom de l'option Duende qu'elle règle, vaut `true`. Pour un fournisseur réel qui refuse encore l'issuer comme audience, `PrivateKeyJwt.CreateTokenEndpointAssertion(client, tokenEndpoint)` produit le profil RFC 7523 d'origine : audience = token endpoint, `typ: JWT`. Pour tester un tel client contre le fournisseur local, relâche explicitement cette validation :
 
 ```csharp
-var idp = builder.AddIdentityServer("idp", options => options.AcceptTokenEndpointAudience = true);
+var idp = builder.AddIdentityServer("idp", options => options.StrictClientAssertionAudienceValidation = false);
 ```
 
-Une assertion typée `client-authentication+jwt` reste toujours validée strictement, même avec cette option.
+Une assertion typée `client-authentication+jwt` reste toujours validée strictement, même avec cette option. Avant la 11.4.0, l'option s'appelait `AcceptTokenEndpointAudience`, avec le sens inverse ; l'ancien nom marche encore, marqué obsolète.
 
 Crée une assertion neuve pour chaque requête, y compris une nouvelle tentative. Ne conserve pas une assertion en configuration ; la protection contre le rejeu est testée. Le helper ne découvre pas les endpoints et n'envoie pas de requête HTTP. Voir [l'intégration](integration.md).

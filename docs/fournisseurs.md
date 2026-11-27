@@ -161,7 +161,7 @@ var idp = builder.AddIdentityServer("idp")
     .WithSimulatedMfa("111111", "urn:exemple:loa:mfa");
 ```
 
-- Une demande d'autorisation qui contient un niveau déclaré dans `acr_values` passe par une page de code : après le mot de passe, ou directement si l'utilisateur a déjà une session sans ce niveau.
+- Une demande d'autorisation qui contient un niveau déclaré dans `acr_values` passe par une page de code : après le mot de passe, ou directement si l'utilisateur a déjà une session sans ce niveau. La page affiche une case par chiffre ; on peut aussi y coller le code ou laisser le navigateur le remplir. Un collage trop long n'est pas coupé : le code est refusé. Les espaces autour du code sont ignorés.
 - Après le bon code, l'ID token et l'access token portent `acr` (le niveau demandé) et `amr` (`pwd`, `otp` et `mfa`). Les access tokens renouvelés par refresh token les gardent, et un Token Exchange recopie `acr` comme `amr`.
 - La session garde ce niveau jusqu'à la déconnexion : redemander le même niveau ne redemande pas le code. Un autre niveau déclaré le redemande.
 - **Cancel** renvoie `access_denied` au client, comme sur la page de connexion. Avec `prompt=none`, une session sans le niveau reçoit `interaction_required`.
@@ -244,7 +244,7 @@ Une API doit valider issuer, signature, expiration et audience, puis vérifier l
 
 ## Emplacement du runtime
 
-`IdentityServerOptions` expose `RuntimeDirectory` et `AcceptTokenEndpointAudience` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
+`IdentityServerOptions` expose `RuntimeDirectory` et `StrictClientAssertionAudienceValidation` ; cette dernière est décrite avec [les assertions](clients.md#assertions-private_key_jwt).
 
 ```csharp
 var idp = builder.AddIdentityServer("idp", options =>

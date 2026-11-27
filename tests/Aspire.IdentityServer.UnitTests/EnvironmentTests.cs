@@ -23,15 +23,40 @@ public sealed class EnvironmentTests
     }
 
     [Test]
-    [Arguments(false, "false")]
-    [Arguments(true, "true")]
-    public async Task Strict_client_assertion_audiences_are_the_default(bool accept, string value)
+    public async Task Client_assertion_audiences_are_strict_by_default()
+    {
+        await Assert
+            .That(new IdentityServerOptions().StrictClientAssertionAudienceValidation)
+            .IsTrue();
+        var values = await ProjectionTests.Evaluate(
+            TestApp.CreateBuilder().AddIdentityServer("idp")
+        );
+        await Assert.That(values["IdentityServer__AcceptTokenEndpointAudience"]).IsEqualTo("false");
+    }
+
+    [Test]
+    [Arguments(true, "false")]
+    [Arguments(false, "true")]
+    public async Task The_strict_audience_option_is_projected(bool strict, string accept)
     {
         var server = TestApp
             .CreateBuilder()
-            .AddIdentityServer("idp", options => options.AcceptTokenEndpointAudience = accept);
+            .AddIdentityServer("idp", options =>
+                options.StrictClientAssertionAudienceValidation = strict
+            );
         var values = await ProjectionTests.Evaluate(server);
-        await Assert.That(values["IdentityServer__AcceptTokenEndpointAudience"]).IsEqualTo(value);
+        await Assert.That(values["IdentityServer__AcceptTokenEndpointAudience"]).IsEqualTo(accept);
+    }
+
+    [Test]
+    public async Task The_obsolete_audience_option_mirrors_the_strict_one()
+    {
+#pragma warning disable CS0618 // The renamed option stays for existing AppHosts.
+        var options = new IdentityServerOptions { AcceptTokenEndpointAudience = true };
+        await Assert.That(options.StrictClientAssertionAudienceValidation).IsFalse();
+        options.StrictClientAssertionAudienceValidation = true;
+        await Assert.That(options.AcceptTokenEndpointAudience).IsFalse();
+#pragma warning restore CS0618
     }
 
     [Test]
