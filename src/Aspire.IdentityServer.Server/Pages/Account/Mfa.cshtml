@@ -37,7 +37,15 @@ else
     <input type="hidden" asp-for="ReturnUrl" />
     <div class="field">
         <label asp-for="Code"></label>
-        <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" required autofocus />
+        @* One field drawn as one box per digit by site.css: pasting and one-time-code autofill keep working.
+           No maxlength: a browser would cut a longer paste, and the page would check only its prefix. *@
+        <div class="code" data-digits="@Model.CodeLength">
+            <input asp-for="Code" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" required autofocus />
+            @for (var digit = 0; digit < Model.CodeLength; digit++)
+            {
+                <span aria-hidden="true"></span>
+            }
+        </div>
     </div>
     <div class="actions">
         <button class="button button-primary" type="submit" name="Button" value="verify">Verify</button>

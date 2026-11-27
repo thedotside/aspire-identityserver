@@ -295,6 +295,115 @@ input:-webkit-autofill {
   caret-color: var(--text);
 }
 
+/*
+  Verification code: one field drawn as one box per digit, without script, so that pasting
+  and one-time-code autofill keep working. The boxes are decorative spans in a grid; the
+  field lies over them, transparent, and its letter spacing puts each digit in the middle of
+  its box. The number of digits comes from data-digits: the page policy refuses inline styles.
+*/
+
+.code {
+  --digits: 6;
+  --gap: 8px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--digits), minmax(0, 48px));
+  gap: var(--gap);
+  /* Clip, not hidden: a hidden overflow still scrolls to show the caret, which would slide
+     the boxes and digits apart once the code is complete. Hidden stays for browsers without
+     clip (Safari before 16), so that the wider field never widens the page. */
+  overflow: hidden;
+  overflow: clip;
+  container-type: inline-size;
+}
+
+.code[data-digits="4"] {
+  --digits: 4;
+}
+
+.code[data-digits="5"] {
+  --digits: 5;
+}
+
+.code[data-digits="7"] {
+  --digits: 7;
+}
+
+.code[data-digits="8"] {
+  --digits: 8;
+  --gap: 6px;
+}
+
+.code[data-digits="9"] {
+  --digits: 9;
+  --gap: 6px;
+}
+
+.code[data-digits="10"] {
+  --digits: 10;
+  --gap: 6px;
+}
+
+/* The width of one box, as the grid lays it out: 48px, less when the card is narrow. */
+.code > * {
+  --box: min(48px, (100cqw - (var(--digits) - 1) * var(--gap)) / var(--digits));
+}
+
+.code > span {
+  height: clamp(44px, var(--box) * 1.2, 56px);
+  border: 1px solid var(--field-border);
+  /* A narrow box keeps square corners rather than turning into a capsule. */
+  border-radius: min(var(--radius-control), var(--box) / 4);
+  background: var(--surface);
+}
+
+.code:hover > span {
+  border-color: var(--muted);
+}
+
+/* A 2px accent edge (border plus outline), drawn inside the box, since the grid clips what
+   overflows, and with an outline, which forced colours keep. */
+.code:focus-within > span {
+  border-color: var(--accent);
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.code > input[type="text"] {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  /* One box wider than the grid: the spacing after the last digit never scrolls the field. */
+  width: calc(var(--digits) * (var(--box) + var(--gap)) + var(--box));
+  min-height: 0;
+  height: 100%;
+  padding: 0 0 0 calc((var(--box) - 1ch) / 2);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  caret-color: var(--accent);
+  font-family: var(--mono);
+  /* Never under 16px: iOS zooms on a smaller field. */
+  font-size: clamp(16px, var(--box) * 0.55, 1.5rem);
+  letter-spacing: calc(var(--box) + var(--gap) - 1ch);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* The boxes show hover and focus. */
+.code > input[type="text"]:hover,
+.code > input[type="text"]:focus {
+  border: 0;
+  outline: none;
+}
+
+/* Autofill must not paint over the boxes. */
+.code > input[type="text"]:-webkit-autofill {
+  box-shadow: none;
+  transition: background-color 0s 600000s;
+}
+
 /* Buttons */
 
 .actions {

@@ -87,6 +87,34 @@ public sealed class AuthenticationTests
     }
 
     [Test]
+    public async Task The_application_chooses_where_a_cancelled_sign_in_returns()
+    {
+        // A fixed path would start the sign-in again when that page requires it, for example
+        // under a FallbackPolicy: only the application knows a page that needs no account.
+        await using var services = Services(SecretClient(), (auth, configuration) =>
+            auth.AddIdentityServerOpenIdConnect("oidc", configuration.GetSection("Web"))
+        );
+        var options = services
+            .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
+            .Get("oidc");
+        await Assert.That(options.AccessDeniedPath.HasValue).IsFalse();
+    }
+
+    [Test]
+    public async Task The_callers_access_denied_path_wins()
+    {
+        await using var services = Services(SecretClient(), (auth, configuration) =>
+            auth.AddIdentityServerOpenIdConnect("oidc", configuration.GetSection("Web"), options =>
+                options.AccessDeniedPath = "/cancelled"
+            )
+        );
+        var options = services
+            .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
+            .Get("oidc");
+        await Assert.That(options.AccessDeniedPath.Value).IsEqualTo("/cancelled");
+    }
+
+    [Test]
     public async Task A_private_key_client_signs_the_code_redemption_and_the_pushed_request()
     {
         using var rsa = RSA.Create(2048);
@@ -184,4 +212,15 @@ public sealed class AuthenticationTests
         configure(services.AddAuthentication(), configuration);
         return services.BuildServiceProvider(validateScopes: true);
     }
+
+    /// <summary>The section that WithIdentityClient projects for a client_secret_post client.</summary>
+    private static Dictionary<string, string?> SecretClient() =>
+        new(StringComparer.Ordinal)
+        {
+            ["Web:Authority"] = "https://idp.test",
+            ["Web:ClientId"] = "web",
+            ["Web:AuthenticationMethod"] = "client_secret_post",
+            ["Web:ClientSecret"] = "web-secret",
+            ["Web:Scopes"] = "openid profile",
+        };
 }

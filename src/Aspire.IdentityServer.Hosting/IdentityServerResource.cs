@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Aspire.IdentityServer;
 using Aspire.IdentityServer.Hosting;
 
@@ -55,12 +56,26 @@ public sealed class IdentityServerOptions
         Path.Combine(AppContext.BaseDirectory, "identityserver");
 
     /// <summary>
-    /// Also accepts private_key_jwt assertions in the original RFC 7523 profile, whose audience is
-    /// the token endpoint. By default the provider requires the draft-ietf-oauth-rfc7523bis profile:
-    /// the issuer as sole audience and the <c>client-authentication+jwt</c> type. Enable this only
-    /// for clients written for providers that refuse the issuer audience.
+    /// Requires the draft-ietf-oauth-rfc7523bis profile for private_key_jwt assertions: the issuer
+    /// as sole audience and the <c>client-authentication+jwt</c> type. <see langword="true" /> by
+    /// default: the provider sets the Duende option of the same name, which itself defaults to
+    /// <see langword="false" />. Set <see langword="false" /> only for clients written for
+    /// providers that refuse the issuer audience: the provider then also accepts the original
+    /// RFC 7523 profile, whose audience is the token endpoint.
     /// </summary>
-    public bool AcceptTokenEndpointAudience { get; set; }
+    public bool StrictClientAssertionAudienceValidation { get; set; } = true;
+
+    /// <summary>
+    /// The former name of <see cref="StrictClientAssertionAudienceValidation" />, with the inverse
+    /// meaning: <see langword="true" /> also accepts the token endpoint audience.
+    /// </summary>
+    [Obsolete("Use StrictClientAssertionAudienceValidation = false.")]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public bool AcceptTokenEndpointAudience
+    {
+        get => !StrictClientAssertionAudienceValidation;
+        set => StrictClientAssertionAudienceValidation = !value;
+    }
 }
 
 /// <summary>A local test account and the profile claims the provider issues for it.</summary>
