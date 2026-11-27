@@ -41,6 +41,9 @@ foreach (
                 options.CallbackPath = $"/signin-{provider}";
                 options.SignedOutCallbackPath = $"/signout-callback-{provider}";
                 options.RemoteSignOutPath = $"/signout-{provider}";
+                // A cancelled sign-in comes back to the home page, which needs no account,
+                // instead of the error that the handler raises without this path.
+                options.AccessDeniedPath = "/";
                 // The browser tests read max_age from the authorization URL of the other schemes.
                 options.PushedAuthorizationBehavior = pushed
                     ? PushedAuthorizationBehavior.Require

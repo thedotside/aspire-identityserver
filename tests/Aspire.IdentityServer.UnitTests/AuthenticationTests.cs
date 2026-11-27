@@ -87,15 +87,17 @@ public sealed class AuthenticationTests
     }
 
     [Test]
-    public async Task A_cancelled_sign_in_returns_to_the_application_root()
+    public async Task The_application_chooses_where_a_cancelled_sign_in_returns()
     {
+        // A fixed path would start the sign-in again when that page requires it, for example
+        // under a FallbackPolicy: only the application knows a page that needs no account.
         await using var services = Services(SecretClient(), (auth, configuration) =>
             auth.AddIdentityServerOpenIdConnect("oidc", configuration.GetSection("Web"))
         );
         var options = services
             .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
             .Get("oidc");
-        await Assert.That(options.AccessDeniedPath.Value).IsEqualTo("/");
+        await Assert.That(options.AccessDeniedPath.HasValue).IsFalse();
     }
 
     [Test]

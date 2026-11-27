@@ -47,10 +47,10 @@ public static class IdentityServerAuthenticationExtensions
     /// <c>WithIdentityClient(client, section)</c>: authority, client ID, scopes, PKCE and saved
     /// tokens. A <c>client_secret_post</c> client sends its secret; a <c>private_key_jwt</c> client
     /// signs a new assertion, whose audience is the discovered issuer, for the code redemption
-    /// and the pushed authorization request. A cancelled sign-in (<c>access_denied</c>) returns to
-    /// the application root instead of failing. <paramref name="configure" /> runs after these
-    /// defaults, for the callback paths, cookies or <c>MaxAge</c> for instance, or another
-    /// <c>AccessDeniedPath</c>.
+    /// and the pushed authorization request. <paramref name="configure" /> runs after these
+    /// defaults, for the callback paths, cookies or <c>MaxAge</c> for instance. A cancelled
+    /// sign-in (<c>access_denied</c>) fails as with the ASP.NET Core handler, unless
+    /// <paramref name="configure" /> sets <c>AccessDeniedPath</c> to a page that needs no sign-in.
     /// </summary>
     public static AuthenticationBuilder AddIdentityServerOpenIdConnect(
         this AuthenticationBuilder builder,
@@ -86,9 +86,6 @@ public static class IdentityServerAuthenticationExtensions
                     options.MapInboundClaims = false;
                     options.TokenValidationParameters.NameClaimType = "name";
                     options.TokenValidationParameters.RoleClaimType = "role";
-                    // A user who cancels comes back to the application, as with a real provider,
-                    // instead of the exception that the handler raises without this path.
-                    options.AccessDeniedPath = "/";
                     options.Scope.Clear();
                     foreach (
                         var scope in client.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries)

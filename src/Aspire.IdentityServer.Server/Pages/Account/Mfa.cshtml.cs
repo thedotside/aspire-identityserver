@@ -59,7 +59,8 @@ public sealed class MfaModel(IIdentityServerInteractionService interaction) : Pa
         var current = await HttpContext.AuthenticateAsync();
         if (current is not { Succeeded: true, Principal: { } principal })
             return Redirect(ReturnUrl);
-        if (!Matches(Code))
+        // A copied code often brings spaces around it; the digits must match exactly.
+        if (!Matches(Code?.Trim()))
         {
             // The field comes back empty, with one message whatever was typed.
             ModelState.Clear();

@@ -96,7 +96,6 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
         await using var session = await fixture.NewBrowserSessionAsync();
         var page = await session.Context.NewPageAsync();
         await OpenCodePageAsync(page);
-        await Assertions.Expect(page.GetByLabel("Code")).ToHaveAttributeAsync("maxlength", "6");
         await Assertions
             .Expect(page.Locator(".code > span[aria-hidden='true']"))
             .ToHaveCountAsync(6);
@@ -113,6 +112,20 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
         await page.Keyboard.InsertTextAsync("111111 ");
         await page.GetByRole(AriaRole.Button, new() { Name = "Verify", Exact = true }).ClickAsync();
         await Assertions.Expect(page).ToHaveURLAsync(Origin + "/");
+    }
+
+    [Test]
+    public async Task A_pasted_code_with_an_extra_digit_is_refused()
+    {
+        await using var session = await fixture.NewBrowserSessionAsync();
+        var page = await session.Context.NewPageAsync();
+        await OpenCodePageAsync(page);
+        await page.GetByLabel("Code").FocusAsync();
+        // A browser cuts a paste at maxlength: the page would then accept the right prefix.
+        await page.Keyboard.InsertTextAsync("1111112");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Verify", Exact = true }).ClickAsync();
+        await Assertions.Expect(page.GetByRole(AriaRole.Alert)).ToContainTextAsync("Invalid code.");
+        await ExpectCodePageAsync(page);
     }
 
     [Test]
