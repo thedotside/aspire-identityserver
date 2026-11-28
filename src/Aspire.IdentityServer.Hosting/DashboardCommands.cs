@@ -277,6 +277,11 @@ internal static class DashboardCommands
                 CultureInfo.InvariantCulture,
                 $"\n### Simulated MFA\n\n| Code | acr values |\n| --- | --- |\n| {Cell(mfa.Code)} | {Cell(string.Join(' ', mfa.AcrValues))} |\n"
             );
+        if (server.SignUp is { } signUp)
+            text.Append(
+                CultureInfo.InvariantCulture,
+                $"\n### Sign-up\n\n| Form fields |\n| --- |\n| {Cell(string.Join(", ", ["username", "password", .. signUp.ClaimTypes]))} |\n\nAccounts created on the sign-up page live in the provider's memory until it restarts: they are not listed here.\n"
+            );
         text.Append(
             "\n### Test users\n\n| Username | Subject | Display name | Claims |\n| --- | --- | --- | --- |\n"
         );

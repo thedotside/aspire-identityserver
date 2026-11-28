@@ -45,6 +45,29 @@ var alice = await app.GetUserTokensAsync("idp", "web", "alice", acrValues: "urn:
 
 Une valeur que le fournisseur ne déclare pas passe telle quelle, comme avec un vrai client : le jeton n'a pas de claim `acr`. Un code refusé lève `InvalidOperationException`.
 
+## Jetons d'un compte créé par inscription
+
+Sur un fournisseur déclaré avec [`WithSignUp`](fournisseurs.md#inscription-promptcreate), `GetSignUpTokensAsync` crée un compte par la page d'inscription, comme le fait `prompt=create` dans un navigateur, puis rend ses jetons :
+
+```csharp
+var ada = await app.GetSignUpTokensAsync(
+    "idp", "web", $"ada-{Guid.NewGuid():N}", "Passw0rd!",
+    new Dictionary<string, string>
+    {
+        ["email"] = "ada@example.test",
+        ["given_name"] = "Ada",
+        ["family_name"] = "Lovelace",
+    });
+```
+
+`GetSignUpTokensAsync(provider, clientId, username, password, claims?, scope?, acrValues?)` suit le parcours de `GetUserTokensAsync`, avec `prompt=create` : il remplit le formulaire de création, saisit le code de la [MFA simulée](fournisseurs.md#mfa-simulée) si le fournisseur le demande, puis échange le code. Le fournisseur donne au compte un `sub` aléatoire, à lire dans les jetons rendus.
+
+- Les clés de `claims` sont exactement les claims du formulaire : un claim manquant ou non déclaré lève `ArgumentException`, qui le nomme.
+- Le scope demandé, par défaut tous ceux du client, doit inclure `openid` : sinon `ArgumentException`, avant toute requête. Une réponse sans ID token lève `InvalidOperationException`, puisque seul cet ID token confirme l'inscription.
+- Un fournisseur sans `WithSignUp` lève `InvalidOperationException`. Un refus de la page, par exemple un identifiant déjà pris, lève aussi `InvalidOperationException`, avec le message de la page.
+- Les comptes créés vivent autant que l'AppHost partagé par les tests : donne à chaque test son propre identifiant, par exemple avec un `Guid`.
+- `GetUserTokensAsync` lit les mots de passe dans l'AppHost, qui ne connaît pas ces comptes. Pour un nouveau jeton, utilise le refresh token rendu (avec `offline_access`), ou la page de connexion dans un navigateur.
+
 ## Jetons d'un client machine et options
 
 `GetClientCredentialsTokensAsync(provider, clientId, scope?)` demande un jeton `client_credentials`. `GetIdentityClientOptionsAsync(provider, clientId)` retourne les `IdentityClientOptions` du client, avec ses credentials résolus, comme la projection standard les fournit : pratique pour configurer un `HttpClient` de test avec `AddClientCredentialsHandler` ou `AddTokenExchangeHandler`.

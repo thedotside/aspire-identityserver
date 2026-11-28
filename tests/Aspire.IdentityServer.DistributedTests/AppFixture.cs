@@ -88,6 +88,13 @@ public sealed class AppFixture : IAsyncInitializer, IAsyncDisposable
             .AddClientCredentialsClient("legacy-worker")
             .WithGeneratedBase64PrivateKeyJwt()
             .WithScopes("legacy.read");
+        // A sign-up form whose name field gives the display name.
+        legacy.WithSignUp("name", "email");
+        legacy
+            .AddAuthorizationCodeClient("legacy-web")
+            .RequirePkce()
+            .WithScopes("openid", "profile", "email")
+            .WithRedirectUri(legacy.GetEndpoint("https"), "/signin");
         Servers = builder.Resources.OfType<IdentityServerResource>().ToList();
         App = await builder.BuildAsync(timeout.Token);
         await App.StartAsync(timeout.Token);

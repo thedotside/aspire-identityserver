@@ -8,12 +8,14 @@ const string targetFramework = "net10.0";
 
 // The teams identity scope gives clients that request it the team claims of the user.
 // Requesting urn:sample:loa:mfa or urn:sample:loa:high in acr_values asks for the simulated
-// second factor 111111 after the password.
+// second factor 111111 after the password. prompt=create opens the sign-up page, which asks for
+// the email, given_name and family_name claims.
 var idpA = builder
     .AddIdentityServer("idp-a")
     .WithIdentityScope("teams", "team")
     .WithIdentityScope("communities", "member_of")
-    .WithSimulatedMfa("111111", "urn:sample:loa:mfa", "urn:sample:loa:high");
+    .WithSimulatedMfa("111111", "urn:sample:loa:mfa", "urn:sample:loa:high")
+    .WithSignUp("email", "given_name", "family_name");
 idpA.AddTestUser("alice", "alice", "Alice A")
     .WithClaim("email", "alice@example.test")
     .WithClaim("given_name", "Alice")

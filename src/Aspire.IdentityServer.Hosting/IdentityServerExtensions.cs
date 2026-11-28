@@ -279,6 +279,51 @@ public static class IdentityServerExtensions
         return server;
     }
 
+    /// <summary>
+    /// Lets clients open a sign-up page with <c>prompt=create</c>, as with a production provider.
+    /// The form asks for a username, a password, then one text field per claim of
+    /// <paramref name="claimTypes" />, in order; a <c>name</c> field gives the display name,
+    /// otherwise the username does. Claims that OpenID Connect types as a boolean, a number or
+    /// an object, such as <c>email_verified</c>, are refused. The account gets a random subject,
+    /// its claims reach tokens through identity scopes like those of declared users, and it stays
+    /// in the provider's memory until the provider restarts. Declare every field in one call.
+    /// </summary>
+    public static IResourceBuilder<IdentityServerResource> WithSignUp(
+        this IResourceBuilder<IdentityServerResource> server,
+        params string[] claimTypes
+    )
+    {
+        ArgumentNullException.ThrowIfNull(server);
+        ArgumentNullException.ThrowIfNull(claimTypes);
+        if (server.Resource.SignUp is not null)
+            throw new InvalidOperationException(
+                $"Identity provider '{server.Resource.Name}' already declares a sign-up form: declare all its claims in one call."
+            );
+        var types = new List<string>();
+        foreach (var type in claimTypes)
+        {
+            // Unlike WithClaim, name is accepted: this field gives the account its display name.
+            if (!TokenExchangeClaims.IsUserClaim(type))
+                throw new ArgumentException(
+                    $"A sign-up form asks for profile claims, not '{type}': protocol claims such as sub are issued by the provider, and a claim type has no spaces.",
+                    nameof(claimTypes)
+                );
+            if (SignUpClaims.IsTypedClaim(type))
+                throw new ArgumentException(
+                    $"A sign-up form asks for text claims, not '{type}': OpenID Connect issues it as a boolean, a number or an object, and only the provider can verify an email address or a phone number.",
+                    nameof(claimTypes)
+                );
+            if (types.Contains(type, StringComparer.Ordinal))
+                throw new ArgumentException(
+                    $"Duplicate sign-up claim '{type}'.",
+                    nameof(claimTypes)
+                );
+            types.Add(type);
+        }
+        server.Resource.SignUp = new IdentitySignUp(types.AsReadOnly());
+        return server;
+    }
+
     /// <summary>Declares an API audience; add its scopes with <see cref="IdentityApiResource.WithScopes" />.</summary>
     public static IdentityApiResource AddApiResource(
         this IResourceBuilder<IdentityServerResource> server,
@@ -537,6 +582,12 @@ public static class IdentityServerExtensions
         {
             environment["IdentityServer__SimulatedMfa__Code"] = mfa.Code;
             AddList(environment, "IdentityServer__SimulatedMfa__AcrValues", mfa.AcrValues);
+        }
+        if (server.SignUp is { } signUp)
+        {
+            // Always written: a form without claims still exists in the provider configuration.
+            environment["IdentityServer__SignUp__Enabled"] = "true";
+            AddList(environment, "IdentityServer__SignUp__ClaimTypes", signUp.ClaimTypes);
         }
     }
 

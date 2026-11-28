@@ -179,6 +179,28 @@ options.ClaimActions.Remove("acr");
 
 L'exemple déclare `urn:sample:loa:mfa` et `urn:sample:loa:high` sur `idp-a`, avec le code `111111`. Le schéma `mfa` du site web demande le premier niveau.
 
+## Inscription (prompt=create)
+
+Une application qui ouvre l'inscription de son fournisseur réel avec `prompt=create` ([OpenID Connect Prompt Create 1.0](https://openid.net/specs/openid-connect-prompt-create-1_0.html)), par exemple derrière un bouton « Créer un compte », peut le faire aussi en local. Le fournisseur déclare les claims que demande son formulaire, en plus de l'identifiant et du mot de passe :
+
+```csharp
+var idp = builder.AddIdentityServer("idp")
+    .WithSignUp("email", "given_name", "family_name");
+```
+
+- La découverte publie `create` dans `prompt_values_supported`. Une demande d'autorisation avec `prompt=create` ouvre la page **Create an account** : identifiant, mot de passe, puis un champ par claim, dans l'ordre de déclaration, avec le type du claim pour libellé.
+- **Create account** crée le compte et connecte l'utilisateur, puis la demande reprend : page de code de la [MFA simulée](#mfa-simulée) si le client demande un niveau déclaré, puis retour au client. **Cancel** renvoie `access_denied`, comme sur la page de connexion.
+- La demande doit inclure le scope `openid` : seul un ID token confirme l'inscription au client ([Prompt Create, §4.1](https://openid.net/specs/openid-connect-prompt-create-1_0.html#section-4.1)). Sans lui, le fournisseur répond `invalid_request` avant la page, sans créer de compte.
+- Le compte reçoit un `sub` aléatoire de 32 caractères hexadécimaux. Un redémarrage efface le compte mais garde l'émetteur : le même identifiant, créé de nouveau, ne doit pas reprendre le `sub` de l'ancien compte, qu'OpenID Connect ne réattribue jamais. Le `name` du compte est la valeur du champ `name` s'il est déclaré, sinon l'identifiant. Ses claims suivent le chemin de ceux de `WithClaim` : un claim n'arrive dans les jetons que si le client demande un scope d'identité qui le porte. `email` arrive avec le scope `email` ; `phone_number` demande `WithIdentityScope("phone", "phone_number")`.
+- Tous les champs sont obligatoires. L'identifiant doit être libre sans tenir compte de la casse, comme le cherche la page de connexion : `Alice` est refusé à côté de `alice`. Il ne commence ni ne finit par une espace, puisque la page de connexion le compare tel que saisi. Les valeurs sont prises telles que saisies, sans contrôle de format ni vérification de l'e-mail ou du téléphone.
+- Tant que le fournisseur tourne, le compte se reconnecte par la page de connexion, rafraîchit ses jetons et sert au Token Exchange local. Un redémarrage l'efface, avec les sessions et les refresh tokens. La commande **Show registrations** liste les champs du formulaire, pas les comptes créés.
+- Une session déjà ouverte n'empêche pas l'inscription : la session du nouveau compte la remplace, sans prévenir les clients de l'ancienne.
+- Sans `WithSignUp`, le fournisseur refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
+
+`WithSignUp()` sans argument donne un formulaire réduit à l'identifiant et au mot de passe. Les claims de protocole (`sub`, `acr`…) et les doublons sont refusés, comme les claims qu'OpenID Connect type en booléen, en nombre ou en objet (`email_verified`, `phone_number_verified`, `updated_at`, `address`) : un champ produit du texte, et seul le fournisseur peut déclarer une adresse vérifiée. `name` est accepté, puisqu'il donne le nom affiché. Déclare tous les champs en un seul appel. Côté application, voir [l'envoi de `prompt=create`](integration.md#application-web--authorization-code-et-pkce). Dans les tests, `GetSignUpTokensAsync` du package `Testing` crée un compte sans navigateur (voir [les tests d'intégration](tests.md#jetons-dun-compte-créé-par-inscription)).
+
+L'exemple déclare `email`, `given_name` et `family_name` sur `idp-a`. Le lien **Create an account** du site web (`/signup/a`) ouvre le parcours ; `/signup/par` fait de même par PAR.
+
 ## Refresh tokens
 
 Un client interactif qui ajoute `offline_access` à ses scopes, et le demande à la connexion, reçoit un refresh token. Le token d'accès renouvelé conserve le sujet, l'heure et la méthode d'authentification : il reste utilisable comme jeton source d'un Token Exchange. Les refresh tokens suivent les réglages par défaut de Duende et restent en mémoire, comme le reste de l'état du fournisseur. Un client machine ne peut pas demander `offline_access`.
@@ -261,6 +283,8 @@ L'AppHost transmet la configuration par environnement. Ces clés expliquent l'im
 | `IdentityServer__Users__{i}__DisplayName` | Nom affiché. |
 | `IdentityServer__Users__{i}__Password` | Paramètre secret de mot de passe. |
 | `IdentityServer__Users__{i}__Claims__{j}__Type` et `__Value` | Claim de profil ; un type peut se répéter. |
+| `IdentityServer__SignUp__Enabled` | `true` dès que le fournisseur déclare `WithSignUp`, même sans claim. |
+| `IdentityServer__SignUp__ClaimTypes__{i}` | Claim demandé par le formulaire d'inscription, dans l'ordre. |
 
 Les listes serveur utilisent des indices. La projection de scopes vers un consommateur utilise une chaîne séparée par des espaces.
 

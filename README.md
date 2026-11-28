@@ -51,6 +51,8 @@ No `using` is needed: the extensions live in `Aspire.Hosting`, like other Aspire
 
 `WithSimulatedMfa("111111", "urn:example:loa:mfa")` simulates a second factor: a client that requests that level in `acr_values` is asked for the code after the password, then receives the level as `acr`, with `pwd`, `otp` and `mfa` as `amr`. Applications keep their MFA checks enabled locally. See [simulated MFA](docs/fournisseurs.md#mfa-simulée).
 
+`WithSignUp("email", "given_name", "family_name")` lets a client open the provider's sign-up page with `prompt=create`, as with a production provider: the form asks for a username, a password and these claims, the account stays in memory until the provider restarts, and the user comes back to the client signed in. See [sign-up](docs/fournisseurs.md#inscription-promptcreate).
+
 In the consumer, the optional `TheDotSide.Aspire.IdentityServer.Client` package binds the projected section and signs `private_key_jwt` assertions with the [draft-ietf-oauth-rfc7523bis](https://datatracker.ietf.org/doc/draft-ietf-oauth-rfc7523bis/) profile:
 
 ```csharp

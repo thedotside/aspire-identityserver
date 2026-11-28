@@ -72,4 +72,21 @@ public sealed class DashboardTests
             .That(await DashboardCommands.MarkdownAsync(plain.Resource, CancellationToken.None))
             .DoesNotContain("Simulated MFA");
     }
+
+    [Test]
+    public async Task Registrations_list_the_sign_up_form()
+    {
+        var builder = TestApp.CreateBuilder();
+        var idp = builder.AddIdentityServer("idp").WithSignUp("email", "given_name");
+        var plain = builder.AddIdentityServer("plain");
+        await Assert
+            .That(await DashboardCommands.MarkdownAsync(idp.Resource, CancellationToken.None))
+            .Contains(
+                "\n### Sign-up\n\n| Form fields |\n| --- |\n| username, password, email, given_name |\n\n"
+                    + "Accounts created on the sign-up page live in the provider's memory until it restarts: they are not listed here.\n"
+            );
+        await Assert
+            .That(await DashboardCommands.MarkdownAsync(plain.Resource, CancellationToken.None))
+            .DoesNotContain("Sign-up");
+    }
 }

@@ -165,8 +165,12 @@ app.MapGet("/", async (HttpContext context, IAntiforgery antiforgery) =>
     {
         var result = await context.AuthenticateAsync($"cookie-{provider}");
         var name = HtmlEncoder.Default.Encode(result.Principal?.Identity?.Name ?? "Signed out");
+        // Provider A also opens its sign-up page, as a "Create an account" button would.
+        var signUp = string.Equals(provider, "a", StringComparison.Ordinal)
+            ? " <a href='/signup/a'>Create an account</a>"
+            : "";
         rows.Add(
-            $"<section><h2>Provider {provider}</h2><p id='user-{provider}'>{name}</p><a href='/login/{provider}'>Sign in {provider}</a>"
+            $"<section><h2>Provider {provider}</h2><p id='user-{provider}'>{name}</p><a href='/login/{provider}'>Sign in {provider}</a>{signUp}"
                 + $"<form method='post' action='/logout/{provider}'><input type='hidden' name='{token.FormFieldName}' value='{token.RequestToken}'/><button>Sign out {provider}</button></form></section>"
         );
     }
@@ -196,6 +200,7 @@ foreach (var provider in new[] { "a", "b", "public", "par", "mfa" })
             {
                 name = context.User.Identity?.Name,
                 subject = context.User.FindFirst("sub")?.Value,
+                email = context.User.FindFirst("email")?.Value,
                 sid = context.User.FindFirst("sid")?.Value,
                 acr = context.User.FindFirst("acr")?.Value,
                 amr = context.User.FindAll("amr").Select(c => c.Value).ToArray(),
@@ -204,5 +209,16 @@ foreach (var provider in new[] { "a", "b", "public", "par", "mfa" })
         .RequireAuthorization(
             new AuthorizationPolicyBuilder($"cookie-{provider}").RequireAuthenticatedUser().Build()
         );
+}
+
+// prompt=create opens the sign-up page of provider A, directly or through pushed authorization.
+foreach (var provider in new[] { "a", "par" })
+{
+    app.MapGet($"/signup/{provider}", () =>
+        Results.Challenge(
+            new OpenIdConnectChallengeProperties { RedirectUri = "/", Prompt = "create" },
+            [$"oidc-{provider}"]
+        )
+    );
 }
 app.Run();

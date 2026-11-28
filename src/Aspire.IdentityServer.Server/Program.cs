@@ -8,6 +8,7 @@ using Duende.IdentityServer.ResponseHandling;
 using Duende.IdentityServer.Test;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
@@ -84,6 +85,13 @@ internal static class ServerProgram
             throw new InvalidOperationException(
                 "A simulated MFA needs a code of 4 to 10 digits and at least one acr value."
             );
+        if (
+            config.SignUp is { Enabled: true } signUp
+            && !SignUpForm.HasValidClaimTypes(signUp.ClaimTypes)
+        )
+            throw new InvalidOperationException(
+                "A sign-up form needs distinct profile claim types issued as text, without protocol claims such as sub or typed claims such as email_verified."
+            );
         // Traces, metrics and logs reach the Aspire dashboard when the AppHost provides OTLP.
         if (!string.IsNullOrWhiteSpace(builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]))
             builder
@@ -123,6 +131,20 @@ internal static class ServerProgram
         // Discovery and keys of the providers that token-exchange policies trust.
         builder.Services.AddHttpClient(ForeignIssuerKeys.ClientName);
         builder.Services.AddSingleton<ForeignIssuerKeys>();
+        var users = config
+            .Users.Select(u => new TestUser
+            {
+                Username = u.Username,
+                Password = u.Password,
+                SubjectId = u.SubjectId,
+                Claims =
+                [
+                    new Claim("name", u.DisplayName),
+                    .. u.Claims.Select(c => new Claim(c.Type, c.Value)),
+                ],
+            })
+            .ToList();
+        var accounts = new LocalAccounts(users);
         builder
             .Services.AddIdentityServer(options =>
             {
@@ -154,6 +176,10 @@ internal static class ServerProgram
                 if (config.SimulatedMfa is { } levels)
                     options.Discovery.CustomEntries["acr_values_supported"] =
                         levels.AcrValues.ToArray();
+                // With a sign-up page, Duende advertises prompt=create, sends those requests to the
+                // page, then resumes them. Without one, it keeps refusing prompt=create.
+                if (config.SignUp is { Enabled: true })
+                    options.UserInteraction.CreateAccountUrl = SignUpForm.PagePath;
             })
             .AddInMemoryIdentityResources([
                 new IdentityResources.OpenId(),
@@ -230,25 +256,19 @@ internal static class ServerProgram
                     AlwaysIncludeUserClaimsInIdToken = true,
                 })
             )
-            .AddTestUsers(
-                config
-                    .Users.Select(u => new TestUser
-                    {
-                        Username = u.Username,
-                        Password = u.Password,
-                        SubjectId = u.SubjectId,
-                        Claims =
-                        [
-                            new Claim("name", u.DisplayName),
-                            .. u.Claims.Select(c => new Claim(c.Type, c.Value)),
-                        ],
-                    })
-                    .ToList()
-            )
+            // Also registers Duende's test-user validators; only its fixed store is replaced below.
+            .AddTestUsers(users)
             .AddJwtBearerClientAuthentication()
             .AddExtensionGrantValidator<TokenExchangeGrantValidator>()
             .AddProfileService<TokenExchangeProfileService>()
+            // Only a form-declaring provider supports prompt=create; this refuses it without openid.
+            .AddCustomAuthorizeRequestValidator<CreatePromptValidator>()
             .AddSigningCredential(SigningKey(config), SecurityAlgorithms.RsaSha256);
+        // The sign-up page adds accounts while requests read them: each request resolves the
+        // store of the current snapshot, from the sign-in page to the profile service. A singleton
+        // must take LocalAccounts, never TestUserStore: it would keep the snapshot of its creation.
+        builder.Services.AddSingleton(accounts);
+        builder.Services.Replace(ServiceDescriptor.Transient(_ => accounts.Current));
         // Registered after Duende's generator, so that it replaces it: a declared level requested
         // with acr_values that the session lacks asks for the simulated code.
         if (config.SimulatedMfa is not null)

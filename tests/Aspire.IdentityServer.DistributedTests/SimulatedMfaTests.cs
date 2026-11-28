@@ -133,8 +133,22 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
     {
         await using var session = await fixture.NewBrowserSessionAsync();
         var page = await session.Context.NewPageAsync();
+        // A loaded runner serves the style sheet late: the code page then shows its field before
+        // drawing the boxes and before focusing the field. The second request of the style sheet
+        // is the code page's, after the sign-in page's.
+        var sheets = 0;
+        await page.RouteAsync("**/Account/site.css", async route =>
+        {
+            if (Interlocked.Increment(ref sheets) > 1)
+                await Task.Delay(TimeSpan.FromSeconds(1));
+            await route.ContinueAsync();
+        });
         await OpenCodePageAsync(page);
-        // The page focuses the field on load: start from the page itself.
+        // The page has already focused the field: a focus seen later comes from the click.
+        await Assert
+            .That(await page.EvaluateAsync<string?>("() => document.activeElement?.id"))
+            .IsEqualTo("Code");
+        // Start from the page itself.
         await page.Mouse.ClickAsync(1, 1);
         await Assertions.Expect(page.GetByLabel("Code")).Not.ToBeFocusedAsync();
         var box = await page.Locator(".code > span").Nth(3).BoundingBoxAsync();
@@ -333,6 +347,10 @@ public sealed class SimulatedMfaTests(AppFixture fixture)
         await page.GotoAsync(Origin + "/login/mfa");
         await Login(page);
         await ExpectCodePageAsync(page);
+        // The style sheet draws the boxes, and the page focuses the field once it has loaded: a
+        // loaded runner shows the page before both, and a click or a measure would race them.
+        await page.WaitForLoadStateAsync(LoadState.Load);
+        await Assertions.Expect(page.GetByLabel("Code")).ToBeFocusedAsync();
     }
 
     private async Task ExpectCodePageAsync(IPage page)

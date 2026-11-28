@@ -64,7 +64,19 @@ builder.Services.AddAuthentication(options =>
 
 `AddIdentityServerOpenIdConnect` fixe l'authority, le client ID, les scopes projetés, `ResponseType = code`, PKCE, `SaveTokens`, les noms de claims JWT et `name` comme claim de nom. Un client `client_secret_post` envoie son secret. Un client `private_key_jwt` signe une assertion neuve, dont l'audience est l'issuer découvert, pour l'échange du code **et pour la requête PAR** : PAR peut rester activé, comme le fait le handler ASP.NET Core par défaut quand le fournisseur l'annonce. Le callback `configure` s'applique après ces valeurs, pour les chemins, cookies ou `MaxAge` ; les événements qu'il définit sont conservés. [Sample.Web](../samples/Sample.Web/Program.cs) utilise ce helper pour ses cinq schémas, dont `par`, qui exige PAR avec le client à clé privée.
 
-Quand l'utilisateur annule la connexion, le fournisseur répond `access_denied`. Le helper ne fixe pas `AccessDeniedPath` : sans autre réglage, le handler ASP.NET Core traite l'annulation comme un échec et affiche sa page d'erreur. Pour ramener l'utilisateur dans l'application, définis `AccessDeniedPath` dans `configure`, vers une page accessible sans compte : une page qui exige une connexion, par exemple sous une `FallbackPolicy`, relancerait aussitôt la connexion. Le sample revient ainsi à sa page d'accueil (`options.AccessDeniedPath = "/"`), avec `?ReturnUrl=` vers la page demandée. Le handler redirige alors avant `OnRemoteFailure`, qui ne voit plus les annulations ; `OnAccessDenied` les reçoit dans tous les cas.
+Pour ouvrir l'inscription d'un fournisseur déclaré avec [`WithSignUp`](fournisseurs.md#inscription-promptcreate), par exemple depuis un bouton « Créer un compte », l'application envoie `prompt=create` dans le challenge :
+
+```csharp
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+
+app.MapGet("/signup", () => Results.Challenge(
+    new OpenIdConnectChallengeProperties { RedirectUri = "/", Prompt = "create" },
+    ["web-oidc"]));
+```
+
+Le fournisseur affiche sa page de création de compte, puis revient au callback avec l'utilisateur connecté, comme après une connexion ; PAR reste possible. La demande garde le scope `openid`, que le handler OpenID Connect envoie toujours : sans lui, le fournisseur refuse `prompt=create` avec `invalid_request`. Un fournisseur sans `WithSignUp` refuse `prompt=create` avec `invalid_request`, comme un fournisseur réel qui ne gère pas l'inscription.
+
+Quand l'utilisateur annule la connexion ou l'inscription, le fournisseur répond `access_denied`. Le helper ne fixe pas `AccessDeniedPath` : sans autre réglage, le handler ASP.NET Core traite l'annulation comme un échec et affiche sa page d'erreur. Pour ramener l'utilisateur dans l'application, définis `AccessDeniedPath` dans `configure`, vers une page accessible sans compte : une page qui exige une connexion, par exemple sous une `FallbackPolicy`, relancerait aussitôt la connexion. Le sample revient ainsi à sa page d'accueil (`options.AccessDeniedPath = "/"`), avec `?ReturnUrl=` vers la page demandée. Le handler redirige alors avant `OnRemoteFailure`, qui ne voit plus les annulations ; `OnAccessDenied` les reçoit dans tous les cas.
 
 Sans ce package, configure `AddOpenIdConnect` avec les mêmes valeurs. Pour `private_key_jwt`, renseigne `ClientAssertionType` et `ClientAssertion` (avec `PrivateKeyJwt.CreateAssertion(client, issuer)`) dans `OnAuthorizationCodeReceived`, et dans `OnPushAuthorization` suivi de `HandleClientAuthentication()`, ou désactive PAR. Une annulation s'y traite de la même façon : `AccessDeniedPath`, `OnAccessDenied` ou `OnRemoteFailure`.
 
