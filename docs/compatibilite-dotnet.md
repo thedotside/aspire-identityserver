@@ -69,4 +69,4 @@ Sur un poste où `dotnet --version` affiche 11 mais le build mentionne un ancien
 
 Avec les packages stables `11.0.0`, garde `net10.0` pour rester sur .NET 10 ou choisis `net11.0` avec le SDK correspondant. Aligne les packages IdentityServer. L'API publique, les scopes, les sections projetées et le contrat 3 restent identiques ; aucune migration de données n'est nécessaire pour ce fournisseur en mémoire.
 
-La version publiée `11.1.0` passe au contrat 4. La version publiée `11.2.0` relève le plancher à Aspire 17.0.0. La version `11.3.0` passe au contrat 5 : mets Hosting et Runtime à jour ensemble. Mets à jour les dépendances Aspire de l'AppHost et des tests distribués ensemble. Voir le [guide d'installation](demarrage.md#installer-dans-une-autre-solution).
+La version publiée `11.1.0` passe au contrat 4. La version publiée `11.2.0` relève le plancher à Aspire 17.0.0. La version publiée `11.3.0` passe au contrat 5 : mets Hosting et Runtime à jour ensemble. Mets à jour les dépendances Aspire de l'AppHost et des tests distribués ensemble. Voir le [guide d'installation](demarrage.md#installer-dans-une-autre-solution).
