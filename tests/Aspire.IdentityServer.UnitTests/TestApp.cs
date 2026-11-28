@@ -12,7 +12,8 @@ internal static class TestApp
             new DistributedApplicationOptions
             {
                 DisableDashboard = true,
-                Args = ["--environment", environment],
+                // Unit tests use in-memory models and never reload configuration files.
+                Args = ["--environment", environment, "--hostBuilder:reloadConfigOnChange=false"],
             }
         );
 }
